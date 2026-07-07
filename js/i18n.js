@@ -138,7 +138,8 @@ const I18N = {
     'help.html': `
       <h3>Controls</h3>
       {move} move · {attack} attack · {skills} skills ·
-      {panel} stats · {afk} AFK farm
+      {panel} stats · {afk} AFK farm<br>
+      Your hero <b>aims at the mouse cursor</b> — point at a monster and attack.
       <h3>❤ Healing Circle</h3>
       The glowing circle in the village restores <b>10% of your max HP every
       second</b>. Retreat there when you're hurt!
@@ -148,7 +149,9 @@ const I18N = {
       STR, AGI, INT, VIT, or LUK.
       <h3>🤖 AFK auto-farming</h3>
       Toggle <b>AUTO</b> and your hero hunts monsters, casts skills, grabs loot,
-      and retreats to heal when hurt. Stat points are saved for YOU to spend —
+      and retreats to heal when hurt (fighting back from inside the circle).
+      You can grab the controls at any time — the bot resumes the moment you
+      release the keys. Stat points are saved for YOU to spend —
       use <b>★ Recommended build</b> in the stat window to allocate them all at
       once, or <b>↺ Reset stats</b> to refund everything and rebuild.
       <h3>🌐 Online multiplayer</h3>
@@ -296,7 +299,8 @@ const I18N = {
     'help.html': `
       <h3>การควบคุม</h3>
       {move} เดิน · {attack} โจมตี · {skills} สกิล ·
-      {panel} สเตตัส · {afk} ฟาร์มอัตโนมัติ
+      {panel} สเตตัส · {afk} ฟาร์มอัตโนมัติ<br>
+      ฮีโร่จะ<b>เล็งตามเมาส์</b> — ชี้เมาส์ไปที่มอนสเตอร์แล้วโจมตี
       <h3>❤ วงเวทฟื้นฟู</h3>
       วงแสงกลางหมู่บ้านฟื้นฟู <b>HP 10% ของค่าสูงสุดทุกวินาที</b>
       บาดเจ็บเมื่อไหร่ ถอยกลับมาพักที่นี่!
@@ -306,7 +310,9 @@ const I18N = {
       STR, AGI, INT, VIT หรือ LUK
       <h3>🤖 ฟาร์มอัตโนมัติ (AFK)</h3>
       เปิดโหมด <b>ออโต้</b> แล้วฮีโร่จะล่ามอนสเตอร์ ใช้สกิล เก็บของดรอป
-      และถอยกลับไปฟื้นฟูเมื่อบาดเจ็บ แต้มสเตตัสจะเก็บไว้ให้คุณอัพเอง —
+      และถอยกลับไปฟื้นฟูเมื่อบาดเจ็บ (พร้อมสู้กลับจากในวงเวท)
+      คุณบังคับเองได้ทุกเมื่อ — ปล่อยปุ่มแล้วบอทจะทำงานต่อทันที
+      แต้มสเตตัสจะเก็บไว้ให้คุณอัพเอง —
       กดปุ่ม <b>★ อัพตามสายแนะนำ</b> ในหน้าต่างสเตตัสเพื่ออัพทั้งหมดในคลิกเดียว
       หรือ <b>↺ รีเซ็ตสเตตัส</b> เพื่อคืนแต้มทั้งหมดแล้วอัพใหม่
       <h3>🌐 เล่นออนไลน์หลายคน</h3>

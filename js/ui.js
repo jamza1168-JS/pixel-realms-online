@@ -218,6 +218,8 @@ const UI = {
       statsBox.appendChild(row);
     }
 
+    this.$('btn-sp-recommend').disabled = p.statPoints <= 0;
+
     const d = p.derived;
     this.$('sp-derived').innerHTML =
       `<span>${t('drv.hp')}: <b>${d.maxHp}</b></span>` +

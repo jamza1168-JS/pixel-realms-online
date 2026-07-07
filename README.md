@@ -17,7 +17,7 @@ Open http://localhost:8765 — done. Friends on your network open
 is pre-configured.
 
 Other options:
-- double-click `index.html` (offline / local co-op)
+- double-click `index.html` (offline play)
 - any static host for the client (GitHub Pages, Netlify, itch.io) — then run
   `server.py` somewhere reachable for multiplayer
 
@@ -91,14 +91,18 @@ customize STR / AGI / INT / VIT / LUK freely.
 
 ## AFK auto-farming 🤖
 
-Press the **AUTO** button on a player frame (or `F` for P1, `K` for P2):
+Press the **AUTO** button on your player frame (or the `F` key):
 
 - hunts monsters suited to your level, walking zone to zone
 - attacks and casts skills automatically
 - picks up hearts, mana orbs, and gold
 - retreats to the village and heals when HP is low
-- spends new stat points automatically using a per-class build
 - keeps farming even when the browser tab is hidden/minimized
+
+Stat points are never spent automatically — they stack up while you're
+away, and you allocate them yourself in the stat window (`C`). Use the
+**★ Recommended build** button to spend them all following your class's
+suggested build, or **↺ Reset stats** to refund every point and start over.
 
 ## Rebindable hotkeys ⌨
 

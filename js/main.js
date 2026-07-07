@@ -319,12 +319,7 @@ class Game {
     const bs = p.bot || (p.bot = { phase: 'hunt', checkT: 0, lastX: p.x, lastY: p.y, unstuckT: 0, detour: null });
     const d = p.derived;
 
-    // auto-spend stat points by class priority
-    while (p.statPoints > 0) {
-      const pool = BOT_STAT_PRIORITY[p.clsId];
-      p.stats[pool[Math.floor(Math.random() * pool.length)]]++;
-      p.statPoints--;
-    }
+    // (stat points are never auto-spent — the player allocates them)
 
     // heal skills whenever hurt
     const hurt = p.hp < d.maxHp * 0.72;
@@ -554,14 +549,38 @@ class Game {
   healEntity(p, amount, quiet) {
     const d = p.derived;
     const healed = Math.min(d.maxHp - p.hp, amount);
-    if (healed <= 0.5) return;
+    if (healed <= 0) return;   // tiny per-frame ticks must still apply (heal circle, auras)
     p.hp += healed;
-    if (!quiet) this.addFloatText(p.x, p.y - 40, '+' + Math.round(healed), '#5ec96a');
+    if (!quiet && healed >= 1) this.addFloatText(p.x, p.y - 40, '+' + Math.round(healed), '#5ec96a');
+  }
+
+  /* ---------------- Stat allocation ---------------- */
+  /* Spend every unspent point following the class's recommended build. */
+  recommendStats(p) {
+    if (p.statPoints <= 0) return;
+    const pool = BOT_STAT_PRIORITY[p.clsId];
+    while (p.statPoints > 0) {
+      p.stats[pool[Math.floor(Math.random() * pool.length)]]++;
+      p.statPoints--;
+    }
+    this.sfx('point');
+    this.save();
+  }
+
+  /* Back to the class base build; refund all points earned by leveling. */
+  resetStats(p) {
+    p.stats = Object.assign({}, p.cls.base);
+    p.statPoints = (p.level - 1) * POINTS_PER_LEVEL;
+    const d = p.derived;
+    p.hp = Math.min(p.hp, d.maxHp);
+    p.mp = Math.min(p.mp, d.maxMp);
+    this.sfx('buff');
+    this.save();
   }
 
   /* ---------------- Networking glue ---------------- */
   goOnline(url, room, name) {
-    if (this.net.isOnline) this.net.disconnect();
+    if (this.net instanceof WSNet) this.net.disconnect();   // also kills a pending 'connecting' socket
     localStorage.setItem('pixelrealms_name', name);
     const net = new WSNet(this);
     this.net = net;
@@ -713,7 +732,7 @@ class Game {
         }
         break;
       case 'trade_no':
-        if (tr && tr.stage === 'waiting') {
+        if (tr && tr.stage === 'waiting' && m.fromKey === tr.withKey) {
           this.trade = null;
           UI.renderTrade(this);
           UI.toast(t('trade.declined'), 'info');
@@ -723,6 +742,11 @@ class Game {
         if (tr && tr.stage === 'open' && m.fromKey === tr.withKey) {
           tr.theirGold = Math.max(0, Math.floor(+m.gold || 0));
           tr.theirAccept = false;
+          // offer changed: my accept must be re-confirmed too
+          if (tr.myAccept) {
+            tr.myAccept = false;
+            this.net.send({ t: 'trade_accept', to: tr.withKey, fromKey: this.myKey(tr.me), accepted: false });
+          }
           UI.renderTrade(this);
         }
         break;
@@ -1212,6 +1236,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-help-close').addEventListener('click', () =>
     document.getElementById('help-panel').classList.add('hidden'));
   document.getElementById('btn-sp-close').addEventListener('click', () => UI.closeStatPanel());
+  document.getElementById('btn-sp-recommend').addEventListener('click', () => {
+    const p = UI.statPanelPlayer;
+    if (game && p) { game.recommendStats(p); UI.renderStatPanel(p); }
+  });
+  document.getElementById('btn-sp-reset').addEventListener('click', () => {
+    const p = UI.statPanelPlayer;
+    if (game && p) { game.resetStats(p); UI.renderStatPanel(p); }
+  });
 
   // AFK + stats buttons
   document.getElementById('afk-p1').addEventListener('click', () => {

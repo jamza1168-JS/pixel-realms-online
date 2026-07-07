@@ -94,7 +94,8 @@ class WSNet extends NetAdapter {
     };
     this.ws.onclose = () => {
       this.status = this.status === 'connecting' ? 'error' : 'off';
-      this.game.onNetDisconnect();
+      // only reset the game if we are still its active adapter
+      if (this.game.net === this) this.game.onNetDisconnect();
       UI.updateOnlinePanel();
     };
   }

@@ -239,21 +239,49 @@ async def handshake(reader, writer) -> bool:
     return True
 
 
-async def read_frame(reader):
-    """Return (opcode, payload) for the next frame."""
-    b1, b2 = await reader.readexactly(2)
-    opcode = b1 & 0x0F
-    masked = b2 & 0x80
-    length = b2 & 0x7F
-    if length == 126:
-        (length,) = struct.unpack(">H", await reader.readexactly(2))
-    elif length == 127:
-        (length,) = struct.unpack(">Q", await reader.readexactly(8))
-    mask = await reader.readexactly(4) if masked else None
-    payload = await reader.readexactly(length) if length else b""
-    if mask:
-        payload = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
-    return opcode, payload
+MAX_FRAME = 1 << 20  # 1 MiB — game messages are tiny; refuse anything huge
+
+
+async def read_message(reader, writer):
+    """Return (opcode, payload) for the next complete message.
+
+    Reassembles fragmented messages (proxies like Render's split large
+    frames — dropping fragments silently loses enemy snapshots) and
+    answers pings inline. Returns opcode 0x8 on close.
+    """
+    opcode = None
+    buf = b""
+    while True:
+        b1, b2 = await reader.readexactly(2)
+        fin = b1 & 0x80
+        op = b1 & 0x0F
+        masked = b2 & 0x80
+        length = b2 & 0x7F
+        if length == 126:
+            (length,) = struct.unpack(">H", await reader.readexactly(2))
+        elif length == 127:
+            (length,) = struct.unpack(">Q", await reader.readexactly(8))
+        if len(buf) + length > MAX_FRAME:
+            raise ConnectionError("frame too large")
+        mask = await reader.readexactly(4) if masked else None
+        payload = await reader.readexactly(length) if length else b""
+        if mask:
+            payload = bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+        if op == 0x8:  # close
+            return op, payload
+        if op == 0x9:  # ping -> pong (may interleave with fragments)
+            writer.write(encode_frame(payload, opcode=0xA))
+            continue
+        if op == 0xA:  # pong: ignore
+            continue
+        if op != 0x0:            # first (or only) fragment of a message
+            opcode, buf = op, payload
+        elif opcode is None:
+            continue             # stray continuation: drop
+        else:                    # continuation fragment
+            buf += payload
+        if fin:
+            return opcode, buf
 
 
 def encode_frame(payload: bytes, opcode=0x1) -> bytes:
@@ -324,13 +352,10 @@ async def handle_client(reader, writer):
     client = Client(reader, writer)
     try:
         while True:
-            opcode, payload = await read_frame(reader)
+            opcode, payload = await read_message(reader, writer)
             if opcode == 0x8:  # close
                 break
-            if opcode == 0x9:  # ping -> pong
-                writer.write(encode_frame(payload, opcode=0xA))
-                continue
-            if opcode != 0x1:  # only text frames carry game data
+            if opcode != 0x1:  # only text messages carry game data
                 continue
             try:
                 msg = json.loads(payload.decode("utf-8"))

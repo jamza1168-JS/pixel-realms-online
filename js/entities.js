@@ -283,6 +283,7 @@ class Enemy {
     this.wanderT = 0;
     this.wanderDir = { x: 0, y: 0 };
     this.attackT = 0;
+    this.biteT = 0;
     this.slowT = 0;
     this.animT = Math.random() * 10;
     this.dead = false;
@@ -314,6 +315,7 @@ class Enemy {
     if (this.dead) return;
     const g = this.game;
     this.attackT = Math.max(0, this.attackT - dt);
+    this.biteT = Math.max(0, this.biteT - dt);
     this.slowT = Math.max(0, this.slowT - dt);
     this.animT += dt * 6;
 
@@ -345,8 +347,9 @@ class Enemy {
           this.attackT = this.type.boss ? 1.4 : 2.2;
           g.spawnEnemyProjectile(this, target);
         }
-        // boss also bites up close
-        if (this.type.boss && dist < 46 && this.attackT <= 0.7) {
+        // boss also bites up close (own cooldown, not per-frame)
+        if (this.type.boss && dist < 46 && this.biteT <= 0) {
+          this.biteT = 1.1;
           g.damagePlayer(target, this.dmg * 0.8);
         }
       } else {

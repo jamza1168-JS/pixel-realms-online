@@ -22,6 +22,8 @@ const I18N = {
     'ui.cancel': 'Cancel',
     'ui.close': 'Close',
     'ui.statsOf': 'Stats — {name}',
+    'ui.recommend': '★ Recommended build',
+    'ui.resetStat': '↺ Reset stats',
     'ui.online': 'OFFLINE',
     'ui.dead': '{name} fell! Respawning in {s}...',
     'ui.levelUp': '{name} reached level {lv}! +5 stat points',
@@ -146,8 +148,9 @@ const I18N = {
       STR, AGI, INT, VIT, or LUK.
       <h3>🤖 AFK auto-farming</h3>
       Toggle <b>AUTO</b> and your hero hunts monsters, casts skills, grabs loot,
-      retreats to heal when hurt, and spends stat points automatically. Leave it
-      running to level up while you're away.
+      and retreats to heal when hurt. Stat points are saved for YOU to spend —
+      use <b>★ Recommended build</b> in the stat window to allocate them all at
+      once, or <b>↺ Reset stats</b> to refund everything and rebuild.
       <h3>🌐 Online multiplayer</h3>
       Click the 🌐 button to join a server room and play with everyone.
       Chat with <span class="key">↵</span>, trade with 🤝, compete on the 🏆 leaderboards.
@@ -177,6 +180,8 @@ const I18N = {
     'ui.cancel': 'ยกเลิก',
     'ui.close': 'ปิด',
     'ui.statsOf': 'สเตตัส — {name}',
+    'ui.recommend': '★ อัพตามสายแนะนำ',
+    'ui.resetStat': '↺ รีเซ็ตสเตตัส',
     'ui.online': 'ออฟไลน์',
     'ui.dead': '{name} ล้มลง! เกิดใหม่ใน {s} วินาที...',
     'ui.levelUp': '{name} เลเวลอัพเป็น {lv}! ได้รับ 5 แต้มสเตตัส',
@@ -301,8 +306,9 @@ const I18N = {
       STR, AGI, INT, VIT หรือ LUK
       <h3>🤖 ฟาร์มอัตโนมัติ (AFK)</h3>
       เปิดโหมด <b>ออโต้</b> แล้วฮีโร่จะล่ามอนสเตอร์ ใช้สกิล เก็บของดรอป
-      ถอยกลับไปฟื้นฟูเมื่อบาดเจ็บ และอัพแต้มสเตตัสให้เองอัตโนมัติ
-      เปิดทิ้งไว้เพื่อเลเวลอัพระหว่างที่คุณไม่อยู่
+      และถอยกลับไปฟื้นฟูเมื่อบาดเจ็บ แต้มสเตตัสจะเก็บไว้ให้คุณอัพเอง —
+      กดปุ่ม <b>★ อัพตามสายแนะนำ</b> ในหน้าต่างสเตตัสเพื่ออัพทั้งหมดในคลิกเดียว
+      หรือ <b>↺ รีเซ็ตสเตตัส</b> เพื่อคืนแต้มทั้งหมดแล้วอัพใหม่
       <h3>🌐 เล่นออนไลน์หลายคน</h3>
       กดปุ่ม 🌐 เข้าห้องเซิร์ฟเวอร์แล้วเล่นกับทุกคน
       แชทด้วย <span class="key">↵</span> แลกเปลี่ยนด้วย 🤝 แข่งอันดับที่ 🏆

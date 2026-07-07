@@ -80,6 +80,14 @@ function readInput() {
 }
 
 /* ---------------- Tiny synth SFX ---------------- */
+const SOUND_KEY = 'pixelrealms_sound';
+const SOUND = { vol: 1, muted: false };
+try { Object.assign(SOUND, JSON.parse(localStorage.getItem(SOUND_KEY)) || {}); } catch (e) { /* defaults */ }
+
+function saveSound() {
+  localStorage.setItem(SOUND_KEY, JSON.stringify(SOUND));
+}
+
 let audioCtx = null;
 function ensureAudio() {
   if (!audioCtx) {
@@ -89,13 +97,13 @@ function ensureAudio() {
 }
 
 function beep(freq, dur, type = 'square', vol = 0.06, endFreq = null) {
-  if (!audioCtx) return;
+  if (!audioCtx || SOUND.muted || SOUND.vol <= 0) return;
   const o = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   o.type = type;
   o.frequency.setValueAtTime(freq, audioCtx.currentTime);
   if (endFreq) o.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), audioCtx.currentTime + dur);
-  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.setValueAtTime(vol * SOUND.vol, audioCtx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
   o.connect(gain).connect(audioCtx.destination);
   o.start();
@@ -1268,8 +1276,9 @@ window.addEventListener('keydown', e => {
     return;
   }
 
-  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
+  // block page scrolling, but let inputs (chat, sliders) use these keys
+  if (!typing && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   if (!typing) keys.add(e.code);
 
   if (!game || typing) return;
@@ -1293,6 +1302,7 @@ window.addEventListener('keydown', e => {
     document.getElementById('help-panel').classList.add('hidden');
     document.getElementById('online-panel').classList.add('hidden');
     document.getElementById('board-panel').classList.add('hidden');
+    document.getElementById('sound-panel').classList.add('hidden');
   }
 });
 
@@ -1307,6 +1317,37 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-lang').addEventListener('click', () => {
     setLang(currentLang === 'en' ? 'th' : 'en');
   });
+  // sound settings
+  const volSlider = document.getElementById('sound-vol');
+  const updateSoundUI = () => {
+    document.getElementById('btn-sound').textContent = (SOUND.muted || SOUND.vol <= 0) ? '🔇' : '🔊';
+    document.getElementById('btn-sound-mute').textContent =
+      (SOUND.muted ? '🔇 ' : '🔊 ') + t(SOUND.muted ? 'sound.unmute' : 'sound.mute');
+    volSlider.value = Math.round(SOUND.vol * 100);
+    document.getElementById('sound-vol-num').textContent = Math.round(SOUND.vol * 100) + '%';
+  };
+  updateSoundUI();
+  document.getElementById('btn-sound').addEventListener('click', () => {
+    document.getElementById('sound-panel').classList.remove('hidden');
+    updateSoundUI();
+  });
+  document.getElementById('btn-sound-close').addEventListener('click', () =>
+    document.getElementById('sound-panel').classList.add('hidden'));
+  volSlider.addEventListener('input', () => {
+    SOUND.vol = volSlider.value / 100;
+    if (SOUND.vol > 0) SOUND.muted = false;
+    saveSound();
+    updateSoundUI();
+    if (game) game.sfx('point');   // instant feedback at the new volume
+  });
+  document.getElementById('btn-sound-mute').addEventListener('click', () => {
+    SOUND.muted = !SOUND.muted;
+    saveSound();
+    updateSoundUI();
+    if (!SOUND.muted && game) game.sfx('point');
+  });
+  document.addEventListener('langchange', updateSoundUI);
+
   document.getElementById('btn-help').addEventListener('click', () => UI.showHelp());
   document.getElementById('btn-help-close').addEventListener('click', () =>
     document.getElementById('help-panel').classList.add('hidden'));

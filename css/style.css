@@ -236,6 +236,15 @@ html, body {
 }
 .sp-actions .pix-btn:disabled { opacity: .45; cursor: default; }
 
+/* ===== Sound settings ===== */
+.sound-form {
+  display: flex; align-items: center; justify-content: center;
+  gap: 12px; margin-bottom: 16px; font-size: 11px;
+}
+#sound-vol { width: 200px; accent-color: #ffd75e; }
+#sound-vol-num { min-width: 44px; text-align: left; color: var(--gold, #ffd75e); }
+#btn-sound-mute { margin-bottom: 14px; }
+
 /* ===== Help ===== */
 #help-content { text-align: left; font-size: 11px; line-height: 2; margin-bottom: 12px; }
 #help-content h3 { color: var(--gold); font-size: 12px; margin: 10px 0 4px; }

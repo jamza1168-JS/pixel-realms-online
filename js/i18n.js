@@ -63,6 +63,11 @@ const I18N = {
     'chat.placeholder': 'Press Enter to chat…',
     'chat.you': 'You',
 
+    'sound.title': '🔊 Sound',
+    'sound.volume': 'Volume',
+    'sound.mute': 'Mute',
+    'sound.unmute': 'Unmute',
+
     'board.title': '🏆 Leaderboards',
     'board.level': 'Level',
     'board.kills': 'Mob Kills',
@@ -79,8 +84,8 @@ const I18N = {
     'trade.decline': 'Decline',
     'trade.myOffer': 'Your gold offer',
     'trade.theirOffer': 'Their offer',
-    'trade.lock': '✔ Accept trade',
-    'trade.locked': 'Waiting for partner…',
+    'trade.lock': '✔ Confirm trade',
+    'trade.locked': '✔ Confirmed — waiting for partner…',
     'trade.ready': 'Partner accepted!',
     'trade.done': '🤝 Trade complete!',
     'trade.cancelled': 'Trade cancelled',
@@ -224,6 +229,11 @@ const I18N = {
     'chat.placeholder': 'กด Enter เพื่อแชท…',
     'chat.you': 'คุณ',
 
+    'sound.title': '🔊 เสียง',
+    'sound.volume': 'ระดับเสียง',
+    'sound.mute': 'ปิดเสียง',
+    'sound.unmute': 'เปิดเสียง',
+
     'board.title': '🏆 กระดานผู้กล้า',
     'board.level': 'เลเวล',
     'board.kills': 'สังหารมอนสเตอร์',
@@ -241,7 +251,7 @@ const I18N = {
     'trade.myOffer': 'ทองที่คุณเสนอ',
     'trade.theirOffer': 'ข้อเสนอของอีกฝ่าย',
     'trade.lock': '✔ ยืนยันแลกเปลี่ยน',
-    'trade.locked': 'รออีกฝ่ายยืนยัน…',
+    'trade.locked': '✔ ยืนยันแล้ว — รออีกฝ่าย…',
     'trade.ready': 'อีกฝ่ายยืนยันแล้ว!',
     'trade.done': '🤝 แลกเปลี่ยนสำเร็จ!',
     'trade.cancelled': 'ยกเลิกการแลกเปลี่ยน',

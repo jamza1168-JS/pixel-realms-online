@@ -1,8 +1,8 @@
 # Pixel Realms Online 🗡️
 
-A co-op pixel-art MMO-style RPG that runs entirely in the browser — with
-online multiplayer, AFK auto-farming, and rebindable hotkeys.
-เกม MMO พิกเซลอาร์ตแนวผจญภัย เล่นออนไลน์กับเพื่อนได้ ฟาร์มอัตโนมัติได้ รันบนเบราว์เซอร์
+A pixel-art MMO-style RPG that runs entirely in the browser — full online
+multiplayer, AFK auto-farming, leaderboards, and rebindable hotkeys.
+เกม MMO พิกเซลอาร์ตแนวผจญภัย เล่นออนไลน์กับทุกคน ฟาร์มอัตโนมัติได้ รันบนเบราว์เซอร์
 
 ## Play
 
@@ -74,11 +74,20 @@ you leave). Your own entry is highlighted with ★.
 
 ## Trading 🤝
 
-Click the **🤝** button:
+Click the **🤝** button, pick a player, send a trade request. Both sides
+offer gold and must accept — the exchange applies only when both confirm.
+Cancel anytime.
 
-- **Online:** pick a player, send a trade request. Both sides offer gold and
-  must accept — the exchange applies only when both confirm. Cancel anytime.
-- **Local co-op:** instant gold transfer between P1 and P2.
+## Healing Circle ❤
+
+The glowing circle in the village restores **10% of max HP per second**.
+Retreat there when hurt; you also respawn inside it.
+
+## Stat window 📈
+
+Each level grants **+5 stat points**. Open the stat window with `C` or the
+**＋Stats** button (it pulses with a badge when you have unspent points) and
+customize STR / AGI / INT / VIT / LUK freely.
 
 ## AFK auto-farming 🤖
 
@@ -96,21 +105,20 @@ Press the **AUTO** button on a player frame (or `F` for P1, `K` for P2):
 Click the **⌨** button, click any binding, press the new key. Bindings are
 saved in the browser. Defaults:
 
-|            | Player 1 | Player 2 |
-|------------|----------|----------|
-| Move       | `W A S D` | `← ↑ ↓ →` |
-| Attack     | `J`      | `M`      |
-| Skills 1-3 | `U` `I` `O` | `,` `.` `/` |
-| Stat panel | `C`      | `B`      |
-| AFK farm   | `F`      | `K`      |
-| P2 join    | `P`      |          |
+|            | Key |
+|------------|-----|
+| Move       | `W A S D` |
+| Attack     | `J` |
+| Skills 1-3 | `U` `I` `O` |
+| Stat panel | `C` |
+| AFK farm   | `F` |
+| Chat       | `Enter` |
 
 ## Features
 
 - 🎨 **Pixel art** — all sprites procedurally rendered, crisp pixel scaling
 - ⚔️ **4 classes** — Warrior, Mage, Archer, Cleric, each with unique base stats and 3 skills
 - 📈 **Stat progression** — every level grants **+5 stat points** for STR / AGI / INT / VIT / LUK
-- 🤝 **Local co-op** — Player 2 joins anytime on the same keyboard (press `P`)
 - 🌍 **Open world** — procedural map, 5 difficulty zones, a Demon Lord boss
 - 🌐 **Thai / English** — switch language anytime, persisted
 - 💾 **Auto-save** — progress saved in the browser (localStorage)

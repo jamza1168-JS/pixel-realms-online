@@ -257,8 +257,15 @@ html, body {
 .toast.info { border-color: var(--panel-border); color: var(--text); }
 @keyframes toastIn { from { transform: translateY(-10px); opacity: 0; } }
 
-/* ===== AFK button ===== */
+/* ===== AFK + stats buttons ===== */
 .afk-btn { font-size: 8px; padding: 3px 6px; margin: 0; }
+#btn-stats { margin: 6px 0 0; font-size: 9px; }
+#btn-stats.pulse { border-color: var(--gold); animation: blink 1.2s infinite; }
+#stats-badge {
+  background: var(--gold); color: #201500;
+  padding: 0 5px; margin-left: 5px;
+  border-radius: 2px;
+}
 .afk-btn.selected {
   background: var(--green); color: #0a2010;
   border-color: #2a7a3a;

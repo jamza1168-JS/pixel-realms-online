@@ -59,8 +59,7 @@ const UI = {
     const bar = this.$('skillbar-p' + player.id);
     bar.innerHTML = '';
     bar.classList.remove('hidden');
-    const km = KEYS[player.id];
-    const keys = [km.attack, km.skill1, km.skill2, km.skill3].map(prettyKey);
+    const keys = [KEYS.attack, KEYS.skill1, KEYS.skill2, KEYS.skill3].map(prettyKey);
     // slot 0 = basic attack
     const slots = [{ icon: player.cls.attackType === 'melee' ? '⚔️' : '🏹', name: 'ATK', id: null }]
       .concat(player.cls.skills.map(sid => ({ icon: SKILLS[sid].icon, name: t('skill.' + sid), id: sid })));
@@ -121,6 +120,13 @@ const UI = {
     }
     this.$('gold-amount').textContent = gold;
 
+    // stat-point badge on the ＋Stats button
+    const pts = game.players[0] ? game.players[0].statPoints : 0;
+    const badge = this.$('stats-badge');
+    badge.textContent = pts > 0 ? pts : '';
+    badge.classList.toggle('hidden', pts <= 0);
+    this.$('btn-stats').classList.toggle('pulse', pts > 0);
+
     // zone name for player 1
     const p1 = game.players[0];
     if (p1) this.$('zone-name').textContent = t('zone.' + game.world.tierAt(p1.x, p1.y));
@@ -146,6 +152,9 @@ const UI = {
     g.imageSmoothingEnabled = false;
     g.drawImage(game.world.minimapImg, 0, 0, mm.width, mm.height);
     const sx = mm.width / (MAP_W * TILE), sy = mm.height / (MAP_H * TILE);
+    // healing circle marker
+    g.fillStyle = '#5ec96a';
+    g.fillRect(game.world.spawnX * sx - 2, game.world.spawnY * sy - 2, 5, 5);
     // boss
     if (game.world.bossPos) {
       g.fillStyle = '#ff3050';
@@ -236,8 +245,7 @@ const UI = {
     const head = document.createElement('div');
     head.className = 'keys-row head';
     head.innerHTML = `<span class="ka-name">${t('keys.action')}</span>` +
-      `<span style="width:110px">${t('keys.p1')}</span>` +
-      `<span style="width:110px">${t('keys.p2')}</span>`;
+      `<span style="width:110px">${t('keys.key')}</span>`;
     box.appendChild(head);
 
     for (const action of KEY_ACTIONS) {
@@ -247,18 +255,16 @@ const UI = {
       name.className = 'ka-name';
       name.textContent = t('act.' + action);
       row.appendChild(name);
-      for (const pid of [1, 2]) {
-        const btn = document.createElement('button');
-        btn.className = 'key-btn';
-        const isListening = this.listening && this.listening.pid === pid && this.listening.action === action;
-        btn.textContent = isListening ? t('keys.press') : prettyKey(KEYS[pid][action]);
-        if (isListening) btn.classList.add('listening');
-        btn.addEventListener('click', () => {
-          this.listening = { pid, action };
-          this.renderKeysPanel();
-        });
-        row.appendChild(btn);
-      }
+      const btn = document.createElement('button');
+      btn.className = 'key-btn';
+      const isListening = this.listening && this.listening.action === action;
+      btn.textContent = isListening ? t('keys.press') : prettyKey(KEYS[action]);
+      if (isListening) btn.classList.add('listening');
+      btn.addEventListener('click', () => {
+        this.listening = { action };
+        this.renderKeysPanel();
+      });
+      row.appendChild(btn);
       box.appendChild(row);
     }
   },
@@ -271,14 +277,12 @@ const UI = {
       this.renderKeysPanel();
       return true;
     }
-    const { pid, action } = this.listening;
+    const { action } = this.listening;
     // unbind this key anywhere else to avoid conflicts
-    for (const id of [1, 2]) {
-      for (const a of KEY_ACTIONS) {
-        if (KEYS[id][a] === code && !(id === pid && a === action)) KEYS[id][a] = '';
-      }
+    for (const a of KEY_ACTIONS) {
+      if (KEYS[a] === code && a !== action) KEYS[a] = '';
     }
-    KEYS[pid][action] = code;
+    KEYS[action] = code;
     saveKeys();
     this.listening = null;
     this.renderKeysPanel();
@@ -424,33 +428,6 @@ const UI = {
 
     /* -- target list -- */
     box.innerHTML = '';
-
-    // local party transfer
-    if (game.players.length > 1) {
-      const row = document.createElement('div');
-      row.className = 'trade-row';
-      row.innerHTML = `<span class="tr-name">${t('trade.local')}</span>` +
-        `<input class="pix-input" id="tr-local-amt" type="number" min="1" value="10" style="width:80px">`;
-      for (const [from, to] of [[0, 1], [1, 0]]) {
-        const btn = document.createElement('button');
-        btn.className = 'pix-btn small';
-        btn.textContent = `P${from + 1}→P${to + 1}`;
-        btn.addEventListener('click', () => {
-          const amt = Math.max(0, Math.min(game.players[from].gold, Math.floor(+box.querySelector('#tr-local-amt').value || 0)));
-          if (amt > 0) {
-            game.players[from].gold -= amt;
-            game.players[to].gold += amt;
-            game.sfx('gold');
-            game.save();
-            this.toast(t('trade.sent', { n: amt, name: 'P' + (to + 1) }), 'info');
-          }
-        });
-        row.appendChild(btn);
-      }
-      box.appendChild(row);
-    }
-
-    // remote players
     let remoteCount = 0;
     if (game.net.isOnline) {
       for (const [cid, arr] of game.remotePlayers) {
@@ -459,20 +436,18 @@ const UI = {
           const row = document.createElement('div');
           row.className = 'trade-row';
           row.innerHTML = `<span class="tr-name">${escapeHtml(rp.name)} <small>Lv${rp.level} · ${t('class.' + rp.clsId)}</small></span>`;
-          for (const p of game.players) {
-            const btn = document.createElement('button');
-            btn.className = 'pix-btn small';
-            btn.textContent = t('trade.title').replace('🤝 ', '') + (game.players.length > 1 ? ' (P' + p.id + ')' : '');
-            btn.addEventListener('click', () => game.openTradeWith(p, cid + ':' + k, rp.name));
-            row.appendChild(btn);
-          }
+          const btn = document.createElement('button');
+          btn.className = 'pix-btn small';
+          btn.textContent = t('trade.title').replace('🤝 ', '');
+          btn.addEventListener('click', () => game.openTradeWith(game.players[0], cid + ':' + k, rp.name));
+          row.appendChild(btn);
           box.appendChild(row);
         });
       }
-      if (!remoteCount && game.players.length < 2) {
+      if (!remoteCount) {
         box.innerHTML = `<div class="trade-status">${t('trade.none')}</div>`;
       }
-    } else if (game.players.length < 2) {
+    } else {
       box.innerHTML = `<div class="trade-status">${t('trade.online')}</div>`;
     }
   },
@@ -490,15 +465,13 @@ const UI = {
 
   showHelp() {
     const key = code => `<span class="key">${prettyKey(code)}</span>`;
-    const vars = {};
-    for (const pid of [1, 2]) {
-      const k = KEYS[pid];
-      vars['p' + pid + 'move'] = key(k.up) + key(k.left) + key(k.down) + key(k.right);
-      vars['p' + pid + 'attack'] = key(k.attack);
-      vars['p' + pid + 'skills'] = key(k.skill1) + key(k.skill2) + key(k.skill3);
-      vars['p' + pid + 'panel'] = key(k.panel);
-      vars['p' + pid + 'afk'] = key(k.afk);
-    }
+    const vars = {
+      move: key(KEYS.up) + key(KEYS.left) + key(KEYS.down) + key(KEYS.right),
+      attack: key(KEYS.attack),
+      skills: key(KEYS.skill1) + key(KEYS.skill2) + key(KEYS.skill3),
+      panel: key(KEYS.panel),
+      afk: key(KEYS.afk),
+    };
     this.$('help-content').innerHTML = t('help.html', vars);
     this.$('help-panel').classList.remove('hidden');
   },

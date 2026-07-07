@@ -6,6 +6,10 @@
 const SAVE_KEY = 'pixelrealms_save';
 const KEYS_KEY = 'pixelrealms_keys';
 
+/* Village healing circle: 10% of max HP per second inside */
+const HEAL_RADIUS = 110;
+const HEAL_RATE = 0.10;
+
 /* Stable anonymous id for the leaderboard */
 let PID = localStorage.getItem('pixelrealms_pid');
 if (!PID) {
@@ -17,21 +21,20 @@ if (!PID) {
 const KEY_ACTIONS = ['up', 'down', 'left', 'right', 'attack', 'skill1', 'skill2', 'skill3', 'panel', 'afk'];
 
 const DEFAULT_KEYS = {
-  1: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', attack: 'KeyJ', skill1: 'KeyU', skill2: 'KeyI', skill3: 'KeyO', panel: 'KeyC', afk: 'KeyF' },
-  2: { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', attack: 'KeyM', skill1: 'Comma', skill2: 'Period', skill3: 'Slash', panel: 'KeyB', afk: 'KeyK' },
+  up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD',
+  attack: 'KeyJ', skill1: 'KeyU', skill2: 'KeyI', skill3: 'KeyO',
+  panel: 'KeyC', afk: 'KeyF',
 };
 
 function loadKeys() {
   try {
     const raw = JSON.parse(localStorage.getItem(KEYS_KEY));
-    if (raw && raw['1'] && raw['2']) {
-      return {
-        1: Object.assign({}, DEFAULT_KEYS[1], raw['1']),
-        2: Object.assign({}, DEFAULT_KEYS[2], raw['2']),
-      };
+    if (raw) {
+      const src = raw.up ? raw : raw['1'];   // migrate old per-player format
+      if (src && src.up) return Object.assign({}, DEFAULT_KEYS, src);
     }
   } catch (e) { /* fall through */ }
-  return JSON.parse(JSON.stringify(DEFAULT_KEYS));
+  return Object.assign({}, DEFAULT_KEYS);
 }
 
 let KEYS = loadKeys();
@@ -41,7 +44,7 @@ function saveKeys() {
 }
 
 function resetKeys() {
-  KEYS = JSON.parse(JSON.stringify(DEFAULT_KEYS));
+  KEYS = Object.assign({}, DEFAULT_KEYS);
   saveKeys();
 }
 
@@ -66,8 +69,8 @@ function prettyKey(code) {
 /* ---------------- Input ---------------- */
 const keys = new Set();
 
-function readInput(playerId) {
-  const m = KEYS[playerId];
+function readInput() {
+  const m = KEYS;
   return {
     mx: (keys.has(m.right) ? 1 : 0) - (keys.has(m.left) ? 1 : 0),
     my: (keys.has(m.down) ? 1 : 0) - (keys.has(m.up) ? 1 : 0),
@@ -162,10 +165,6 @@ class Game {
     }
     this.players.push(p);
     UI.buildSkillbar(p);
-    if (id === 2) {
-      document.getElementById('frame-p2').classList.remove('hidden');
-      document.getElementById('btn-join-p2').classList.add('hidden');
-    }
     return p;
   }
 
@@ -217,10 +216,26 @@ class Game {
     this.time += dt;
 
     for (const p of this.players) {
-      p.update(dt, p.afk ? this.botInput(p, dt) : readInput(p.id));
+      p.update(dt, p.afk ? this.botInput(p, dt) : readInput());
     }
     for (const [, list] of this.remotePlayers) {
       for (const rp of list) rp.update(dt);
+    }
+
+    // village healing circle: 10% max HP per second
+    for (const p of this.players) {
+      if (p.dead) continue;
+      if (Math.hypot(p.x - this.world.spawnX, p.y - this.world.spawnY) < HEAL_RADIUS) {
+        const d = p.derived;
+        if (p.hp < d.maxHp) {
+          this.healEntity(p, d.maxHp * HEAL_RATE * dt, true);
+          p.healFxT = (p.healFxT || 0) + dt;
+          if (p.healFxT > 1) {
+            p.healFxT = 0;
+            this.addFloatText(p.x, p.y - 46, '+' + Math.round(d.maxHp * HEAL_RATE), '#5ec96a');
+          }
+        }
+      }
     }
 
     if (this.net.isHost) {
@@ -409,7 +424,7 @@ class Game {
   toggleAfk(p) {
     p.afk = !p.afk;
     if (!p.afk) p.bot = null;
-    UI.toast(t(p.afk ? 'ui.afkOn' : 'ui.afkOff', { name: t('class.' + p.clsId) + ' (P' + p.id + ')' }), p.afk ? 'gold' : 'info');
+    UI.toast(t(p.afk ? 'ui.afkOn' : 'ui.afkOff', { name: t('class.' + p.clsId) }), p.afk ? 'gold' : 'info');
     this.sfx(p.afk ? 'buff' : 'point');
   }
 
@@ -865,8 +880,7 @@ class Game {
   }
 
   boardName(p) {
-    const base = this.net.name || localStorage.getItem('pixelrealms_name') || 'Hero';
-    return p.id === 2 ? base + ' ·P2' : base;
+    return this.net.name || localStorage.getItem('pixelrealms_name') || 'Hero';
   }
 
   submitScores(useBeacon) {
@@ -952,6 +966,38 @@ class Game {
 
     // ground
     g.drawImage(this.world.baked, cam.x, cam.y, vw, vh, 0, 0, vw, vh);
+
+    // village healing circle
+    {
+      const hx = this.world.spawnX - cam.x, hy = this.world.spawnY - cam.y;
+      if (hx > -HEAL_RADIUS - 40 && hx < vw + HEAL_RADIUS + 40 &&
+          hy > -HEAL_RADIUS - 40 && hy < vh + HEAL_RADIUS + 40) {
+        const pulse = Math.sin(this.time * 2);
+        g.globalAlpha = 0.12 + pulse * 0.03;
+        g.fillStyle = '#5ec96a';
+        g.beginPath();
+        g.arc(hx, hy, HEAL_RADIUS, 0, Math.PI * 2);
+        g.fill();
+        g.globalAlpha = 0.55;
+        g.strokeStyle = '#7ee98a';
+        g.lineWidth = 3;
+        g.beginPath();
+        g.arc(hx, hy, HEAL_RADIUS * (0.97 + pulse * 0.02), 0, Math.PI * 2);
+        g.stroke();
+        // drifting sparkles
+        g.fillStyle = '#a8f5b0';
+        for (let i = 0; i < 5; i++) {
+          const a = this.time * 0.6 + (i / 5) * Math.PI * 2;
+          const rr = HEAL_RADIUS * (0.35 + 0.45 * ((Math.sin(this.time + i * 2) + 1) / 2));
+          g.fillRect(hx + Math.cos(a) * rr, hy + Math.sin(a) * rr - ((this.time * 20 + i * 13) % 26), 3, 3);
+        }
+        g.globalAlpha = 1;
+        g.font = '10px monospace';
+        g.textAlign = 'center';
+        g.fillStyle = '#a8f5b0';
+        g.fillText(t('ui.healZone'), hx, hy - HEAL_RADIUS - 8);
+      }
+    }
 
     // gather y-sorted drawables
     const drawables = [];
@@ -1087,12 +1133,12 @@ function initTitle() {
   if (saveData) document.getElementById('btn-continue').classList.remove('hidden');
 
   document.getElementById('btn-start').addEventListener('click', () => {
-    startGame([{ id: 1, clsId: UI.selectedClass }]);
+    startGame(UI.selectedClass, null);
   });
 
   document.getElementById('btn-continue').addEventListener('click', () => {
     const data = Game.loadSave();
-    if (data) startGame(data.players.map(p => ({ id: p.id, clsId: p.clsId, saved: p })));
+    if (data) startGame(data.players[0].clsId, data.players[0]);
     else document.getElementById('btn-continue').classList.add('hidden');
   });
 
@@ -1101,27 +1147,15 @@ function initTitle() {
   });
 }
 
-function startGame(playerDefs) {
+function startGame(clsId, saved) {
   ensureAudio();
   game = new Game();
   UI.game = game;
-  for (const def of playerDefs) game.addPlayer(def.id, def.clsId, def.saved);
+  game.addPlayer(1, clsId, saved);
   document.getElementById('title-screen').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
   game.save();
   game.start();
-}
-
-function openP2Select() {
-  if (!game || game.players.length > 1) return;
-  UI.buildClassCards('class-grid-p2', clsId => {
-    document.getElementById('p2-select').classList.add('hidden');
-    game.addPlayer(2, clsId);
-    UI.toast(t('ui.p2Joined'));
-    game.sfx('levelup');
-    game.save();
-  });
-  document.getElementById('p2-select').classList.remove('hidden');
 }
 
 /* ---------------- Global listeners ---------------- */
@@ -1141,15 +1175,13 @@ window.addEventListener('keydown', e => {
 
   if (!game || typing) return;
 
-  for (const p of game.players) {
-    if (e.code === KEYS[p.id].panel) {
-      const open = !document.getElementById('stat-panel').classList.contains('hidden');
-      if (open && UI.statPanelPlayer === p) UI.closeStatPanel();
-      else UI.openStatPanel(p);
-    }
-    if (e.code === KEYS[p.id].afk) game.toggleAfk(p);
+  const p1 = game.players[0];
+  if (p1 && e.code === KEYS.panel) {
+    const open = !document.getElementById('stat-panel').classList.contains('hidden');
+    if (open) UI.closeStatPanel();
+    else UI.openStatPanel(p1);
   }
-  if (e.code === 'KeyP') openP2Select();
+  if (p1 && e.code === KEYS.afk) game.toggleAfk(p1);
   if (e.code === 'Enter') {
     e.preventDefault();
     document.getElementById('chat-input').focus();
@@ -1159,7 +1191,6 @@ window.addEventListener('keydown', e => {
     UI.closeKeysPanel();
     if (game && game.trade) game.cancelTrade();
     UI.closeTrade();
-    document.getElementById('p2-select').classList.add('hidden');
     document.getElementById('help-panel').classList.add('hidden');
     document.getElementById('online-panel').classList.add('hidden');
     document.getElementById('board-panel').classList.add('hidden');
@@ -1181,16 +1212,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-help-close').addEventListener('click', () =>
     document.getElementById('help-panel').classList.add('hidden'));
   document.getElementById('btn-sp-close').addEventListener('click', () => UI.closeStatPanel());
-  document.getElementById('btn-join-p2').addEventListener('click', openP2Select);
-  document.getElementById('btn-p2-cancel').addEventListener('click', () =>
-    document.getElementById('p2-select').classList.add('hidden'));
 
-  // AFK buttons
+  // AFK + stats buttons
   document.getElementById('afk-p1').addEventListener('click', () => {
     if (game && game.players[0]) game.toggleAfk(game.players[0]);
   });
-  document.getElementById('afk-p2').addEventListener('click', () => {
-    if (game && game.players[1]) game.toggleAfk(game.players[1]);
+  document.getElementById('btn-stats').addEventListener('click', () => {
+    if (game && game.players[0]) UI.openStatPanel(game.players[0]);
   });
 
   // hotkey settings

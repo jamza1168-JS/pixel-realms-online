@@ -12,21 +12,19 @@ const I18N = {
     'title.chooseClass': 'Choose your class',
     'title.start': 'START ADVENTURE',
     'title.continue': 'CONTINUE',
-    'title.coopHint': 'Player 2 can join anytime in-game — press P',
+    'title.coopHint': 'Play with friends online — click 🌐 in game',
 
     'ui.lv': 'Lv',
     'ui.points': 'Points',
     'ui.pointsHint': 'Stat points available!',
-    'ui.pointsHint2': 'Stat points available!',
-    'ui.joinP2': '+ P2 Join (P)',
-    'ui.p2Choose': 'Player 2 — choose your class',
+    'ui.stats': 'Stats',
+    'ui.healZone': '❤ Healing Circle',
     'ui.cancel': 'Cancel',
     'ui.close': 'Close',
     'ui.statsOf': 'Stats — {name}',
-    'ui.online': 'LOCAL',
+    'ui.online': 'OFFLINE',
     'ui.dead': '{name} fell! Respawning in {s}...',
     'ui.levelUp': '{name} reached level {lv}! +5 stat points',
-    'ui.p2Joined': 'Player 2 joined the party!',
     'ui.saved': 'Game saved',
     'ui.gotGold': '+{n} gold',
     'ui.bossWarn': '⚠ The Demon Lord awaits in the far wastes...',
@@ -37,8 +35,7 @@ const I18N = {
 
     'keys.title': 'Hotkey Settings',
     'keys.action': 'Action',
-    'keys.p1': 'Player 1',
-    'keys.p2': 'Player 2',
+    'keys.key': 'Key',
     'keys.press': 'Press a key…',
     'keys.reset': 'Reset to defaults',
     'act.up': 'Move up', 'act.down': 'Move down', 'act.left': 'Move left', 'act.right': 'Move right',
@@ -89,9 +86,6 @@ const I18N = {
     'trade.waiting': 'Waiting for {name} to accept…',
     'trade.none': 'No other players nearby to trade with.',
     'trade.online': 'Connect online (🌐) to trade with other players.',
-    'trade.local': 'Local party transfer',
-    'trade.give': 'Send',
-    'trade.sent': 'Sent {n} gold to {name}',
 
     'stat.str': 'STR — Strength',
     'stat.agi': 'AGI — Agility',
@@ -140,26 +134,29 @@ const I18N = {
 
     'help.title': 'How to play',
     'help.html': `
-      <h3>Player 1</h3>
-      {p1move} move · {p1attack} attack · {p1skills} skills ·
-      {p1panel} stats · {p1afk} AFK farm
-      <h3>Player 2 (co-op)</h3>
-      <span class="key">P</span> join! then
-      {p2move} move · {p2attack} attack · {p2skills} skills ·
-      {p2panel} stats · {p2afk} AFK farm
+      <h3>Controls</h3>
+      {move} move · {attack} attack · {skills} skills ·
+      {panel} stats · {afk} AFK farm
+      <h3>❤ Healing Circle</h3>
+      The glowing circle in the village restores <b>10% of your max HP every
+      second</b>. Retreat there when you're hurt!
+      <h3>📈 Stat points</h3>
+      Each level grants <b>+5 stat points</b>. Open the stat window
+      ({panel} or the <b>＋Stats</b> button) and build your hero your way —
+      STR, AGI, INT, VIT, or LUK.
       <h3>🤖 AFK auto-farming</h3>
       Toggle <b>AUTO</b> and your hero hunts monsters, casts skills, grabs loot,
       retreats to heal when hurt, and spends stat points automatically. Leave it
       running to level up while you're away.
       <h3>🌐 Online multiplayer</h3>
-      Click the 🌐 button to join a server room and play with friends.
-      To host: run <b>python server.py</b>, share your IP and room name.
+      Click the 🌐 button to join a server room and play with everyone.
+      Chat with <span class="key">↵</span>, trade with 🤝, compete on the 🏆 leaderboards.
       <h3>⌨ Hotkeys</h3>
       Click the ⌨ button to rebind every key.
       <h3>Goal</h3>
-      Hunt monsters for XP and gold. Each level grants <b>+5 stat points</b>.
-      Monsters grow stronger far from the village — the <b>Demon Lord</b> rules
-      the farthest corner. Hearts and orbs restore HP/MP. Progress auto-saves.`,
+      Hunt monsters for XP and gold. Monsters grow stronger far from the
+      village — the <b>Demon Lord</b> rules the farthest corner. Hearts and
+      orbs restore HP/MP. Progress auto-saves.`,
   },
 
   th: {
@@ -170,21 +167,19 @@ const I18N = {
     'title.chooseClass': 'เลือกอาชีพของคุณ',
     'title.start': 'เริ่มการผจญภัย',
     'title.continue': 'เล่นต่อ',
-    'title.coopHint': 'ผู้เล่น 2 เข้าร่วมได้ทุกเมื่อในเกม — กดปุ่ม P',
+    'title.coopHint': 'เล่นกับเพื่อนออนไลน์ — กดปุ่ม 🌐 ในเกม',
 
     'ui.lv': 'เลเวล',
     'ui.points': 'แต้ม',
     'ui.pointsHint': 'มีแต้มสเตตัส!',
-    'ui.pointsHint2': 'มีแต้มสเตตัส!',
-    'ui.joinP2': '+ ผู้เล่น 2 เข้าร่วม (P)',
-    'ui.p2Choose': 'ผู้เล่น 2 — เลือกอาชีพของคุณ',
+    'ui.stats': 'สเตตัส',
+    'ui.healZone': '❤ วงเวทฟื้นฟู',
     'ui.cancel': 'ยกเลิก',
     'ui.close': 'ปิด',
     'ui.statsOf': 'สเตตัส — {name}',
-    'ui.online': 'ในเครื่อง',
+    'ui.online': 'ออฟไลน์',
     'ui.dead': '{name} ล้มลง! เกิดใหม่ใน {s} วินาที...',
     'ui.levelUp': '{name} เลเวลอัพเป็น {lv}! ได้รับ 5 แต้มสเตตัส',
-    'ui.p2Joined': 'ผู้เล่น 2 เข้าร่วมปาร์ตี้แล้ว!',
     'ui.saved': 'บันทึกเกมแล้ว',
     'ui.gotGold': '+{n} ทอง',
     'ui.bossWarn': '⚠ จอมมารรอคอยอยู่สุดขอบแดนร้าง...',
@@ -195,8 +190,7 @@ const I18N = {
 
     'keys.title': 'ตั้งค่าปุ่มลัด',
     'keys.action': 'การกระทำ',
-    'keys.p1': 'ผู้เล่น 1',
-    'keys.p2': 'ผู้เล่น 2',
+    'keys.key': 'ปุ่ม',
     'keys.press': 'กดปุ่มที่ต้องการ…',
     'keys.reset': 'คืนค่าเริ่มต้น',
     'act.up': 'เดินขึ้น', 'act.down': 'เดินลง', 'act.left': 'เดินซ้าย', 'act.right': 'เดินขวา',
@@ -247,9 +241,6 @@ const I18N = {
     'trade.waiting': 'รอ {name} ตอบรับ…',
     'trade.none': 'ไม่มีผู้เล่นอื่นให้แลกเปลี่ยนด้วย',
     'trade.online': 'เชื่อมต่อออนไลน์ (🌐) เพื่อแลกเปลี่ยนกับผู้เล่นอื่น',
-    'trade.local': 'โอนทองในปาร์ตี้',
-    'trade.give': 'ส่ง',
-    'trade.sent': 'ส่งทอง {n} ให้ {name} แล้ว',
 
     'stat.str': 'STR — พละกำลัง',
     'stat.agi': 'AGI — ความคล่องแคล่ว',
@@ -298,24 +289,27 @@ const I18N = {
 
     'help.title': 'วิธีเล่น',
     'help.html': `
-      <h3>ผู้เล่น 1</h3>
-      {p1move} เดิน · {p1attack} โจมตี · {p1skills} สกิล ·
-      {p1panel} สเตตัส · {p1afk} ฟาร์มอัตโนมัติ
-      <h3>ผู้เล่น 2 (เล่นร่วมกัน)</h3>
-      <span class="key">P</span> เข้าร่วม! จากนั้น
-      {p2move} เดิน · {p2attack} โจมตี · {p2skills} สกิล ·
-      {p2panel} สเตตัส · {p2afk} ฟาร์มอัตโนมัติ
+      <h3>การควบคุม</h3>
+      {move} เดิน · {attack} โจมตี · {skills} สกิล ·
+      {panel} สเตตัส · {afk} ฟาร์มอัตโนมัติ
+      <h3>❤ วงเวทฟื้นฟู</h3>
+      วงแสงกลางหมู่บ้านฟื้นฟู <b>HP 10% ของค่าสูงสุดทุกวินาที</b>
+      บาดเจ็บเมื่อไหร่ ถอยกลับมาพักที่นี่!
+      <h3>📈 แต้มสเตตัส</h3>
+      เลเวลอัพรับ <b>5 แต้มสเตตัส</b> เปิดหน้าต่างสเตตัส
+      ({panel} หรือปุ่ม <b>＋สเตตัส</b>) แล้วอัพตามสไตล์ของคุณ —
+      STR, AGI, INT, VIT หรือ LUK
       <h3>🤖 ฟาร์มอัตโนมัติ (AFK)</h3>
       เปิดโหมด <b>ออโต้</b> แล้วฮีโร่จะล่ามอนสเตอร์ ใช้สกิล เก็บของดรอป
       ถอยกลับไปฟื้นฟูเมื่อบาดเจ็บ และอัพแต้มสเตตัสให้เองอัตโนมัติ
       เปิดทิ้งไว้เพื่อเลเวลอัพระหว่างที่คุณไม่อยู่
       <h3>🌐 เล่นออนไลน์หลายคน</h3>
-      กดปุ่ม 🌐 เพื่อเข้าห้องเซิร์ฟเวอร์และเล่นกับเพื่อน
-      วิธีเปิดเซิร์ฟเวอร์: รัน <b>python server.py</b> แล้วแชร์ IP และชื่อห้อง
+      กดปุ่ม 🌐 เข้าห้องเซิร์ฟเวอร์แล้วเล่นกับทุกคน
+      แชทด้วย <span class="key">↵</span> แลกเปลี่ยนด้วย 🤝 แข่งอันดับที่ 🏆
       <h3>⌨ ปุ่มลัด</h3>
       กดปุ่ม ⌨ เพื่อเปลี่ยนปุ่มได้ทุกปุ่ม
       <h3>เป้าหมาย</h3>
-      ล่ามอนสเตอร์เพื่อรับ XP และทอง เลเวลอัพรับ <b>5 แต้มสเตตัส</b>
+      ล่ามอนสเตอร์เพื่อรับ XP และทอง
       มอนสเตอร์แข็งแกร่งขึ้นเมื่อไกลจากหมู่บ้าน — <b>จอมมาร</b> ครองมุมไกลสุด
       หัวใจและลูกแก้วฟื้นฟู HP/MP เกมบันทึกอัตโนมัติ`,
   },

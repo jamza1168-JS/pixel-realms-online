@@ -31,8 +31,8 @@ class Player {
     this.kills = 0;
     this.stats = Object.assign({}, this.cls.base);
 
-    this.x = game.world.spawnX + (id === 1 ? -24 : 24);
-    this.y = game.world.spawnY;
+    this.x = game.world.spawnX;
+    this.y = game.world.spawnY + 20;
     this.face = { x: 0, y: 1 };
     this.moving = false;
     this.animT = 0;
@@ -157,10 +157,11 @@ class Player {
   respawn() {
     const g = this.game;
     this.dead = false;
-    this.x = g.world.spawnX + (this.id === 1 ? -24 : 24);
-    this.y = g.world.spawnY;
+    this.x = g.world.spawnX;
+    this.y = g.world.spawnY + 20;
     const d = this.derived;
-    this.hp = d.maxHp * 0.6;
+    // respawn inside the healing circle at 40% — it tops you up fast
+    this.hp = d.maxHp * 0.4;
     this.mp = d.maxMp * 0.6;
   }
 

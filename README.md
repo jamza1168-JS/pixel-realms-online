@@ -60,6 +60,18 @@ Press **Enter**, type, **Enter** again to send. Messages appear in the chat
 log (bottom-left) and as a bubble above your hero's head — visible to
 everyone in the room.
 
+## Leaderboards 🏆
+
+Click the **🏆** button for three server-wide rankings — **Level**,
+**Mob Kills**, and **Gold** (each player's best marks). Scores submit
+automatically while you play (level-ups, boss kills, every 45s, and when
+you leave). Your own entry is highlighted with ★.
+
+> Board data lives in `leaderboard.json` next to `server.py`. On free
+> cloud tiers the disk is ephemeral, so the board resets when the service
+> redeploys — attach a persistent disk (or a paid instance) to keep it
+> forever.
+
 ## Trading 🤝
 
 Click the **🤝** button:

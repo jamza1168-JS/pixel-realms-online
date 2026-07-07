@@ -230,6 +230,11 @@ html, body {
   margin-bottom: 14px;
 }
 #sp-derived b { color: var(--text); }
+.sp-actions {
+  display: flex; justify-content: center; gap: 10px;
+  margin-bottom: 14px;
+}
+.sp-actions .pix-btn:disabled { opacity: .45; cursor: default; }
 
 /* ===== Help ===== */
 #help-content { text-align: left; font-size: 11px; line-height: 2; margin-bottom: 12px; }

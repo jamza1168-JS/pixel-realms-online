@@ -97,8 +97,12 @@ Press the **AUTO** button on your player frame (or the `F` key):
 - attacks and casts skills automatically
 - picks up hearts, mana orbs, and gold
 - retreats to the village and heals when HP is low
-- spends new stat points automatically using a per-class build
 - keeps farming even when the browser tab is hidden/minimized
+
+Stat points are never spent automatically — they stack up while you're
+away, and you allocate them yourself in the stat window (`C`). Use the
+**★ Recommended build** button to spend them all following your class's
+suggested build, or **↺ Reset stats** to refund every point and start over.
 
 ## Rebindable hotkeys ⌨
 

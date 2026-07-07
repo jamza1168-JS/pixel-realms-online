@@ -239,6 +239,9 @@ async def handshake(reader, writer) -> bool:
     return True
 
 
+MAX_FRAME = 1 << 20  # 1 MiB — game messages are tiny; refuse anything huge
+
+
 async def read_frame(reader):
     """Return (opcode, payload) for the next frame."""
     b1, b2 = await reader.readexactly(2)
@@ -249,6 +252,8 @@ async def read_frame(reader):
         (length,) = struct.unpack(">H", await reader.readexactly(2))
     elif length == 127:
         (length,) = struct.unpack(">Q", await reader.readexactly(8))
+    if length > MAX_FRAME:
+        raise ConnectionError("frame too large")
     mask = await reader.readexactly(4) if masked else None
     payload = await reader.readexactly(length) if length else b""
     if mask:

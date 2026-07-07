@@ -561,7 +561,7 @@ class Game {
 
   /* ---------------- Networking glue ---------------- */
   goOnline(url, room, name) {
-    if (this.net.isOnline) this.net.disconnect();
+    if (this.net instanceof WSNet) this.net.disconnect();   // also kills a pending 'connecting' socket
     localStorage.setItem('pixelrealms_name', name);
     const net = new WSNet(this);
     this.net = net;
@@ -713,7 +713,7 @@ class Game {
         }
         break;
       case 'trade_no':
-        if (tr && tr.stage === 'waiting') {
+        if (tr && tr.stage === 'waiting' && m.fromKey === tr.withKey) {
           this.trade = null;
           UI.renderTrade(this);
           UI.toast(t('trade.declined'), 'info');
@@ -723,6 +723,11 @@ class Game {
         if (tr && tr.stage === 'open' && m.fromKey === tr.withKey) {
           tr.theirGold = Math.max(0, Math.floor(+m.gold || 0));
           tr.theirAccept = false;
+          // offer changed: my accept must be re-confirmed too
+          if (tr.myAccept) {
+            tr.myAccept = false;
+            this.net.send({ t: 'trade_accept', to: tr.withKey, fromKey: this.myKey(tr.me), accepted: false });
+          }
           UI.renderTrade(this);
         }
         break;

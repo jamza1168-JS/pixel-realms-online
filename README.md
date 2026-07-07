@@ -17,7 +17,7 @@ Open http://localhost:8765 — done. Friends on your network open
 is pre-configured.
 
 Other options:
-- double-click `index.html` (offline / local co-op)
+- double-click `index.html` (offline play)
 - any static host for the client (GitHub Pages, Netlify, itch.io) — then run
   `server.py` somewhere reachable for multiplayer
 
@@ -91,7 +91,7 @@ customize STR / AGI / INT / VIT / LUK freely.
 
 ## AFK auto-farming 🤖
 
-Press the **AUTO** button on a player frame (or `F` for P1, `K` for P2):
+Press the **AUTO** button on your player frame (or the `F` key):
 
 - hunts monsters suited to your level, walking zone to zone
 - attacks and casts skills automatically

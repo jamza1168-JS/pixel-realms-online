@@ -139,8 +139,11 @@ const UI = {
       this.$('online-text').textContent = t('ui.online') + ' · ' + game.net.playerCount + 'P';
     }
 
+    // re-render the stat panel ONLY when its data changed — rebuilding
+    // it every frame destroys the + buttons mid-click, eating the click
     if (this.statPanelPlayer && !this.$('stat-panel').classList.contains('hidden')) {
-      this.renderStatPanel(this.statPanelPlayer);
+      const sig = this.spSig(this.statPanelPlayer);
+      if (sig !== this._spSig) this.renderStatPanel(this.statPanelPlayer);
     }
 
     this.drawMinimap(game);
@@ -187,7 +190,13 @@ const UI = {
     this.statPanelPlayer = null;
   },
 
+  spSig(p) {
+    return currentLang + ':' + p.level + ':' + p.statPoints + ':' +
+           STAT_KEYS.map(k => p.stats[k]).join(',');
+  },
+
   renderStatPanel(p) {
+    this._spSig = this.spSig(p);
     this.$('sp-title').textContent = t('ui.statsOf', { name: p.name });
     this.$('sp-class').textContent = t('class.' + p.clsId);
     this.$('sp-level').textContent = p.level;

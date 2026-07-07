@@ -80,6 +80,14 @@ function readInput() {
 }
 
 /* ---------------- Tiny synth SFX ---------------- */
+const SOUND_KEY = 'pixelrealms_sound';
+const SOUND = { vol: 1, muted: false };
+try { Object.assign(SOUND, JSON.parse(localStorage.getItem(SOUND_KEY)) || {}); } catch (e) { /* defaults */ }
+
+function saveSound() {
+  localStorage.setItem(SOUND_KEY, JSON.stringify(SOUND));
+}
+
 let audioCtx = null;
 function ensureAudio() {
   if (!audioCtx) {
@@ -89,13 +97,13 @@ function ensureAudio() {
 }
 
 function beep(freq, dur, type = 'square', vol = 0.06, endFreq = null) {
-  if (!audioCtx) return;
+  if (!audioCtx || SOUND.muted || SOUND.vol <= 0) return;
   const o = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   o.type = type;
   o.frequency.setValueAtTime(freq, audioCtx.currentTime);
   if (endFreq) o.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), audioCtx.currentTime + dur);
-  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.setValueAtTime(vol * SOUND.vol, audioCtx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
   o.connect(gain).connect(audioCtx.destination);
   o.start();
@@ -135,6 +143,10 @@ class Game {
     this.floatTexts = [];
     this.trade = null;          // active trade state
     this.pendingTrade = null;   // incoming trade request
+    this.mouse = { x: 0, y: 0, seen: false };   // cursor (screen coords) for aiming
+    window.addEventListener('pointermove', e => {
+      this.mouse.x = e.clientX; this.mouse.y = e.clientY; this.mouse.seen = true;
+    });
     this.cam = { x: 0, y: 0 };
     this.time = 0;
     this.saveT = 0;
@@ -216,7 +228,21 @@ class Game {
     this.time += dt;
 
     for (const p of this.players) {
-      p.update(dt, p.afk ? this.botInput(p, dt) : readInput());
+      const manual = readInput();
+      const manualActive = manual.mx !== 0 || manual.my !== 0 || manual.attack ||
+                           manual.skills[0] || manual.skills[1] || manual.skills[2];
+      // AFK mode yields to the player: any pressed key takes over,
+      // the bot resumes as soon as the keys are released
+      const useBot = p.afk && !manualActive;
+      const input = useBot ? this.botInput(p, dt) : manual;
+      if (!useBot && this.mouse.seen) {
+        // manual play aims at the mouse cursor (the bot aims itself)
+        const dx = this.mouse.x + this.cam.x - p.x;
+        const dy = this.mouse.y + this.cam.y - (p.y - 14);
+        const len = Math.hypot(dx, dy);
+        if (len > 4) input.face = { x: dx / len, y: dy / len };
+      }
+      p.update(dt, input);
     }
     for (const [, list] of this.remotePlayers) {
       for (const rp of list) rp.update(dt);
@@ -316,7 +342,10 @@ class Game {
   botInput(p, dt) {
     const out = { mx: 0, my: 0, attack: false, skills: [false, false, false], face: null };
     if (p.dead) return out;
-    const bs = p.bot || (p.bot = { phase: 'hunt', checkT: 0, lastX: p.x, lastY: p.y, unstuckT: 0, detour: null });
+    const bs = p.bot || (p.bot = {
+      phase: 'hunt', checkT: 0, lastX: p.x, lastY: p.y,
+      unstuckT: 0, detour: null, stuckN: 0, avoid: new Map(),
+    });
     const d = p.derived;
 
     // (stat points are never auto-spent — the player allocates them)
@@ -336,7 +365,35 @@ class Game {
       if (p.hp > d.maxHp * 0.65) {
         bs.phase = 'hunt';
       } else {
-        this.botSteer(out, p, this.world.spawnX, this.world.spawnY, bs, dt);
+        const dv = Math.hypot(p.x - this.world.spawnX, p.y - this.world.spawnY);
+        if (dv > HEAL_RADIUS * 0.7) {
+          // still on the way: keep running for the circle
+          this.botSteer(out, p, this.world.spawnX, this.world.spawnY, bs, dt);
+          return out;
+        }
+        // inside the healing circle: heal up but fight back at chasers
+        let target = null, bestD = 260;
+        for (const e of this.enemies) {
+          if (e.dead) continue;
+          const dd = Math.hypot(e.x - p.x, e.y - p.y);
+          if (dd < bestD) { bestD = dd; target = e; }
+        }
+        if (target) {
+          out.face = { x: (target.x - p.x) / (bestD || 1), y: (target.y - p.y) / (bestD || 1) };
+          const range = p.cls.attackType === 'melee' ? 36 : 190;
+          if (bestD <= range && this.world.hasLineOfSight(p.x, p.y, target.x, target.y)) {
+            out.attack = true;
+            for (let i = 0; i < 3; i++) {
+              const skill = SKILLS[p.cls.skills[i]];
+              if (!skill.bot || skill.bot.kind !== 'atk') continue;
+              if ((p.skillCds[skill.id] || 0) > 0 || p.mp < skill.mp) continue;
+              if (bestD < skill.bot.range) out.skills[i] = true;
+            }
+          } else if (Math.hypot(target.x - this.world.spawnX, target.y - this.world.spawnY) < HEAL_RADIUS + 60) {
+            // chase only enemies that entered the village edge — never leave the circle
+            this.botSteer(out, p, target.x, target.y, bs, dt);
+          }
+        }
         return out;
       }
     }
@@ -350,31 +407,42 @@ class Game {
     }
     if (bestPk) goal = { x: bestPk.x, y: bestPk.y };
 
-    // pick a target enemy suited to our level
+    // pick a target enemy suited to our level; prefer ones we can
+    // actually hit (line of sight), skip recently-unreachable ones
     const maxTier = p.level < 5 ? 1 : p.level < 10 ? 2 : p.level < 16 ? 3 : 4;
-    let target = null, bestD = 520;
+    let target = null, bestD = 520, hasLos = true;
+    let blocked = null, blockedD = 520;
     for (const e of this.enemies) {
       if (e.dead) continue;
       if (e.type.boss && p.level < 18) continue;
       if (e.tier > maxTier && e.state !== 'chase') continue;
+      if ((bs.avoid.get(e) || 0) > this.time) continue;
       const dd = Math.hypot(e.x - p.x, e.y - p.y);
-      if (dd < bestD) { bestD = dd; target = e; }
+      if (this.world.hasLineOfSight(p.x, p.y, e.x, e.y)) {
+        if (dd < bestD) { bestD = dd; target = e; }
+      } else if (dd < blockedD) { blockedD = dd; blocked = e; }
     }
+    if (!target && blocked) { target = blocked; bestD = blockedD; hasLos = false; }
 
+    let goalIsTarget = false;
     if (!goal && target) {
       const range = p.cls.attackType === 'melee' ? 36 : 190;
       out.face = { x: (target.x - p.x) / (bestD || 1), y: (target.y - p.y) / (bestD || 1) };
-      if (bestD > range) {
+      if (bestD > range || !hasLos) {
+        // no line of sight: walk toward it instead of shooting the tree
         goal = { x: target.x, y: target.y };
+        goalIsTarget = true;
       } else {
         out.attack = true;
       }
-      // offensive / buff skills
-      for (let i = 0; i < 3; i++) {
-        const skill = SKILLS[p.cls.skills[i]];
-        if (!skill.bot || (p.skillCds[skill.id] || 0) > 0 || p.mp < skill.mp) continue;
-        if (skill.bot.kind === 'atk' && bestD < skill.bot.range) out.skills[i] = true;
-        if (skill.bot.kind === 'buff' && bestD < 240) out.skills[i] = true;
+      if (hasLos) {
+        // offensive / buff skills
+        for (let i = 0; i < 3; i++) {
+          const skill = SKILLS[p.cls.skills[i]];
+          if (!skill.bot || (p.skillCds[skill.id] || 0) > 0 || p.mp < skill.mp) continue;
+          if (skill.bot.kind === 'atk' && bestD < skill.bot.range) out.skills[i] = true;
+          if (skill.bot.kind === 'buff' && bestD < 240) out.skills[i] = true;
+        }
       }
     } else if (!goal) {
       // roam toward the nearest suitable hunting ground
@@ -388,11 +456,22 @@ class Game {
       if (bestSp && bestSpD > 60) goal = { x: bestSp.x, y: bestSp.y };
     }
 
-    if (goal) this.botSteer(out, p, goal.x, goal.y, bs, dt);
+    if (goal) {
+      this.botSteer(out, p, goal.x, goal.y, bs, dt);
+      // stuck heading to the same mob for several checks: it's walled
+      // in behind trees/rocks — blacklist it and hunt something else
+      if (bs.stuckN >= 5 && goalIsTarget) {
+        bs.avoid.set(target, this.time + 6);
+        bs.stuckN = 0;
+        if (bs.avoid.size > 24) {
+          for (const [e2, t2] of bs.avoid) if (t2 < this.time) bs.avoid.delete(e2);
+        }
+      }
+    }
     return out;
   }
 
-  /* Walk toward (gx,gy) with a simple unstuck detour. */
+  /* Walk toward (gx,gy) with an escalating unstuck detour. */
   botSteer(out, p, gx, gy, bs, dt) {
     bs.checkT += dt;
     if (bs.unstuckT > 0) {
@@ -406,10 +485,14 @@ class Game {
     if (bs.checkT > 0.5) {
       const moved = Math.hypot(p.x - bs.lastX, p.y - bs.lastY);
       if (moved < 6 && dist > 30) {
-        // blocked: sidestep perpendicular for a moment
-        const sign = Math.random() < 0.5 ? 1 : -1;
+        // blocked: sidestep perpendicular, alternating sides and
+        // detouring longer each consecutive time we're still stuck
+        bs.stuckN = (bs.stuckN || 0) + 1;
+        const sign = bs.stuckN % 2 ? 1 : -1;
         bs.detour = { x: -out.my * sign, y: out.mx * sign };
-        bs.unstuckT = 0.7;
+        bs.unstuckT = 0.5 + 0.3 * Math.min(4, bs.stuckN);
+      } else if (moved >= 6) {
+        bs.stuckN = 0;
       }
       bs.checkT = 0;
       bs.lastX = p.x; bs.lastY = p.y;
@@ -1193,8 +1276,9 @@ window.addEventListener('keydown', e => {
     return;
   }
 
-  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
+  // block page scrolling, but let inputs (chat, sliders) use these keys
+  if (!typing && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
   if (!typing) keys.add(e.code);
 
   if (!game || typing) return;
@@ -1218,6 +1302,7 @@ window.addEventListener('keydown', e => {
     document.getElementById('help-panel').classList.add('hidden');
     document.getElementById('online-panel').classList.add('hidden');
     document.getElementById('board-panel').classList.add('hidden');
+    document.getElementById('sound-panel').classList.add('hidden');
   }
 });
 
@@ -1232,6 +1317,37 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-lang').addEventListener('click', () => {
     setLang(currentLang === 'en' ? 'th' : 'en');
   });
+  // sound settings
+  const volSlider = document.getElementById('sound-vol');
+  const updateSoundUI = () => {
+    document.getElementById('btn-sound').textContent = (SOUND.muted || SOUND.vol <= 0) ? '🔇' : '🔊';
+    document.getElementById('btn-sound-mute').textContent =
+      (SOUND.muted ? '🔇 ' : '🔊 ') + t(SOUND.muted ? 'sound.unmute' : 'sound.mute');
+    volSlider.value = Math.round(SOUND.vol * 100);
+    document.getElementById('sound-vol-num').textContent = Math.round(SOUND.vol * 100) + '%';
+  };
+  updateSoundUI();
+  document.getElementById('btn-sound').addEventListener('click', () => {
+    document.getElementById('sound-panel').classList.remove('hidden');
+    updateSoundUI();
+  });
+  document.getElementById('btn-sound-close').addEventListener('click', () =>
+    document.getElementById('sound-panel').classList.add('hidden'));
+  volSlider.addEventListener('input', () => {
+    SOUND.vol = volSlider.value / 100;
+    if (SOUND.vol > 0) SOUND.muted = false;
+    saveSound();
+    updateSoundUI();
+    if (game) game.sfx('point');   // instant feedback at the new volume
+  });
+  document.getElementById('btn-sound-mute').addEventListener('click', () => {
+    SOUND.muted = !SOUND.muted;
+    saveSound();
+    updateSoundUI();
+    if (!SOUND.muted && game) game.sfx('point');
+  });
+  document.addEventListener('langchange', updateSoundUI);
+
   document.getElementById('btn-help').addEventListener('click', () => UI.showHelp());
   document.getElementById('btn-help-close').addEventListener('click', () =>
     document.getElementById('help-panel').classList.add('hidden'));

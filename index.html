@@ -32,6 +32,7 @@
 
     <div id="hud-top-right">
       <button id="btn-lang" class="pix-btn small"></button>
+      <button id="btn-sound" class="pix-btn small">🔊</button>
       <button id="btn-help" class="pix-btn small">?</button>
       <button id="btn-keys" class="pix-btn small">⌨</button>
       <button id="btn-online" class="pix-btn small">🌐</button>
@@ -118,6 +119,20 @@
       <div id="keys-table"></div>
       <button id="btn-keys-reset" class="pix-btn small" data-i18n="keys.reset">Reset to defaults</button>
       <button id="btn-keys-close" class="pix-btn" data-i18n="ui.close">Close</button>
+    </div>
+  </div>
+
+  <!-- ===== SOUND SETTINGS ===== -->
+  <div id="sound-panel" class="overlay hidden">
+    <div class="panel">
+      <h2 data-i18n="sound.title">🔊 Sound</h2>
+      <div class="sound-form">
+        <span data-i18n="sound.volume">Volume</span>
+        <input id="sound-vol" type="range" min="0" max="100" step="5" value="100">
+        <span id="sound-vol-num">100%</span>
+      </div>
+      <button id="btn-sound-mute" class="pix-btn small"></button>
+      <button id="btn-sound-close" class="pix-btn" data-i18n="ui.close">Close</button>
     </div>
   </div>
 

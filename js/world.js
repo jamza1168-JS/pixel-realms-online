@@ -220,6 +220,18 @@ class World {
     this.minimapImg = mm;
   }
 
+  /* Straight line between two points crosses no solid tile */
+  hasLineOfSight(x1, y1, x2, y2) {
+    const dist = Math.hypot(x2 - x1, y2 - y1);
+    const steps = Math.ceil(dist / 12) || 1;
+    for (let i = 1; i < steps; i++) {
+      const t = i / steps;
+      if (this.isSolid(Math.floor((x1 + (x2 - x1) * t) / TILE),
+                       Math.floor((y1 + (y2 - y1) * t) / TILE))) return false;
+    }
+    return true;
+  }
+
   /* Circle-ish collision: test the 4 corners of a small box */
   canStand(px, py, half = 10) {
     return !this.isSolid(Math.floor((px - half) / TILE), Math.floor((py - half) / TILE))

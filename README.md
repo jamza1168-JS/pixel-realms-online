@@ -94,9 +94,12 @@ customize STR / AGI / INT / VIT / LUK freely.
 Press the **AUTO** button on your player frame (or the `F` key):
 
 - hunts monsters suited to your level, walking zone to zone
+  (skips ones hidden behind trees/rocks it can't reach)
 - attacks and casts skills automatically
 - picks up hearts, mana orbs, and gold
-- retreats to the village and heals when HP is low
+- retreats to the village heal circle when HP is low — and fights back
+  from inside it instead of standing idle
+- yields to you instantly: press any key to take over, release to resume
 - keeps farming even when the browser tab is hidden/minimized
 
 Stat points are never spent automatically — they stack up while you're
@@ -117,6 +120,9 @@ saved in the browser. Defaults:
 | Stat panel | `C` |
 | AFK farm   | `F` |
 | Chat       | `Enter` |
+
+Attacks and skills **aim at your mouse cursor** (the AFK bot aims on its
+own and ignores the cursor).
 
 ## Features
 

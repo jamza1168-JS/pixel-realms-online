@@ -2,3 +2,6 @@
 .claude/
 __pycache__/
 *.pyc
+
+# server runtime data
+leaderboard.json

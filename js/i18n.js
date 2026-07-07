@@ -64,6 +64,14 @@ const I18N = {
     'chat.placeholder': 'Press Enter to chat…',
     'chat.you': 'You',
 
+    'board.title': '🏆 Leaderboards',
+    'board.level': 'Level',
+    'board.kills': 'Mob Kills',
+    'board.gold': 'Gold',
+    'board.empty': 'No heroes yet — be the first!',
+    'board.error': 'Leaderboard unavailable — connect to a game server.',
+    'board.you': '★',
+
     'trade.title': '🤝 Trade',
     'trade.tradeAs': 'Trade as',
     'trade.with': 'Trading with {name}',
@@ -213,6 +221,14 @@ const I18N = {
 
     'chat.placeholder': 'กด Enter เพื่อแชท…',
     'chat.you': 'คุณ',
+
+    'board.title': '🏆 กระดานผู้กล้า',
+    'board.level': 'เลเวล',
+    'board.kills': 'สังหารมอนสเตอร์',
+    'board.gold': 'ทอง',
+    'board.empty': 'ยังไม่มีผู้กล้า — มาเป็นคนแรกสิ!',
+    'board.error': 'โหลดกระดานไม่ได้ — กรุณาเชื่อมต่อเซิร์ฟเวอร์เกม',
+    'board.you': '★',
 
     'trade.title': '🤝 แลกเปลี่ยน',
     'trade.tradeAs': 'แลกเปลี่ยนในนาม',

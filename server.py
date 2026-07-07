@@ -23,6 +23,7 @@ import os
 import secrets
 import struct
 import sys
+import time
 
 # unbuffered logging so joins show up immediately, even when piped
 print = functools.partial(print, flush=True)
@@ -44,6 +45,68 @@ STATIC_TYPES = {
 # room name -> {client_id: Client}, insertion order = host order
 rooms: dict = {}
 
+# ---------------- Leaderboard ----------------
+# Persisted to leaderboard.json. Note: on free cloud tiers the disk
+# is ephemeral, so the board resets when the service redeploys.
+
+BOARD_FILE = os.path.join(ROOT, "leaderboard.json")
+BOARD_CLASSES = ("warrior", "mage", "archer", "cleric")
+board: dict = {}  # player id -> {id, name, cls, level, kills, gold, ts}
+
+
+def load_board():
+    global board
+    try:
+        with open(BOARD_FILE, encoding="utf-8") as f:
+            board = json.load(f)
+    except Exception:
+        board = {}
+
+
+def save_board():
+    try:
+        with open(BOARD_FILE, "w", encoding="utf-8") as f:
+            json.dump(board, f, ensure_ascii=False)
+    except Exception:
+        pass
+
+
+def update_score(d: dict):
+    pid = str(d.get("id", ""))[:24]
+    if not pid:
+        raise ValueError("missing id")
+
+    def clamp(key, hi):
+        try:
+            v = int(d.get(key, 0))
+        except (TypeError, ValueError):
+            v = 0
+        return max(0, min(hi, v))
+
+    e = board.get(pid, {"level": 0, "kills": 0, "gold": 0})
+    e["id"] = pid
+    e["name"] = (str(d.get("name", "Hero"))[:16]) or "Hero"
+    e["cls"] = d.get("cls") if d.get("cls") in BOARD_CLASSES else "warrior"
+    e["ts"] = time.time()
+    # keep each player's best marks
+    e["level"] = max(e["level"], clamp("level", 999))
+    e["kills"] = max(e["kills"], clamp("kills", 10**7))
+    e["gold"] = max(e["gold"], clamp("gold", 10**9))
+    board[pid] = e
+    while len(board) > 500:  # cap: drop the stalest entry
+        oldest = min(board, key=lambda k: board[k].get("ts", 0))
+        del board[oldest]
+    save_board()
+
+
+def board_tops():
+    entries = list(board.values())
+
+    def top(key):
+        return sorted(entries, key=lambda e: -e.get(key, 0))[:10]
+
+    return {"level": top("level"), "kills": top("kills"), "gold": top("gold")}
+
 
 class Client:
     def __init__(self, reader, writer):
@@ -60,7 +123,42 @@ class Client:
             pass
 
 
-# ---------------- HTTP: serve the game client ----------------
+# ---------------- HTTP: game client + leaderboard API ----------------
+
+CORS_HEADERS = (
+    "Access-Control-Allow-Origin: *\r\n"
+    "Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+    "Access-Control-Allow-Headers: Content-Type\r\n"
+)
+
+
+def http_json(writer, status: str, obj):
+    body = json.dumps(obj, ensure_ascii=False).encode()
+    writer.write(
+        (
+            f"HTTP/1.1 {status}\r\nContent-Type: application/json; charset=utf-8\r\n"
+            f"{CORS_HEADERS}Content-Length: {len(body)}\r\n\r\n"
+        ).encode()
+        + body
+    )
+
+
+def handle_api(writer, method: str, path: str, body: bytes):
+    if method == "OPTIONS":
+        writer.write(("HTTP/1.1 204 No Content\r\n" + CORS_HEADERS + "\r\n").encode())
+        return
+    if method == "GET" and path == "/api/leaderboard":
+        http_json(writer, "200 OK", board_tops())
+        return
+    if method == "POST" and path == "/api/score":
+        try:
+            update_score(json.loads(body.decode("utf-8")))
+            http_json(writer, "200 OK", {"ok": True})
+        except Exception:
+            http_json(writer, "400 Bad Request", {"ok": False})
+        return
+    http_json(writer, "404 Not Found", {"ok": False})
+
 
 def serve_static(writer, path: str):
     if path in ("/", ""):
@@ -104,6 +202,7 @@ async def handshake(reader, writer) -> bool:
         return False
     lines = raw.decode("latin1").split("\r\n")
     request_line = lines[0].split(" ")
+    method = request_line[0].upper() if request_line else "GET"
     path = request_line[1] if len(request_line) > 1 else "/"
     headers = {}
     for line in lines[1:]:
@@ -113,7 +212,17 @@ async def handshake(reader, writer) -> bool:
 
     key = headers.get("sec-websocket-key")
     if not key:
-        serve_static(writer, path)
+        if path.split("?", 1)[0].startswith("/api/"):
+            body = b""
+            try:
+                n = int(headers.get("content-length", 0) or 0)
+            except ValueError:
+                n = 0
+            if 0 < n <= 65536:
+                body = await reader.readexactly(n)
+            handle_api(writer, method, path.split("?", 1)[0], body)
+        else:
+            serve_static(writer, path)
         await writer.drain()
         return False
 
@@ -249,6 +358,7 @@ async def handle_client(reader, writer):
 
 
 async def main():
+    load_board()
     server = await asyncio.start_server(handle_client, "0.0.0.0", PORT)
     print("=" * 52)
     print("  Pixel Realms Online - game & relay server")

@@ -6,6 +6,13 @@
 const SAVE_KEY = 'pixelrealms_save';
 const KEYS_KEY = 'pixelrealms_keys';
 
+/* Stable anonymous id for the leaderboard */
+let PID = localStorage.getItem('pixelrealms_pid');
+if (!PID) {
+  PID = 'p' + Math.random().toString(36).slice(2, 10);
+  localStorage.setItem('pixelrealms_pid', PID);
+}
+
 /* ---------------- Rebindable hotkeys ---------------- */
 const KEY_ACTIONS = ['up', 'down', 'left', 'right', 'attack', 'skill1', 'skill2', 'skill3', 'panel', 'afk'];
 
@@ -148,6 +155,7 @@ class Game {
       p.xp = saved.xp;
       p.statPoints = saved.statPoints;
       p.gold = saved.gold;
+      p.kills = saved.kills || 0;
       p.stats = Object.assign({}, saved.stats);
       const d = p.derived;
       p.hp = d.maxHp; p.mp = d.maxMp;
@@ -281,6 +289,10 @@ class Game {
     // autosave
     this.saveT += dt;
     if (this.saveT > 15) { this.saveT = 0; this.save(); }
+
+    // periodic leaderboard submission
+    this.scoreT = (this.scoreT || 0) + dt;
+    if (this.scoreT > 45) { this.scoreT = 0; this.submitScores(); }
 
     UI.update(this);
   }
@@ -416,6 +428,7 @@ class Game {
     }
     final = Math.round(final * (0.9 + Math.random() * 0.2));
 
+    e.lastLocalOwner = owner;   // kill credit for the leaderboard
     if (this.net.isOnline && !this.net.isHost && e.remote) {
       // predicted hit; host is authoritative
       e.hp = Math.max(1, e.hp - final);
@@ -534,6 +547,7 @@ class Game {
   /* ---------------- Networking glue ---------------- */
   goOnline(url, room, name) {
     if (this.net.isOnline) this.net.disconnect();
+    localStorage.setItem('pixelrealms_name', name);
     const net = new WSNet(this);
     this.net = net;
     net.connect(url, room, name);
@@ -804,6 +818,12 @@ class Game {
 
     // XP: full for the killer, 60% for nearby party members
     const weKilled = killer === (this.net.id || 'local');
+
+    // mob-kill counter for the leaderboard
+    let killerPlayer = localKiller;
+    if (!killerPlayer && weKilled) killerPlayer = (gh && gh.lastLocalOwner) || this.players[0];
+    if (killerPlayer) killerPlayer.kills++;
+
     for (const p of this.players) {
       if (p.dead) continue;
       const full = localKiller ? p === localKiller : weKilled;
@@ -829,6 +849,39 @@ class Game {
     if (isBoss) {
       UI.toast(t('ui.bossDown'));
       this.sfx('levelup');
+      this.submitScores();
+    }
+  }
+
+  /* ---------------- Leaderboard ---------------- */
+  /* Base URL of the leaderboard API: the connected game server,
+   * or the page's own origin when served by server.py. */
+  apiBase() {
+    if (this.net.isOnline && this.net.ws && this.net.ws.url) {
+      return this.net.ws.url.replace(/^ws/, 'http').replace(/\/+$/, '');
+    }
+    if (location.protocol === 'http:' || location.protocol === 'https:') return '';
+    return null;
+  }
+
+  boardName(p) {
+    const base = this.net.name || localStorage.getItem('pixelrealms_name') || 'Hero';
+    return p.id === 2 ? base + ' ·P2' : base;
+  }
+
+  submitScores(useBeacon) {
+    const base = this.apiBase();
+    if (base === null) return;
+    for (const p of this.players) {
+      const payload = JSON.stringify({
+        id: PID + '-' + p.id, name: this.boardName(p), cls: p.clsId,
+        level: p.level, kills: p.kills, gold: p.gold,
+      });
+      const url = base + '/api/score';
+      try {
+        if (useBeacon && navigator.sendBeacon) navigator.sendBeacon(url, payload);
+        else fetch(url, { method: 'POST', body: payload, keepalive: !!useBeacon }).catch(() => {});
+      } catch (e) { /* leaderboard is best-effort */ }
     }
   }
 
@@ -857,6 +910,7 @@ class Game {
     this.addEffect({ type: 'ring', x: p.x, y: p.y - 12, dur: 0.6, color: '#ffd75e', r: 60 });
     this.sfx('levelup');
     this.save();
+    this.submitScores();
   }
 
   onPlayerDeath(p) {
@@ -875,7 +929,7 @@ class Game {
       v: 1,
       players: this.players.map(p => ({
         id: p.id, clsId: p.clsId, level: p.level, xp: p.xp,
-        statPoints: p.statPoints, gold: p.gold, stats: p.stats,
+        statPoints: p.statPoints, gold: p.gold, kills: p.kills, stats: p.stats,
       })),
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -1108,12 +1162,14 @@ window.addEventListener('keydown', e => {
     document.getElementById('p2-select').classList.add('hidden');
     document.getElementById('help-panel').classList.add('hidden');
     document.getElementById('online-panel').classList.add('hidden');
+    document.getElementById('board-panel').classList.add('hidden');
   }
 });
 
 window.addEventListener('keyup', e => keys.delete(e.code));
 window.addEventListener('pointerdown', ensureAudio);
 window.addEventListener('beforeunload', () => { if (game) game.save(); });
+window.addEventListener('pagehide', () => { if (game) game.submitScores(true); });
 
 document.addEventListener('DOMContentLoaded', () => {
   initTitle();
@@ -1157,6 +1213,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (e.key === 'Escape') chatInput.blur();
   });
+
+  // leaderboard
+  document.getElementById('btn-board').addEventListener('click', () => UI.openBoard());
+  document.querySelectorAll('.board-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      UI.boardTab = btn.dataset.tab;
+      UI.renderBoard();
+    });
+  });
+  document.getElementById('btn-board-close').addEventListener('click', () =>
+    document.getElementById('board-panel').classList.add('hidden'));
 
   // trading
   document.getElementById('btn-trade').addEventListener('click', () => UI.openTradePanel());

@@ -46,6 +46,7 @@
       <button id="btn-keys" class="pix-btn small">⌨</button>
       <button id="btn-online" class="pix-btn small">🌐</button>
       <button id="btn-trade" class="pix-btn small">🤝</button>
+      <button id="btn-board" class="pix-btn small">🏆</button>
       <div id="online-badge"><span class="dot"></span><span id="online-text"></span></div>
       <canvas id="minimap" width="150" height="150"></canvas>
       <div id="zone-name"></div>
@@ -134,6 +135,20 @@
       <div id="keys-table"></div>
       <button id="btn-keys-reset" class="pix-btn small" data-i18n="keys.reset">Reset to defaults</button>
       <button id="btn-keys-close" class="pix-btn" data-i18n="ui.close">Close</button>
+    </div>
+  </div>
+
+  <!-- ===== LEADERBOARD ===== -->
+  <div id="board-panel" class="overlay hidden">
+    <div class="panel">
+      <h2 data-i18n="board.title">Leaderboards</h2>
+      <div id="board-tabs">
+        <button class="pix-btn small board-tab" data-tab="level" data-i18n="board.level">Level</button>
+        <button class="pix-btn small board-tab" data-tab="kills" data-i18n="board.kills">Mob Kills</button>
+        <button class="pix-btn small board-tab" data-tab="gold" data-i18n="board.gold">Gold</button>
+      </div>
+      <div id="board-content"></div>
+      <button id="btn-board-close" class="pix-btn" data-i18n="ui.close">Close</button>
     </div>
   </div>
 

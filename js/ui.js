@@ -3,6 +3,11 @@
  *         hotkey settings, online multiplayer panel
  * ============================================================ */
 
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 const UI = {
   game: null,
   statPanelPlayer: null,
@@ -305,6 +310,51 @@ const UI = {
     this.$('btn-online-disconnect').classList.toggle('hidden', s !== 'on');
   },
 
+  /* ---------- Leaderboard ---------- */
+  boardTab: 'level',
+  boardData: null,
+
+  async openBoard() {
+    this.$('board-panel').classList.remove('hidden');
+    this.$('board-content').innerHTML = `<div class="trade-status">…</div>`;
+    const base = this.game ? this.game.apiBase() : (location.protocol.startsWith('http') ? '' : null);
+    if (base === null) {
+      this.$('board-content').innerHTML = `<div class="trade-status">${t('board.error')}</div>`;
+      return;
+    }
+    try {
+      if (this.game) this.game.submitScores();          // make sure we're on it
+      const res = await fetch(base + '/api/leaderboard');
+      this.boardData = await res.json();
+      this.renderBoard();
+    } catch (e) {
+      this.$('board-content').innerHTML = `<div class="trade-status">${t('board.error')}</div>`;
+    }
+  },
+
+  renderBoard() {
+    document.querySelectorAll('.board-tab').forEach(btn =>
+      btn.classList.toggle('selected', btn.dataset.tab === this.boardTab));
+    const box = this.$('board-content');
+    const list = (this.boardData && this.boardData[this.boardTab]) || [];
+    if (!list.length) {
+      box.innerHTML = `<div class="trade-status">${t('board.empty')}</div>`;
+      return;
+    }
+    const medals = ['🥇', '🥈', '🥉'];
+    const valueOf = e =>
+      this.boardTab === 'level' ? 'Lv ' + e.level :
+      this.boardTab === 'kills' ? '☠ ' + e.kills : '🪙 ' + e.gold;
+    box.innerHTML = list.map((e, i) => {
+      const mine = typeof PID !== 'undefined' && e.id && e.id.indexOf(PID + '-') === 0;
+      return `<div class="board-row ${mine ? 'mine' : ''}">` +
+        `<span class="br-rank">${medals[i] || (i + 1)}</span>` +
+        `<span class="br-name">${escapeHtml(e.name)} ${mine ? t('board.you') : ''}` +
+        `<small> ${t('class.' + e.cls)} · Lv${e.level}</small></span>` +
+        `<span class="br-value">${valueOf(e)}</span></div>`;
+    }).join('');
+  },
+
   /* ---------- Chat ---------- */
   addChat(name, text, mine) {
     const log = this.$('chat-log');
@@ -346,13 +396,13 @@ const UI = {
     /* -- active trade window -- */
     if (tr) {
       if (tr.stage === 'waiting') {
-        box.innerHTML = `<div class="trade-status">${t('trade.waiting', { name: tr.withName })}</div>` +
+        box.innerHTML = `<div class="trade-status">${t('trade.waiting', { name: escapeHtml(tr.withName) })}</div>` +
           `<button class="pix-btn small" id="tr-cancel">${t('ui.cancel')}</button>`;
         box.querySelector('#tr-cancel').addEventListener('click', () => game.cancelTrade());
         return;
       }
       box.innerHTML =
-        `<div class="trade-status ${tr.theirAccept ? 'ready' : ''}">${t('trade.with', { name: tr.withName })}` +
+        `<div class="trade-status ${tr.theirAccept ? 'ready' : ''}">${t('trade.with', { name: escapeHtml(tr.withName) })}` +
         (tr.theirAccept ? ' — ' + t('trade.ready') : '') + `</div>` +
         `<div class="trade-offer-box">` +
         `<div class="trade-offer ${tr.myAccept ? 'accepted' : ''}"><h4>${t('trade.myOffer')} (🪙 ${tr.me.gold})</h4>` +
@@ -408,7 +458,7 @@ const UI = {
           remoteCount++;
           const row = document.createElement('div');
           row.className = 'trade-row';
-          row.innerHTML = `<span class="tr-name">${rp.name} <small>Lv${rp.level} · ${t('class.' + rp.clsId)}</small></span>`;
+          row.innerHTML = `<span class="tr-name">${escapeHtml(rp.name)} <small>Lv${rp.level} · ${t('class.' + rp.clsId)}</small></span>`;
           for (const p of game.players) {
             const btn = document.createElement('button');
             btn.className = 'pix-btn small';

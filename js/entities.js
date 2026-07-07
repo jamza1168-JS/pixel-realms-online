@@ -28,6 +28,7 @@ class Player {
     this.xp = 0;
     this.statPoints = 0;
     this.gold = 0;
+    this.kills = 0;
     this.stats = Object.assign({}, this.cls.base);
 
     this.x = game.world.spawnX + (id === 1 ? -24 : 24);

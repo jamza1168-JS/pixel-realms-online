@@ -1,0 +1,1221 @@
+/* ============================================================
+ * main.js — Game engine: loop, input, hotkeys, AFK bot,
+ *           combat, camera, networking glue, save system
+ * ============================================================ */
+
+const SAVE_KEY = 'pixelrealms_save';
+const KEYS_KEY = 'pixelrealms_keys';
+
+/* ---------------- Rebindable hotkeys ---------------- */
+const KEY_ACTIONS = ['up', 'down', 'left', 'right', 'attack', 'skill1', 'skill2', 'skill3', 'panel', 'afk'];
+
+const DEFAULT_KEYS = {
+  1: { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', attack: 'KeyJ', skill1: 'KeyU', skill2: 'KeyI', skill3: 'KeyO', panel: 'KeyC', afk: 'KeyF' },
+  2: { up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', attack: 'KeyM', skill1: 'Comma', skill2: 'Period', skill3: 'Slash', panel: 'KeyB', afk: 'KeyK' },
+};
+
+function loadKeys() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(KEYS_KEY));
+    if (raw && raw['1'] && raw['2']) {
+      return {
+        1: Object.assign({}, DEFAULT_KEYS[1], raw['1']),
+        2: Object.assign({}, DEFAULT_KEYS[2], raw['2']),
+      };
+    }
+  } catch (e) { /* fall through */ }
+  return JSON.parse(JSON.stringify(DEFAULT_KEYS));
+}
+
+let KEYS = loadKeys();
+
+function saveKeys() {
+  localStorage.setItem(KEYS_KEY, JSON.stringify(KEYS));
+}
+
+function resetKeys() {
+  KEYS = JSON.parse(JSON.stringify(DEFAULT_KEYS));
+  saveKeys();
+}
+
+/* Human-readable label for a KeyboardEvent.code */
+function prettyKey(code) {
+  if (!code) return '—';
+  const special = {
+    ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→',
+    Comma: ',', Period: '.', Slash: '/', Backslash: '\\', Semicolon: ';',
+    Quote: "'", BracketLeft: '[', BracketRight: ']', Backquote: '`',
+    Minus: '-', Equal: '=', Space: 'SPACE', Enter: '↵', Tab: 'TAB',
+    ShiftLeft: 'L-SHIFT', ShiftRight: 'R-SHIFT', ControlLeft: 'L-CTRL',
+    ControlRight: 'R-CTRL', AltLeft: 'L-ALT', AltRight: 'R-ALT',
+  };
+  if (special[code]) return special[code];
+  if (code.startsWith('Key')) return code.slice(3);
+  if (code.startsWith('Digit')) return code.slice(5);
+  if (code.startsWith('Numpad')) return 'NUM ' + code.slice(6);
+  return code.toUpperCase();
+}
+
+/* ---------------- Input ---------------- */
+const keys = new Set();
+
+function readInput(playerId) {
+  const m = KEYS[playerId];
+  return {
+    mx: (keys.has(m.right) ? 1 : 0) - (keys.has(m.left) ? 1 : 0),
+    my: (keys.has(m.down) ? 1 : 0) - (keys.has(m.up) ? 1 : 0),
+    attack: keys.has(m.attack),
+    skills: [keys.has(m.skill1), keys.has(m.skill2), keys.has(m.skill3)],
+  };
+}
+
+/* ---------------- Tiny synth SFX ---------------- */
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) {
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { /* no audio */ }
+  }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function beep(freq, dur, type = 'square', vol = 0.06, endFreq = null) {
+  if (!audioCtx) return;
+  const o = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  if (endFreq) o.frequency.exponentialRampToValueAtTime(Math.max(20, endFreq), audioCtx.currentTime + dur);
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+  o.connect(gain).connect(audioCtx.destination);
+  o.start();
+  o.stop(audioCtx.currentTime + dur + 0.02);
+}
+
+const SFX = {
+  hit:    () => beep(220, 0.08, 'square', 0.05, 90),
+  swing:  () => beep(320, 0.06, 'triangle', 0.04, 160),
+  shoot:  () => beep(620, 0.07, 'square', 0.04, 300),
+  hurt:   () => beep(150, 0.16, 'sawtooth', 0.06, 60),
+  skill:  () => beep(500, 0.1, 'square', 0.05, 900),
+  pickup: () => beep(800, 0.09, 'sine', 0.06, 1300),
+  gold:   () => beep(1100, 0.06, 'sine', 0.05),
+  heal:   () => beep(520, 0.18, 'sine', 0.05, 780),
+  buff:   () => beep(400, 0.15, 'triangle', 0.05, 620),
+  point:  () => beep(700, 0.05, 'square', 0.05),
+  die:    () => beep(120, 0.4, 'sawtooth', 0.07, 40),
+  levelup:() => { beep(520, 0.1, 'square', 0.06); setTimeout(() => beep(660, 0.1, 'square', 0.06), 100); setTimeout(() => beep(880, 0.2, 'square', 0.06), 200); },
+};
+
+/* ============================================================ */
+
+class Game {
+  constructor() {
+    this.canvas = document.getElementById('game-canvas');
+    this.g = this.canvas.getContext('2d');
+    this.world = new World();
+    this.net = new LocalNet();
+    this.players = [];
+    this.remotePlayers = new Map();   // clientId -> [RemotePlayer,...]
+    this.ghosts = new Map();          // spawn idx -> ghost Enemy (client mode)
+    this.enemies = [];
+    this.projectiles = [];
+    this.pickups = [];
+    this.effects = [];
+    this.floatTexts = [];
+    this.trade = null;          // active trade state
+    this.pendingTrade = null;   // incoming trade request
+    this.cam = { x: 0, y: 0 };
+    this.time = 0;
+    this.saveT = 0;
+    this.running = false;
+    this.lastT = 0;
+
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+  }
+
+  resize() {
+    this.canvas.width = window.innerWidth;
+    this.canvas.height = window.innerHeight;
+    this.g.imageSmoothingEnabled = false;
+  }
+
+  addPlayer(id, clsId, saved) {
+    const p = new Player(id, clsId, this);
+    if (saved) {
+      p.level = saved.level;
+      p.xp = saved.xp;
+      p.statPoints = saved.statPoints;
+      p.gold = saved.gold;
+      p.stats = Object.assign({}, saved.stats);
+      const d = p.derived;
+      p.hp = d.maxHp; p.mp = d.maxMp;
+    }
+    this.players.push(p);
+    UI.buildSkillbar(p);
+    if (id === 2) {
+      document.getElementById('frame-p2').classList.remove('hidden');
+      document.getElementById('btn-join-p2').classList.add('hidden');
+    }
+    return p;
+  }
+
+  start() {
+    this.running = true;
+    this.cam.x = this.world.spawnX - this.canvas.width / 2;
+    this.cam.y = this.world.spawnY - this.canvas.height / 2;
+    this.lastT = performance.now();
+    requestAnimationFrame(ts => this.loop(ts));
+    setTimeout(() => UI.toast(t('ui.bossWarn'), 'info'), 2500);
+
+    // AFK farming must survive a hidden/minimized tab, where
+    // requestAnimationFrame stops. This ticker detects a stalled
+    // rAF loop and steps the simulation (rendering skipped).
+    this.bgTicker = setInterval(() => {
+      const now = performance.now();
+      if (!this.running || now - this.lastT < 250) return;
+      let steps = Math.min(20, Math.floor((now - this.lastT) / 50));
+      this.lastT = now;
+      while (steps-- > 0) this.update(0.05);
+    }, 250);
+  }
+
+  loop(ts) {
+    if (!this.running) return;
+    const dt = Math.min(0.05, (ts - this.lastT) / 1000);
+    this.lastT = ts;
+    this.update(dt);
+    this.draw();
+    requestAnimationFrame(t2 => this.loop(t2));
+  }
+
+  /* All possible enemy targets: local + remote living players */
+  allTargets() {
+    const arr = [];
+    for (const p of this.players) if (!p.dead) arr.push(p);
+    for (const [, list] of this.remotePlayers) {
+      for (const rp of list) if (!rp.dead) arr.push(rp);
+    }
+    return arr;
+  }
+
+  playerNear(x, y, r) {
+    return this.allTargets().some(p => Math.hypot(p.x - x, p.y - y) < r);
+  }
+
+  /* ---------------- Update ---------------- */
+  update(dt) {
+    this.time += dt;
+
+    for (const p of this.players) {
+      p.update(dt, p.afk ? this.botInput(p, dt) : readInput(p.id));
+    }
+    for (const [, list] of this.remotePlayers) {
+      for (const rp of list) rp.update(dt);
+    }
+
+    if (this.net.isHost) {
+      // authoritative enemy simulation (offline or online-host)
+      for (const sp of this.world.spawnPoints) {
+        if (sp.enemy && sp.enemy.dead) {
+          sp.enemy = null;
+          sp.respawnT = sp.boss ? 120 : 12;
+        }
+        if (!sp.enemy) {
+          sp.respawnT -= dt;
+          if (sp.respawnT <= 0 && this.playerNear(sp.x, sp.y, 900)) {
+            sp.enemy = new Enemy(sp, this);
+            this.enemies.push(sp.enemy);
+          }
+        }
+      }
+      for (const e of this.enemies) {
+        if (!e.dead && this.playerNear(e.x, e.y, 1000)) e.update(dt);
+      }
+    } else {
+      // client mode: enemies are ghosts driven by host snapshots
+      for (const [i, e] of this.ghosts) {
+        if (e.dead) { this.ghosts.delete(i); continue; }
+        e.netTick(dt);
+      }
+    }
+    this.enemies = this.enemies.filter(e => !e.dead);
+
+    this.projectiles = this.projectiles.filter(pr => pr.update(dt, this));
+    this.pickups = this.pickups.filter(pk => pk.update(dt, this));
+
+    // effects (auras heal)
+    for (const fx of this.effects) {
+      fx.t = (fx.t || 0) + dt;
+      if (fx.type === 'aura' && fx.healPerSec) {
+        for (const p of this.players) {
+          if (!p.dead && Math.hypot(p.x - fx.x, p.y - fx.y) < fx.r) {
+            this.healEntity(p, fx.healPerSec * dt, true);
+          }
+        }
+      }
+    }
+    this.effects = this.effects.filter(fx => fx.t < fx.dur);
+
+    for (const ft of this.floatTexts) { ft.t += dt; ft.y -= 28 * dt; }
+    this.floatTexts = this.floatTexts.filter(ft => ft.t < 1);
+
+    // camera: follow midpoint of living local players
+    const alive = this.players.filter(p => !p.dead);
+    const focus = alive.length ? alive : this.players;
+    if (focus.length) {
+      let fx = 0, fy = 0;
+      for (const p of focus) { fx += p.x; fy += p.y; }
+      fx /= focus.length; fy /= focus.length;
+      const tx = fx - this.canvas.width / 2;
+      const ty = fy - this.canvas.height / 2;
+      this.cam.x += (tx - this.cam.x) * Math.min(1, dt * 6);
+      this.cam.y += (ty - this.cam.y) * Math.min(1, dt * 6);
+    }
+    this.cam.x = Math.max(0, Math.min(MAP_W * TILE - this.canvas.width, this.cam.x));
+    this.cam.y = Math.max(0, Math.min(MAP_H * TILE - this.canvas.height, this.cam.y));
+
+    this.net.sync(this.players);
+
+    // autosave
+    this.saveT += dt;
+    if (this.saveT > 15) { this.saveT = 0; this.save(); }
+
+    UI.update(this);
+  }
+
+  /* ---------------- AFK auto-farm bot ---------------- */
+  botInput(p, dt) {
+    const out = { mx: 0, my: 0, attack: false, skills: [false, false, false], face: null };
+    if (p.dead) return out;
+    const bs = p.bot || (p.bot = { phase: 'hunt', checkT: 0, lastX: p.x, lastY: p.y, unstuckT: 0, detour: null });
+    const d = p.derived;
+
+    // auto-spend stat points by class priority
+    while (p.statPoints > 0) {
+      const pool = BOT_STAT_PRIORITY[p.clsId];
+      p.stats[pool[Math.floor(Math.random() * pool.length)]]++;
+      p.statPoints--;
+    }
+
+    // heal skills whenever hurt
+    const hurt = p.hp < d.maxHp * 0.72;
+    for (let i = 0; i < 3; i++) {
+      const skill = SKILLS[p.cls.skills[i]];
+      if (skill.bot && skill.bot.kind === 'heal' && hurt && (p.skillCds[skill.id] || 0) <= 0 && p.mp >= skill.mp) {
+        out.skills[i] = true;
+      }
+    }
+
+    // retreat toward the village when in danger
+    if (p.hp < d.maxHp * 0.3) bs.phase = 'retreat';
+    if (bs.phase === 'retreat') {
+      if (p.hp > d.maxHp * 0.65) {
+        bs.phase = 'hunt';
+      } else {
+        this.botSteer(out, p, this.world.spawnX, this.world.spawnY, bs, dt);
+        return out;
+      }
+    }
+
+    // grab nearby loot first
+    let goal = null;
+    let bestPk = null, bestPkD = 150;
+    for (const pk of this.pickups) {
+      const dd = Math.hypot(pk.x - p.x, pk.y - p.y);
+      if (dd < bestPkD) { bestPkD = dd; bestPk = pk; }
+    }
+    if (bestPk) goal = { x: bestPk.x, y: bestPk.y };
+
+    // pick a target enemy suited to our level
+    const maxTier = p.level < 5 ? 1 : p.level < 10 ? 2 : p.level < 16 ? 3 : 4;
+    let target = null, bestD = 520;
+    for (const e of this.enemies) {
+      if (e.dead) continue;
+      if (e.type.boss && p.level < 18) continue;
+      if (e.tier > maxTier && e.state !== 'chase') continue;
+      const dd = Math.hypot(e.x - p.x, e.y - p.y);
+      if (dd < bestD) { bestD = dd; target = e; }
+    }
+
+    if (!goal && target) {
+      const range = p.cls.attackType === 'melee' ? 36 : 190;
+      out.face = { x: (target.x - p.x) / (bestD || 1), y: (target.y - p.y) / (bestD || 1) };
+      if (bestD > range) {
+        goal = { x: target.x, y: target.y };
+      } else {
+        out.attack = true;
+      }
+      // offensive / buff skills
+      for (let i = 0; i < 3; i++) {
+        const skill = SKILLS[p.cls.skills[i]];
+        if (!skill.bot || (p.skillCds[skill.id] || 0) > 0 || p.mp < skill.mp) continue;
+        if (skill.bot.kind === 'atk' && bestD < skill.bot.range) out.skills[i] = true;
+        if (skill.bot.kind === 'buff' && bestD < 240) out.skills[i] = true;
+      }
+    } else if (!goal) {
+      // roam toward the nearest suitable hunting ground
+      let bestSp = null, bestSpD = Infinity;
+      for (const sp of this.world.spawnPoints) {
+        if (sp.boss && p.level < 18) continue;
+        if (sp.tier > maxTier || sp.tier < Math.max(1, maxTier - 1)) continue;
+        const dd = Math.hypot(sp.x - p.x, sp.y - p.y);
+        if (dd < bestSpD) { bestSpD = dd; bestSp = sp; }
+      }
+      if (bestSp && bestSpD > 60) goal = { x: bestSp.x, y: bestSp.y };
+    }
+
+    if (goal) this.botSteer(out, p, goal.x, goal.y, bs, dt);
+    return out;
+  }
+
+  /* Walk toward (gx,gy) with a simple unstuck detour. */
+  botSteer(out, p, gx, gy, bs, dt) {
+    bs.checkT += dt;
+    if (bs.unstuckT > 0) {
+      bs.unstuckT -= dt;
+      out.mx = bs.detour.x; out.my = bs.detour.y;
+      return;
+    }
+    const dx = gx - p.x, dy = gy - p.y;
+    const dist = Math.hypot(dx, dy) || 1;
+    out.mx = dx / dist; out.my = dy / dist;
+    if (bs.checkT > 0.5) {
+      const moved = Math.hypot(p.x - bs.lastX, p.y - bs.lastY);
+      if (moved < 6 && dist > 30) {
+        // blocked: sidestep perpendicular for a moment
+        const sign = Math.random() < 0.5 ? 1 : -1;
+        bs.detour = { x: -out.my * sign, y: out.mx * sign };
+        bs.unstuckT = 0.7;
+      }
+      bs.checkT = 0;
+      bs.lastX = p.x; bs.lastY = p.y;
+    }
+  }
+
+  toggleAfk(p) {
+    p.afk = !p.afk;
+    if (!p.afk) p.bot = null;
+    UI.toast(t(p.afk ? 'ui.afkOn' : 'ui.afkOff', { name: t('class.' + p.clsId) + ' (P' + p.id + ')' }), p.afk ? 'gold' : 'info');
+    this.sfx(p.afk ? 'buff' : 'point');
+  }
+
+  /* ---------------- Combat helpers (used by skills) ---------------- */
+  computeBase(p, mult) {
+    const d = p.derived;
+    return d[p.cls.dmgStat] * mult * p.buffMul('dmgMul');
+  }
+
+  applyHit(owner, e, dmg, color) {
+    let final = dmg;
+    let crit = false;
+    if (owner && Math.random() * 100 < owner.derived.crit) {
+      final *= 1.75;
+      crit = true;
+    }
+    final = Math.round(final * (0.9 + Math.random() * 0.2));
+
+    if (this.net.isOnline && !this.net.isHost && e.remote) {
+      // predicted hit; host is authoritative
+      e.hp = Math.max(1, e.hp - final);
+      this.net.sendHit(e.idx, final);
+    } else {
+      e.takeDamage(final, owner);
+    }
+    this.addFloatText(e.x, e.y - 40, (crit ? '✦' : '') + final, crit ? '#ffd75e' : (color || '#fff'));
+    this.addEffect({ type: 'spark', x: e.x, y: e.y - 16, dur: 0.15, color: color || '#fff', r: 10 });
+    this.sfx('hit');
+  }
+
+  dealDamage(owner, e, mult, color) {
+    this.applyHit(owner, e, this.computeBase(owner, mult), color);
+  }
+
+  /* Enemy → player damage, routed to the right machine. */
+  damagePlayer(target, amount) {
+    if (target.isRemote) {
+      if (this.net.isOnline && this.net.isHost) this.net.sendPdmg(target.netKey, amount);
+    } else {
+      target.takeDamage(amount);
+    }
+  }
+
+  meleeArc(p, range, mult, color) {
+    for (const e of this.enemies) {
+      if (e.dead) continue;
+      const dx = e.x - p.x, dy = e.y - p.y;
+      const dist = Math.hypot(dx, dy);
+      const eR = 16 * (e.type.scale / 3);
+      if (dist > range + eR) continue;
+      const dot = (dx * p.face.x + dy * p.face.y) / (dist || 1);
+      if (dot > 0.15 || dist < 24) this.dealDamage(p, e, mult, color);
+    }
+  }
+
+  aoeDamage(p, x, y, r, mult, color, opts = {}) {
+    for (const e of this.enemies) {
+      if (e.dead) continue;
+      if (Math.hypot(e.x - x, e.y - y) < r + 16 * (e.type.scale / 3)) {
+        this.dealDamage(p, e, mult, color);
+        if (opts.slow) e.slowT = Math.max(e.slowT, opts.slow);
+      }
+    }
+  }
+
+  nearestEnemies(x, y, r, n) {
+    return this.enemies
+      .filter(e => !e.dead && Math.hypot(e.x - x, e.y - y) < r)
+      .sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))
+      .slice(0, n);
+  }
+
+  spawnProjectile(p, mult, opts = {}) {
+    let ang = Math.atan2(p.face.y, p.face.x);
+    // aim assist: snap to nearest enemy within a cone
+    const targets = this.nearestEnemies(p.x, p.y, 340, 5);
+    for (const e of targets) {
+      const ta = Math.atan2(e.y - p.y, e.x - p.x);
+      let diff = ta - ang;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      if (Math.abs(diff) < 0.5) { ang = ta; break; }
+    }
+    ang += opts.angleOffset || 0;
+    const speed = opts.speed || 380;
+    this.projectiles.push(new Projectile({
+      x: p.x + Math.cos(ang) * 14,
+      y: p.y - 14 + Math.sin(ang) * 14,
+      vx: Math.cos(ang) * speed,
+      vy: Math.sin(ang) * speed,
+      dmg: this.computeBase(p, mult),
+      team: 'player', owner: p,
+      color: opts.color || '#fff', size: opts.size || 4,
+      pierce: !!opts.pierce, aoe: opts.aoe || 0,
+    }));
+  }
+
+  spawnEnemyProjectile(e, target) {
+    const ang = Math.atan2((target.y - 14) - (e.y - 14), target.x - e.x);
+    const speed = e.type.boss ? 260 : 220;
+    const proj = {
+      x: e.x, y: e.y - 14,
+      vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed,
+      dmg: e.dmg, boss: e.type.boss ? 1 : 0,
+    };
+    this.spawnNetEnemyProjectile(proj);
+    if (this.net.isOnline && this.net.isHost) this.net.sendEproj(proj);
+  }
+
+  spawnNetEnemyProjectile(m) {
+    this.projectiles.push(new Projectile({
+      x: m.x, y: m.y, vx: m.vx, vy: m.vy,
+      dmg: m.dmg, team: 'enemy',
+      color: m.boss ? '#ff5030' : '#c9b8a0',
+      size: m.boss ? 7 : 4, life: 2.2,
+    }));
+    this.sfx('shoot');
+  }
+
+  explode(proj) {
+    this.aoeDamage(proj.owner, proj.x, proj.y + 14, proj.aoe, 1, proj.color);
+    this.addEffect({ type: 'ring', x: proj.x, y: proj.y, dur: 0.3, color: proj.color, r: proj.aoe });
+    this.sfx('hit');
+  }
+
+  healEntity(p, amount, quiet) {
+    const d = p.derived;
+    const healed = Math.min(d.maxHp - p.hp, amount);
+    if (healed <= 0.5) return;
+    p.hp += healed;
+    if (!quiet) this.addFloatText(p.x, p.y - 40, '+' + Math.round(healed), '#5ec96a');
+  }
+
+  /* ---------------- Networking glue ---------------- */
+  goOnline(url, room, name) {
+    if (this.net.isOnline) this.net.disconnect();
+    const net = new WSNet(this);
+    this.net = net;
+    net.connect(url, room, name);
+  }
+
+  goOffline() {
+    this.net.disconnect();
+    this.onNetDisconnect();
+  }
+
+  onNetDisconnect() {
+    this.remotePlayers.clear();
+    this.ghosts.clear();
+    this.trade = null;
+    this.pendingTrade = null;
+    UI.hideTradeRequest();
+    UI.closeTrade();
+    // reset enemy simulation locally
+    this.enemies = [];
+    for (const sp of this.world.spawnPoints) {
+      sp.enemy = null;
+      sp.respawnT = 1 + Math.random() * 4;
+    }
+    this.net = new LocalNet();
+    this.net.sync(this.players);
+    UI.updateOnlinePanel();
+  }
+
+  /* Client mode: stop simulating, wait for host snapshots. */
+  clearEnemiesForClientMode() {
+    this.enemies = [];
+    this.ghosts.clear();
+    for (const sp of this.world.spawnPoints) sp.enemy = null;
+  }
+
+  /* Promoted to host: adopt current ghosts as real enemies. */
+  becomeHost() {
+    for (const [i, e] of this.ghosts) {
+      e.remote = false;
+      const sp = this.world.spawnPoints[i];
+      if (sp) sp.enemy = e;
+    }
+    this.ghosts.clear();
+    for (const sp of this.world.spawnPoints) {
+      if (!sp.enemy) sp.respawnT = sp.boss ? 60 : 4 + Math.random() * 8;
+    }
+    UI.toast('★ ' + t('online.host'), 'info');
+  }
+
+  applyRemoteState(from, states) {
+    if (!from || from === this.net.id) return;
+    let list = this.remotePlayers.get(from);
+    if (!list) { list = []; this.remotePlayers.set(from, list); }
+    for (const s of states) {
+      if (!list[s.k]) {
+        const peer = this.net.peers.get(from);
+        list[s.k] = new RemotePlayer(from, s.k, (peer ? peer.name : '?') + (s.k > 0 ? ' ·2' : ''));
+      }
+      list[s.k].applyState(s);
+    }
+    if (list.length > states.length) list.length = states.length;
+  }
+
+  applyEnemySnapshot(snapList) {
+    const seen = new Set();
+    for (const s of snapList) {
+      seen.add(s.i);
+      let e = this.ghosts.get(s.i);
+      if (!e) {
+        const sp = this.world.spawnPoints[s.i];
+        if (!sp) continue;
+        e = new Enemy(sp, this);
+        e.remote = true;
+        e.x = s.x; e.y = s.y;
+        this.ghosts.set(s.i, e);
+        this.enemies.push(e);
+      }
+      e.netTarget(s);
+    }
+    for (const [i, e] of this.ghosts) {
+      if (!seen.has(i)) {
+        e.unseenT++;
+        if (e.unseenT > 25) e.dead = true;   // ~2.5s unseen → cull
+      }
+    }
+  }
+
+  applyNetHit(idx, dmg, from) {
+    const sp = this.world.spawnPoints[idx];
+    const e = sp && sp.enemy;
+    if (e && !e.dead) {
+      this.addFloatText(e.x, e.y - 40, dmg, '#c8d8ff');
+      e.takeDamage(dmg, from);
+    }
+  }
+
+  /* ---------------- Chat ---------------- */
+  myName() { return this.net.name || 'P1'; }
+
+  sendChat(text) {
+    text = text.trim().slice(0, 80);
+    if (!text) return;
+    UI.addChat(this.net.isOnline ? this.myName() : t('chat.you'), text, true);
+    if (this.players[0]) this.players[0].bubble = { text, ttl: 5 };
+    if (this.net.isOnline) this.net.send({ t: 'chat', text });
+  }
+
+  onChat(m) {
+    const peer = this.net.peers.get(m.from);
+    const name = peer ? peer.name : '?';
+    UI.addChat(name, String(m.text).slice(0, 80));
+    const list = this.remotePlayers.get(m.from);
+    if (list && list[0]) list[0].bubble = { text: String(m.text).slice(0, 80), ttl: 5 };
+    this.sfx('point');
+  }
+
+  /* ---------------- Trading ---------------- */
+  myKey(p) { return (this.net.id || 'local') + ':' + (p.id - 1); }
+
+  openTradeWith(fromPlayer, targetKey, targetName) {
+    if (this.trade || !this.net.isOnline) return;
+    this.trade = {
+      stage: 'waiting', me: fromPlayer, withKey: targetKey, withName: targetName,
+      myGold: 0, theirGold: 0, myAccept: false, theirAccept: false,
+    };
+    this.net.send({ t: 'trade_req', to: targetKey, fromKey: this.myKey(fromPlayer), name: this.myName() });
+    UI.renderTrade(this);
+  }
+
+  onTradeMsg(m) {
+    const tr = this.trade;
+    switch (m.t) {
+      case 'trade_req': {
+        if (this.trade || this.pendingTrade) {
+          this.net.send({ t: 'trade_no', to: m.fromKey, fromKey: m.to });
+          return;
+        }
+        const k = +m.to.split(':')[1];
+        this.pendingTrade = { fromKey: m.fromKey, name: m.name, player: this.players[k] || this.players[0] };
+        UI.showTradeRequest(this.pendingTrade);
+        this.sfx('pickup');
+        break;
+      }
+      case 'trade_ok':
+        if (tr && tr.stage === 'waiting' && m.fromKey === tr.withKey) {
+          tr.stage = 'open';
+          UI.openTradePanel();
+        }
+        break;
+      case 'trade_no':
+        if (tr && tr.stage === 'waiting') {
+          this.trade = null;
+          UI.renderTrade(this);
+          UI.toast(t('trade.declined'), 'info');
+        }
+        break;
+      case 'trade_set':
+        if (tr && tr.stage === 'open' && m.fromKey === tr.withKey) {
+          tr.theirGold = Math.max(0, Math.floor(+m.gold || 0));
+          tr.theirAccept = false;
+          UI.renderTrade(this);
+        }
+        break;
+      case 'trade_accept':
+        if (tr && tr.stage === 'open' && m.fromKey === tr.withKey) {
+          tr.theirAccept = !!m.accepted;
+          this.checkTradeDone();
+          if (this.trade) UI.renderTrade(this);
+        }
+        break;
+      case 'trade_cancel':
+        if (tr && m.fromKey === tr.withKey) {
+          this.trade = null;
+          UI.renderTrade(this);
+          UI.closeTrade();
+          UI.toast(t('trade.cancelled'), 'info');
+        }
+        if (this.pendingTrade && m.fromKey === this.pendingTrade.fromKey) {
+          this.pendingTrade = null;
+          UI.hideTradeRequest();
+        }
+        break;
+    }
+  }
+
+  answerTradeRequest(yes) {
+    const pt = this.pendingTrade;
+    if (!pt) return;
+    this.pendingTrade = null;
+    UI.hideTradeRequest();
+    if (!yes) {
+      this.net.send({ t: 'trade_no', to: pt.fromKey, fromKey: this.myKey(pt.player) });
+      return;
+    }
+    this.trade = {
+      stage: 'open', me: pt.player, withKey: pt.fromKey, withName: pt.name,
+      myGold: 0, theirGold: 0, myAccept: false, theirAccept: false,
+    };
+    this.net.send({ t: 'trade_ok', to: pt.fromKey, fromKey: this.myKey(pt.player) });
+    UI.openTradePanel();
+  }
+
+  setTradeGold(n) {
+    const tr = this.trade;
+    if (!tr || tr.stage !== 'open' || tr.myAccept) return;
+    tr.myGold = Math.max(0, Math.min(tr.me.gold, Math.floor(+n) || 0));
+    this.net.send({ t: 'trade_set', to: tr.withKey, fromKey: this.myKey(tr.me), gold: tr.myGold });
+    UI.renderTrade(this);
+  }
+
+  toggleTradeAccept() {
+    const tr = this.trade;
+    if (!tr || tr.stage !== 'open') return;
+    tr.myAccept = !tr.myAccept;
+    this.net.send({ t: 'trade_accept', to: tr.withKey, fromKey: this.myKey(tr.me), accepted: tr.myAccept });
+    this.checkTradeDone();
+    if (this.trade) UI.renderTrade(this);
+  }
+
+  checkTradeDone() {
+    const tr = this.trade;
+    if (tr && tr.stage === 'open' && tr.myAccept && tr.theirAccept) {
+      tr.stage = 'done';
+      tr.me.gold += tr.theirGold - tr.myGold;
+      this.trade = null;
+      UI.renderTrade(this);
+      UI.closeTrade();
+      UI.toast(t('trade.done'));
+      this.sfx('gold');
+      this.save();
+    }
+  }
+
+  cancelTrade() {
+    const tr = this.trade;
+    if (!tr) return;
+    this.net.send({ t: 'trade_cancel', to: tr.withKey, fromKey: this.myKey(tr.me) });
+    this.trade = null;
+    UI.renderTrade(this);
+  }
+
+  onPeerLeft(clientId) {
+    if (this.trade && this.trade.withKey.indexOf(clientId + ':') === 0) {
+      this.trade = null;
+      UI.renderTrade(this);
+      UI.closeTrade();
+      UI.toast(t('trade.cancelled'), 'info');
+    }
+    if (this.pendingTrade && this.pendingTrade.fromKey.indexOf(clientId + ':') === 0) {
+      this.pendingTrade = null;
+      UI.hideTradeRequest();
+    }
+  }
+
+  /* ---------------- Events ---------------- */
+  onEnemyDeath(e, from) {
+    const killer = (typeof from === 'string') ? from : (this.net.id || 'local');
+    if (this.net.isOnline && this.net.isHost) {
+      this.net.sendEdead({ i: e.idx, xp: e.xp, x: Math.round(e.x), y: Math.round(e.y), killer, boss: e.type.boss ? 1 : 0 });
+    }
+    this.handleEnemyDead(e.idx, e.xp, e.x, e.y, killer, e.type.boss, (from instanceof Player) ? from : null);
+  }
+
+  handleEnemyDead(idx, xp, x, y, killer, isBoss, localKiller) {
+    // clear ghost if we track one
+    const gh = this.ghosts.get(idx);
+    if (gh) { gh.dead = true; this.ghosts.delete(idx); }
+
+    // XP: full for the killer, 60% for nearby party members
+    const weKilled = killer === (this.net.id || 'local');
+    for (const p of this.players) {
+      if (p.dead) continue;
+      const full = localKiller ? p === localKiller : weKilled;
+      const near = Math.hypot(p.x - x, p.y - y) < 700;
+      if (full) p.gainXp(xp);
+      else if (near) p.gainXp(Math.round(xp * 0.6));
+    }
+
+    this.addEffect({ type: 'ring', x, y: y - 12, dur: 0.3, color: '#fff', r: 20 });
+    this.addFloatText(x, y - 52, '+' + xp + ' XP', '#b45eff');
+    this.sfx('die');
+
+    // drops are local: everyone gets their own loot
+    if (this.playerNearLocal(x, y, 650)) {
+      const roll = Math.random();
+      if (roll < 0.3) this.pickups.push(new Pickup('heart', x - 10, y, 0.25));
+      else if (roll < 0.5) this.pickups.push(new Pickup('orb', x - 10, y, 0.35));
+      const type = ENEMY_TYPES[this.world.spawnPoints[idx] ? this.world.spawnPoints[idx].type : 'slime'];
+      const [gMin, gMax] = type.gold;
+      this.pickups.push(new Pickup('coin', x + 10, y, gMin + Math.floor(Math.random() * (gMax - gMin + 1))));
+    }
+
+    if (isBoss) {
+      UI.toast(t('ui.bossDown'));
+      this.sfx('levelup');
+    }
+  }
+
+  playerNearLocal(x, y, r) {
+    return this.players.some(p => !p.dead && Math.hypot(p.x - x, p.y - y) < r);
+  }
+
+  collectPickup(pk, p) {
+    const d = p.derived;
+    if (pk.kind === 'heart') {
+      this.healEntity(p, d.maxHp * pk.value);
+      this.sfx('pickup');
+    } else if (pk.kind === 'orb') {
+      p.mp = Math.min(d.maxMp, p.mp + d.maxMp * pk.value);
+      this.addFloatText(p.x, p.y - 40, '+MP', '#3d8bff');
+      this.sfx('pickup');
+    } else {
+      p.gold += pk.value;
+      this.addFloatText(p.x, p.y - 40, '+' + pk.value + '🪙', '#ffd75e');
+      this.sfx('gold');
+    }
+  }
+
+  onLevelUp(p) {
+    UI.toast(t('ui.levelUp', { name: t('class.' + p.clsId) + ' (P' + p.id + ')', lv: p.level }));
+    this.addEffect({ type: 'ring', x: p.x, y: p.y - 12, dur: 0.6, color: '#ffd75e', r: 60 });
+    this.sfx('levelup');
+    this.save();
+  }
+
+  onPlayerDeath(p) {
+    UI.toast(t('ui.dead', { name: 'P' + p.id, s: 4 }), 'info');
+    this.addEffect({ type: 'ring', x: p.x, y: p.y - 12, dur: 0.5, color: '#ff4050', r: 40 });
+    this.sfx('die');
+  }
+
+  addEffect(fx) { fx.t = 0; this.effects.push(fx); }
+  addFloatText(x, y, text, color) { this.floatTexts.push({ x, y, text, color, t: 0 }); }
+  sfx(name) { if (SFX[name]) SFX[name](); }
+
+  /* ---------------- Save / Load ---------------- */
+  save() {
+    const data = {
+      v: 1,
+      players: this.players.map(p => ({
+        id: p.id, clsId: p.clsId, level: p.level, xp: p.xp,
+        statPoints: p.statPoints, gold: p.gold, stats: p.stats,
+      })),
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  }
+
+  static loadSave() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data.players || !data.players.length) return null;
+      return data;
+    } catch (e) { return null; }
+  }
+
+  /* ---------------- Draw ---------------- */
+  draw() {
+    const g = this.g, cam = this.cam;
+    const vw = this.canvas.width, vh = this.canvas.height;
+
+    // ground
+    g.drawImage(this.world.baked, cam.x, cam.y, vw, vh, 0, 0, vw, vh);
+
+    // gather y-sorted drawables
+    const drawables = [];
+    const tx0 = Math.floor(cam.x / TILE) - 1, ty0 = Math.floor(cam.y / TILE) - 1;
+    const tx1 = Math.ceil((cam.x + vw) / TILE) + 1, ty1 = Math.ceil((cam.y + vh) / TILE) + 1;
+    for (let ty = ty0; ty <= ty1; ty++) {
+      for (let tx = tx0; tx <= tx1; tx++) {
+        const obj = this.world.objects.get(tx + ',' + ty);
+        if (obj) drawables.push({ y: ty * TILE + 30, obj });
+      }
+    }
+    for (const p of this.players) if (!p.dead) drawables.push({ y: p.y, ent: p });
+    for (const [, list] of this.remotePlayers) {
+      for (const rp of list) if (!rp.dead) drawables.push({ y: rp.y, ent: rp });
+    }
+    for (const e of this.enemies) {
+      if (e.x > cam.x - 80 && e.x < cam.x + vw + 80 && e.y > cam.y - 80 && e.y < cam.y + vh + 80) {
+        drawables.push({ y: e.y, ent: e });
+      }
+    }
+    for (const pk of this.pickups) drawables.push({ y: pk.y, pk });
+    drawables.sort((a, b) => a.y - b.y);
+
+    for (const d of drawables) {
+      if (d.obj) {
+        const s = SPRITES[d.obj.type];
+        g.drawImage(s, Math.round(d.obj.tx * TILE - 8 - cam.x), Math.round(d.obj.ty * TILE - 16 - cam.y), 48, 48);
+      } else if (d.ent) {
+        d.ent.draw(g, cam);
+      } else if (d.pk) {
+        d.pk.draw(g, cam);
+      }
+    }
+
+    for (const pr of this.projectiles) pr.draw(g, cam);
+
+    // effects
+    for (const fx of this.effects) {
+      const k = fx.t / fx.dur;
+      g.globalAlpha = 1 - k;
+      if (fx.type === 'ring') {
+        g.strokeStyle = fx.color; g.lineWidth = 3;
+        g.beginPath();
+        g.arc(fx.x - cam.x, fx.y - cam.y, fx.r * (0.4 + k * 0.6), 0, Math.PI * 2);
+        g.stroke();
+      } else if (fx.type === 'slash') {
+        g.strokeStyle = fx.color; g.lineWidth = 4;
+        g.beginPath();
+        g.arc(fx.x - cam.x, fx.y - cam.y, fx.r, -0.7 + k * 1.2, 0.7 + k * 1.2);
+        g.stroke();
+      } else if (fx.type === 'spark') {
+        g.fillStyle = fx.color;
+        for (let i = 0; i < 4; i++) {
+          const a = (i / 4) * Math.PI * 2 + k * 2;
+          g.fillRect(fx.x - cam.x + Math.cos(a) * fx.r * k * 2, fx.y - cam.y + Math.sin(a) * fx.r * k * 2, 3, 3);
+        }
+      } else if (fx.type === 'bolt') {
+        g.strokeStyle = fx.color; g.lineWidth = 3;
+        g.beginPath();
+        g.moveTo(fx.x - cam.x + 8, fx.y - cam.y - 70);
+        g.lineTo(fx.x - cam.x - 6, fx.y - cam.y - 34);
+        g.lineTo(fx.x - cam.x + 6, fx.y - cam.y - 30);
+        g.lineTo(fx.x - cam.x, fx.y - cam.y - 10);
+        g.stroke();
+      } else if (fx.type === 'aura') {
+        g.globalAlpha = 0.18 + Math.sin(this.time * 5) * 0.05;
+        g.fillStyle = fx.color;
+        g.beginPath();
+        g.arc(fx.x - cam.x, fx.y - cam.y, fx.r, 0, Math.PI * 2);
+        g.fill();
+        g.globalAlpha = 0.5;
+        g.strokeStyle = fx.color;
+        g.stroke();
+      }
+      g.globalAlpha = 1;
+    }
+
+    // float texts
+    g.font = 'bold 13px monospace';
+    g.textAlign = 'center';
+    for (const ft of this.floatTexts) {
+      g.globalAlpha = 1 - ft.t;
+      g.fillStyle = '#000';
+      g.fillText(ft.text, ft.x - cam.x + 1, ft.y - cam.y + 1);
+      g.fillStyle = ft.color;
+      g.fillText(ft.text, ft.x - cam.x, ft.y - cam.y);
+    }
+    g.globalAlpha = 1;
+
+    // offscreen partner arrow
+    for (const p of this.players) {
+      if (p.dead) continue;
+      const sx = p.x - cam.x, sy = p.y - cam.y;
+      if (sx < 0 || sx > vw || sy < 0 || sy > vh) {
+        const ax = Math.max(20, Math.min(vw - 20, sx));
+        const ay = Math.max(20, Math.min(vh - 20, sy));
+        g.fillStyle = p.id === 1 ? '#ffd75e' : '#6ee2ff';
+        g.beginPath();
+        const ang = Math.atan2(sy - ay, sx - ax);
+        g.moveTo(ax + Math.cos(ang) * 12, ay + Math.sin(ang) * 12);
+        g.lineTo(ax + Math.cos(ang + 2.5) * 9, ay + Math.sin(ang + 2.5) * 9);
+        g.lineTo(ax + Math.cos(ang - 2.5) * 9, ay + Math.sin(ang - 2.5) * 9);
+        g.fill();
+      }
+    }
+
+    // dead player banner
+    for (const p of this.players) {
+      if (!p.dead) continue;
+      g.font = 'bold 16px monospace';
+      g.fillStyle = 'rgba(0,0,0,.6)';
+      g.fillRect(vw / 2 - 190, 100 + p.id * 30 - 18, 380, 26);
+      g.fillStyle = '#ff8080';
+      g.fillText(t('ui.dead', { name: 'P' + p.id, s: Math.ceil(p.respawnT) }), vw / 2, 100 + p.id * 30);
+    }
+  }
+}
+
+/* ============================================================
+ * Bootstrap — title screen, input listeners, overlays
+ * ============================================================ */
+
+let game = null;
+
+function initTitle() {
+  applyI18n();
+  UI.buildClassCards('class-grid', clsId => {
+    UI.selectedClass = clsId;
+    document.getElementById('btn-start').disabled = false;
+  });
+
+  const saveData = Game.loadSave();
+  if (saveData) document.getElementById('btn-continue').classList.remove('hidden');
+
+  document.getElementById('btn-start').addEventListener('click', () => {
+    startGame([{ id: 1, clsId: UI.selectedClass }]);
+  });
+
+  document.getElementById('btn-continue').addEventListener('click', () => {
+    const data = Game.loadSave();
+    if (data) startGame(data.players.map(p => ({ id: p.id, clsId: p.clsId, saved: p })));
+    else document.getElementById('btn-continue').classList.add('hidden');
+  });
+
+  document.querySelectorAll('.lang-choice').forEach(btn => {
+    btn.addEventListener('click', () => setLang(btn.dataset.lang));
+  });
+}
+
+function startGame(playerDefs) {
+  ensureAudio();
+  game = new Game();
+  UI.game = game;
+  for (const def of playerDefs) game.addPlayer(def.id, def.clsId, def.saved);
+  document.getElementById('title-screen').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+  game.save();
+  game.start();
+}
+
+function openP2Select() {
+  if (!game || game.players.length > 1) return;
+  UI.buildClassCards('class-grid-p2', clsId => {
+    document.getElementById('p2-select').classList.add('hidden');
+    game.addPlayer(2, clsId);
+    UI.toast(t('ui.p2Joined'));
+    game.sfx('levelup');
+    game.save();
+  });
+  document.getElementById('p2-select').classList.remove('hidden');
+}
+
+/* ---------------- Global listeners ---------------- */
+window.addEventListener('keydown', e => {
+  ensureAudio();
+
+  // hotkey rebinding capture
+  if (UI.listening) {
+    e.preventDefault();
+    UI.captureKey(e.code);
+    return;
+  }
+
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+  const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
+  if (!typing) keys.add(e.code);
+
+  if (!game || typing) return;
+
+  for (const p of game.players) {
+    if (e.code === KEYS[p.id].panel) {
+      const open = !document.getElementById('stat-panel').classList.contains('hidden');
+      if (open && UI.statPanelPlayer === p) UI.closeStatPanel();
+      else UI.openStatPanel(p);
+    }
+    if (e.code === KEYS[p.id].afk) game.toggleAfk(p);
+  }
+  if (e.code === 'KeyP') openP2Select();
+  if (e.code === 'Enter') {
+    e.preventDefault();
+    document.getElementById('chat-input').focus();
+  }
+  if (e.code === 'Escape') {
+    UI.closeStatPanel();
+    UI.closeKeysPanel();
+    if (game && game.trade) game.cancelTrade();
+    UI.closeTrade();
+    document.getElementById('p2-select').classList.add('hidden');
+    document.getElementById('help-panel').classList.add('hidden');
+    document.getElementById('online-panel').classList.add('hidden');
+  }
+});
+
+window.addEventListener('keyup', e => keys.delete(e.code));
+window.addEventListener('pointerdown', ensureAudio);
+window.addEventListener('beforeunload', () => { if (game) game.save(); });
+
+document.addEventListener('DOMContentLoaded', () => {
+  initTitle();
+
+  document.getElementById('btn-lang').addEventListener('click', () => {
+    setLang(currentLang === 'en' ? 'th' : 'en');
+  });
+  document.getElementById('btn-help').addEventListener('click', () => UI.showHelp());
+  document.getElementById('btn-help-close').addEventListener('click', () =>
+    document.getElementById('help-panel').classList.add('hidden'));
+  document.getElementById('btn-sp-close').addEventListener('click', () => UI.closeStatPanel());
+  document.getElementById('btn-join-p2').addEventListener('click', openP2Select);
+  document.getElementById('btn-p2-cancel').addEventListener('click', () =>
+    document.getElementById('p2-select').classList.add('hidden'));
+
+  // AFK buttons
+  document.getElementById('afk-p1').addEventListener('click', () => {
+    if (game && game.players[0]) game.toggleAfk(game.players[0]);
+  });
+  document.getElementById('afk-p2').addEventListener('click', () => {
+    if (game && game.players[1]) game.toggleAfk(game.players[1]);
+  });
+
+  // hotkey settings
+  document.getElementById('btn-keys').addEventListener('click', () => UI.openKeysPanel());
+  document.getElementById('btn-keys-close').addEventListener('click', () => UI.closeKeysPanel());
+  document.getElementById('btn-keys-reset').addEventListener('click', () => {
+    resetKeys();
+    UI.renderKeysPanel();
+    UI.rebuildSkillbars();
+  });
+
+  // chat
+  const chatInput = document.getElementById('chat-input');
+  chatInput.addEventListener('keydown', e => {
+    e.stopPropagation();
+    if (e.key === 'Enter') {
+      if (game) game.sendChat(chatInput.value);
+      chatInput.value = '';
+      chatInput.blur();
+    }
+    if (e.key === 'Escape') chatInput.blur();
+  });
+
+  // trading
+  document.getElementById('btn-trade').addEventListener('click', () => UI.openTradePanel());
+  document.getElementById('btn-trade-close').addEventListener('click', () => {
+    if (game && game.trade) game.cancelTrade();
+    UI.closeTrade();
+  });
+  document.getElementById('btn-trade-yes').addEventListener('click', () => {
+    if (game) game.answerTradeRequest(true);
+  });
+  document.getElementById('btn-trade-no').addEventListener('click', () => {
+    if (game) game.answerTradeRequest(false);
+  });
+
+  // smart default server address:
+  //  - https page  -> wss:// same host (cloud deploy, TLS)
+  //  - http page   -> ws://<hostname>:8765 (server.py on the same machine/LAN)
+  //  - file://     -> ws://localhost:8765
+  const urlInput = document.getElementById('online-url');
+  if (location.protocol === 'https:') urlInput.value = 'wss://' + location.host;
+  else if (location.protocol === 'http:' && location.port === '8765') urlInput.value = 'ws://' + location.host;
+  else urlInput.value = 'ws://' + (location.hostname || 'localhost') + ':8765';
+
+  // online multiplayer
+  document.getElementById('btn-online').addEventListener('click', () => UI.openOnlinePanel());
+  document.getElementById('btn-online-close').addEventListener('click', () =>
+    document.getElementById('online-panel').classList.add('hidden'));
+  document.getElementById('btn-online-connect').addEventListener('click', () => {
+    if (!game) return;
+    game.goOnline(
+      document.getElementById('online-url').value.trim(),
+      document.getElementById('online-room').value.trim() || 'realm-1',
+      document.getElementById('online-name').value.trim() || 'Hero'
+    );
+  });
+  document.getElementById('btn-online-disconnect').addEventListener('click', () => {
+    if (game) game.goOffline();
+  });
+
+  // rebuild language-dependent DOM when language changes
+  document.addEventListener('langchange', () => {
+    if (!game) {
+      UI.buildClassCards('class-grid', clsId => {
+        UI.selectedClass = clsId;
+        document.getElementById('btn-start').disabled = false;
+      });
+      if (UI.selectedClass) {
+        const card = document.querySelector(`#class-grid .class-card[data-cls="${UI.selectedClass}"]`);
+        if (card) card.classList.add('selected');
+        document.getElementById('btn-start').disabled = false;
+      }
+    } else {
+      UI.refreshSkillNames();
+      if (UI.statPanelPlayer) UI.renderStatPanel(UI.statPanelPlayer);
+      if (!document.getElementById('keys-panel').classList.contains('hidden')) UI.renderKeysPanel();
+      UI.updateOnlinePanel();
+    }
+    if (!document.getElementById('help-panel').classList.contains('hidden')) UI.showHelp();
+  });
+
+  applyI18n();
+});

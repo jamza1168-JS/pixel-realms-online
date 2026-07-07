@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel Realms Online</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="game-wrap">
+  <canvas id="game-canvas"></canvas>
+
+  <!-- ===== HUD ===== -->
+  <div id="hud" class="hidden">
+    <div id="hud-top-left">
+      <div class="player-frame" id="frame-p1">
+        <div class="pf-head">
+          <span class="pf-name" id="p1-name">P1</span>
+          <span class="pf-level"><span data-i18n="ui.lv">Lv</span> <span id="p1-level">1</span></span>
+          <button class="pix-btn small afk-btn" id="afk-p1" data-i18n="ui.afk">AUTO</button>
+        </div>
+        <div class="bar hp-bar"><div class="bar-fill" id="p1-hp"></div><span class="bar-text" id="p1-hp-text"></span></div>
+        <div class="bar mp-bar"><div class="bar-fill" id="p1-mp"></div><span class="bar-text" id="p1-mp-text"></span></div>
+        <div class="bar xp-bar"><div class="bar-fill" id="p1-xp"></div></div>
+        <div class="pf-points hidden" id="p1-points-hint">✨ <span data-i18n="ui.pointsHint">Stat points!</span></div>
+      </div>
+      <div class="player-frame hidden" id="frame-p2">
+        <div class="pf-head">
+          <span class="pf-name" id="p2-name">P2</span>
+          <span class="pf-level"><span data-i18n="ui.lv">Lv</span> <span id="p2-level">1</span></span>
+          <button class="pix-btn small afk-btn" id="afk-p2" data-i18n="ui.afk">AUTO</button>
+        </div>
+        <div class="bar hp-bar"><div class="bar-fill" id="p2-hp"></div><span class="bar-text" id="p2-hp-text"></span></div>
+        <div class="bar mp-bar"><div class="bar-fill" id="p2-mp"></div><span class="bar-text" id="p2-mp-text"></span></div>
+        <div class="bar xp-bar"><div class="bar-fill" id="p2-xp"></div></div>
+        <div class="pf-points hidden" id="p2-points-hint">✨ <span data-i18n="ui.pointsHint2">Stat points!</span></div>
+      </div>
+    </div>
+
+    <div id="hud-top-right">
+      <button id="btn-lang" class="pix-btn small"></button>
+      <button id="btn-help" class="pix-btn small">?</button>
+      <button id="btn-keys" class="pix-btn small">⌨</button>
+      <button id="btn-online" class="pix-btn small">🌐</button>
+      <button id="btn-trade" class="pix-btn small">🤝</button>
+      <div id="online-badge"><span class="dot"></span><span id="online-text"></span></div>
+      <canvas id="minimap" width="150" height="150"></canvas>
+      <div id="zone-name"></div>
+    </div>
+
+    <div id="hud-bottom">
+      <div id="skillbar-p1" class="skillbar"></div>
+      <div id="hud-center-info">
+        <div id="gold-display">🪙 <span id="gold-amount">0</span></div>
+        <button id="btn-join-p2" class="pix-btn small"><span data-i18n="ui.joinP2">+ P2 Join (P)</span></button>
+      </div>
+      <div id="skillbar-p2" class="skillbar hidden"></div>
+    </div>
+
+    <div id="toast-area"></div>
+
+    <!-- chat -->
+    <div id="chat-box">
+      <div id="chat-log"></div>
+      <input id="chat-input" class="pix-input" maxlength="80" autocomplete="off" data-i18n-ph="chat.placeholder">
+    </div>
+
+    <!-- incoming trade request -->
+    <div id="trade-request" class="hidden">
+      <span id="trade-req-text"></span>
+      <button id="btn-trade-yes" class="pix-btn small" data-i18n="trade.accept">Accept</button>
+      <button id="btn-trade-no" class="pix-btn small" data-i18n="trade.decline">Decline</button>
+    </div>
+  </div>
+
+  <!-- ===== TITLE SCREEN ===== -->
+  <div id="title-screen" class="overlay">
+    <div class="title-inner">
+      <h1 id="game-title">PIXEL REALMS <span>ONLINE</span></h1>
+      <p class="subtitle" data-i18n="title.subtitle">A co-op pixel MMO adventure</p>
+      <div class="title-lang">
+        <button class="pix-btn small lang-choice" data-lang="en">English</button>
+        <button class="pix-btn small lang-choice" data-lang="th">ภาษาไทย</button>
+      </div>
+      <h2 data-i18n="title.chooseClass">Choose your class</h2>
+      <div id="class-grid"></div>
+      <div class="title-buttons">
+        <button id="btn-start" class="pix-btn big" disabled data-i18n="title.start">START ADVENTURE</button>
+        <button id="btn-continue" class="pix-btn big hidden" data-i18n="title.continue">CONTINUE</button>
+      </div>
+      <p class="hint" data-i18n="title.coopHint">Player 2 can join anytime in-game — press P</p>
+    </div>
+  </div>
+
+  <!-- ===== P2 CLASS SELECT ===== -->
+  <div id="p2-select" class="overlay hidden">
+    <div class="panel">
+      <h2 data-i18n="ui.p2Choose">Player 2 — choose your class</h2>
+      <div id="class-grid-p2"></div>
+      <button id="btn-p2-cancel" class="pix-btn" data-i18n="ui.cancel">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ===== STAT PANEL ===== -->
+  <div id="stat-panel" class="overlay hidden">
+    <div class="panel">
+      <h2 id="sp-title"></h2>
+      <div class="sp-summary">
+        <span id="sp-class"></span> · <span data-i18n="ui.lv">Lv</span> <span id="sp-level"></span>
+        · <span data-i18n="ui.points">Points</span>: <b id="sp-points" class="gold-text">0</b>
+      </div>
+      <div id="sp-stats"></div>
+      <div id="sp-derived"></div>
+      <button id="btn-sp-close" class="pix-btn" data-i18n="ui.close">Close</button>
+    </div>
+  </div>
+
+  <!-- ===== HELP ===== -->
+  <div id="help-panel" class="overlay hidden">
+    <div class="panel">
+      <h2 data-i18n="help.title">How to play</h2>
+      <div id="help-content"></div>
+      <button id="btn-help-close" class="pix-btn" data-i18n="ui.close">Close</button>
+    </div>
+  </div>
+
+  <!-- ===== HOTKEY SETTINGS ===== -->
+  <div id="keys-panel" class="overlay hidden">
+    <div class="panel">
+      <h2 data-i18n="keys.title">Hotkey Settings</h2>
+      <div id="keys-table"></div>
+      <button id="btn-keys-reset" class="pix-btn small" data-i18n="keys.reset">Reset to defaults</button>
+      <button id="btn-keys-close" class="pix-btn" data-i18n="ui.close">Close</button>
+    </div>
+  </div>
+
+  <!-- ===== TRADE ===== -->
+  <div id="trade-panel" class="overlay hidden">
+    <div class="panel">
+      <h2 data-i18n="trade.title">Trade</h2>
+      <div id="trade-content"></div>
+      <button id="btn-trade-close" class="pix-btn" data-i18n="ui.close">Close</button>
+    </div>
+  </div>
+
+  <!-- ===== ONLINE MULTIPLAYER ===== -->
+  <div id="online-panel" class="overlay hidden">
+    <div class="panel">
+      <h2 data-i18n="online.title">Online Multiplayer</h2>
+      <div class="online-form">
+        <label><span data-i18n="online.server">Server address</span>
+          <input id="online-url" class="pix-input" value="ws://localhost:8765">
+        </label>
+        <label><span data-i18n="online.room">Room</span>
+          <input id="online-room" class="pix-input" value="realm-1" maxlength="24">
+        </label>
+        <label><span data-i18n="online.name">Your name</span>
+          <input id="online-name" class="pix-input" value="" maxlength="14">
+        </label>
+      </div>
+      <div id="online-status" class="online-status"></div>
+      <div>
+        <button id="btn-online-connect" class="pix-btn big" data-i18n="online.connect">Connect</button>
+        <button id="btn-online-disconnect" class="pix-btn hidden" data-i18n="online.disconnect">Disconnect</button>
+      </div>
+      <p class="hint" data-i18n="online.hint"></p>
+      <button id="btn-online-close" class="pix-btn" data-i18n="ui.close">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/i18n.js"></script>
+<script src="js/sprites.js"></script>
+<script src="js/data.js"></script>
+<script src="js/world.js"></script>
+<script src="js/net.js"></script>
+<script src="js/entities.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

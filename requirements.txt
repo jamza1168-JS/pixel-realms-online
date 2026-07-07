@@ -1,0 +1,2 @@
+# Pixel Realms Online uses only the Python standard library.
+# This file exists so cloud platforms (Render, Railway...) can build.

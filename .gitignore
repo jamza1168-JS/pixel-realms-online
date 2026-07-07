@@ -1,0 +1,4 @@
+# local tooling
+.claude/
+__pycache__/
+*.pyc

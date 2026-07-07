@@ -1,0 +1,11 @@
+# One-click deploy to Render (free tier): https://render.com
+# New > Blueprint > point at this repo. Render injects PORT and
+# terminates TLS, so players connect with wss://<app>.onrender.com
+# — the game auto-fills that address when served over https.
+services:
+  - type: web
+    name: pixel-realms-online
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python server.py"

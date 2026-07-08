@@ -497,8 +497,9 @@ const UI = {
 
     // online badge
     if (game.net.isOnline) {
+      const where = game.net.roomLabel ? ' · ' + game.net.roomLabel : '';
       this.$('online-text').textContent = t('online.players', { n: game.net.playerCount }) +
-        (game.net.isHost ? ' ★' : '');
+        where + (game.net.isHost ? ' ★' : '');
     } else {
       this.$('online-text').textContent = t('ui.online') + ' · ' + game.net.playerCount + 'P';
     }
@@ -684,11 +685,14 @@ const UI = {
     const net = this.game ? this.game.net : null;
     const s = net ? net.status : 'off';
     status.className = 'online-status ' + (s === 'on' ? 'on' : s === 'error' ? 'err' : s === 'connecting' ? 'connecting' : '');
+    const where = (net && net.roomLabel) ? ' · ' + net.roomLabel : '';
     status.textContent =
-      s === 'on' ? '● ' + t('online.on') + (net.isHost ? ' ★ ' + t('online.host') : '') :
+      s === 'on' ? '● ' + t('online.on') + where + (net.isHost ? ' ★ ' + t('online.host') : '') :
       s === 'connecting' ? t('online.connecting') :
       s === 'error' ? t('online.error') : t('online.off');
-    this.$('btn-online-connect').classList.toggle('hidden', s === 'on');
+    // show the join controls only while disconnected
+    const area = this.$('online-connect-area');
+    if (area) area.classList.toggle('hidden', s === 'on');
     this.$('btn-online-disconnect').classList.toggle('hidden', s !== 'on');
   },
 

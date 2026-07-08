@@ -77,9 +77,10 @@ class WSNet extends NetAdapter {
     return n;
   }
 
-  connect(url, room, name) {
+  connect(url, room, name, password = '', publicWorld = false) {
     this.status = 'connecting';
     this.name = name;
+    this.roomLabel = null;
     UI.updateOnlinePanel();
     try {
       this.ws = new WebSocket(url);
@@ -88,7 +89,7 @@ class WSNet extends NetAdapter {
       UI.updateOnlinePanel();
       return;
     }
-    this.ws.onopen = () => this.send({ t: 'join', room, name });
+    this.ws.onopen = () => this.send({ t: 'join', room, name, password, public: publicWorld });
     this.ws.onmessage = ev => {
       try { this.handle(JSON.parse(ev.data)); } catch (e) { /* ignore bad frame */ }
     };
@@ -124,10 +125,31 @@ class WSNet extends NetAdapter {
         UI.toast(t('online.nameTaken'), 'info');
         UI.updateOnlinePanel();
         break;
+      case 'wrong_password':
+        this.joinError = 'wrongPass';
+        this.disconnect();
+        this.status = 'error';
+        UI.toast(t('online.wrongPassword'), 'info');
+        UI.updateOnlinePanel();
+        break;
+      case 'room_full':
+        this.joinError = 'roomFull';
+        this.disconnect();
+        this.status = 'error';
+        UI.toast(t('online.roomFull'), 'info');
+        UI.updateOnlinePanel();
+        break;
       case 'welcome':
         this.id = m.id;
         this.host = m.host;
         this.status = 'on';
+        // remember which world channel / private room we landed in
+        this.public = !!m.public;
+        this.channel = m.channel || 0;
+        this.roomName = m.room || null;
+        this.roomLabel = m.public
+          ? t('online.worldCh', { n: m.channel })
+          : (m.room || null);
         for (const pr of m.peers) this.peers.set(pr.id, { name: pr.name });
         if (!this.host) g.clearEnemiesForClientMode();
         UI.toast(t('online.on') + (this.host ? ' ★ ' + t('online.host') : ''));

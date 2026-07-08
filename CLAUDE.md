@@ -42,6 +42,13 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
 
 - Server relays JSON to everyone else in the room and stamps `from`; the
   first client in a room is host, promoted on leave (`host` message).
+- Rooms are capped at `ROOM_CAP = 20`. `{t:'join', public:true}` drops the
+  client into the first public channel (`@world-N`) with a free slot,
+  auto-opening the next channel when full. `{t:'join', room, password}`
+  is a private room: the creator sets the password; wrong password →
+  `wrong_password`, full → `room_full`. `welcome` carries
+  `{room, channel, public}` (via `room_display`); the client shows
+  `net.roomLabel` ("World · Ch N" or the room name).
 - Host simulates enemies and broadcasts snapshots ~10 Hz keyed by
   **spawn-point index** (`e.idx`); worlds are identical via `WORLD_SEED`,
   so only entity state syncs. Clients keep `ghosts` (Enemy with

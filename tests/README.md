@@ -28,6 +28,8 @@ node patch3a_test.js               # HUD name/level+ellipsis, buff chips, AFK fo
                                    #   boss priority/flee, retreat routing, name uniqueness
 node items_test.js                 # roll/tiers, equip stat changes, weapon dmgMul, potions,
                                    #   drops, pickup->bag, inventory UI equip, save/load
+node shop_test.js                  # merchant buy/sell, storage deposit/withdraw+merge,
+                                   #   hotkey potion assign/use/key, save/load
 ```
 
 If Playwright can't find a browser, point `PW_CHROMIUM` at a Chromium binary:

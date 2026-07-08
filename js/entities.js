@@ -33,8 +33,9 @@ class Player {
     this.stats = Object.assign({}, this.cls.base);
 
     this.inventory = [];                // item instances (gear + potion stacks)
+    this.storage = [];                  // stash — keeps items out of the bag
     this.equip = { head: null, chest: null, hands: null, legs: null, boots: null };
-    this.quickItems = [null, null, null];   // hotkey potion slots (PR-B)
+    this.quickItems = [null, null, null];   // hotkey potion slots — potion keys
 
     this.x = game.world.spawnX;
     this.y = game.world.spawnY + 20;
@@ -91,20 +92,37 @@ class Player {
     return agg;
   }
 
-  addItem(item) {
+  /* Add to a list, stacking potions of the same key. */
+  _addTo(list, item) {
     if (!item) return;
     if (item.kind === 'potion') {
-      const stack = this.inventory.find(i => i.kind === 'potion' && i.key === item.key);
+      const stack = list.find(i => i.kind === 'potion' && i.key === item.key);
       if (stack) { stack.count += (item.count || 1); return; }
     }
-    this.inventory.push(item);
+    list.push(item);
   }
 
-  removeItem(item, n = 1) {
-    const i = this.inventory.indexOf(item);
+  _removeFrom(list, item, n = 1) {
+    const i = list.indexOf(item);
     if (i < 0) return;
     if (item.kind === 'potion' && (item.count || 1) > n) { item.count -= n; return; }
-    this.inventory.splice(i, 1);
+    list.splice(i, 1);
+  }
+
+  addItem(item) { this._addTo(this.inventory, item); }
+  removeItem(item, n = 1) { this._removeFrom(this.inventory, item, n); }
+
+  /* Move an item between the bag and the storage stash. */
+  depositItem(item, n) {
+    const move = (item.kind === 'potion') ? Math.min(n || (item.count || 1), item.count || 1) : 1;
+    this._removeFrom(this.inventory, item, move);
+    this._addTo(this.storage, item.kind === 'potion' ? { uid: itemUid(), key: item.key, kind: 'potion', count: move } : item);
+  }
+
+  withdrawItem(item, n) {
+    const move = (item.kind === 'potion') ? Math.min(n || (item.count || 1), item.count || 1) : 1;
+    this._removeFrom(this.storage, item, move);
+    this._addTo(this.inventory, item.kind === 'potion' ? { uid: itemUid(), key: item.key, kind: 'potion', count: move } : item);
   }
 
   /* Equip a gear item from the inventory into its slot,

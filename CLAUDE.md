@@ -83,6 +83,12 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
   Potions stack; `game.usePotion` heals and/or `addBuff`s. Drops are the
   `'gear'` Pickup kind (carries the item; collect → `addItem`). Save via
   `itemToSave`/`itemFromSave`. UI reuses `#skill-tooltip` for item tips.
+- Bag vs stash: `player.inventory` and `player.storage` share `_addTo`/
+  `_removeFrom` (potions stack per list); `depositItem`/`withdrawItem`
+  move between them. Shop: `buyPotion`/`sellItem` (sell price `sellValue`).
+  Hotkey potions: `player.quickItems` holds potion KEYS (not objects);
+  `useQuickItem(i)` is edge-triggered from keydown (`quick1/2/3`, default
+  4/5/6); the HUD quick bar re-renders off a count signature.
 - Global keydown must not `preventDefault` arrows/space while an
   INPUT/TEXTAREA is focused (chat cursor, volume slider).
 - Sound: gate every new SFX through `beep()` so `SOUND.vol/muted`

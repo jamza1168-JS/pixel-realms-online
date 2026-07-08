@@ -123,6 +123,13 @@ function makePotion(key, count = 1) {
   return { uid: itemUid(), key, kind: 'potion', count };
 }
 
+/* Gold a merchant pays for an item (gear scales with tier + level). */
+function sellValue(item) {
+  if (item.kind === 'potion') return Math.max(1, Math.floor((POTIONS[item.key].price || 20) * 0.4)) * (item.count || 1);
+  const ti = TIER_ORDER.indexOf(item.tier);
+  return Math.round((ti + 1) * 14 * (1 + ((item.ilvl || 1) - 1) * 0.1));
+}
+
 function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 /* Template lookup for any item instance. */

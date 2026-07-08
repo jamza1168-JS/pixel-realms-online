@@ -25,6 +25,8 @@ masked a rebuilt-every-frame bug once already.
 js/i18n.js      t(), setLang, I18N string tables (EN/TH)
 js/sprites.js   SPRITES: procedural canvases, *_f = x-flipped
 js/data.js      CLASSES, SKILLS, ENEMY_TYPES, BOT_STAT_PRIORITY, deriveStats
+js/items.js     ITEM_TIERS, EQUIP_SLOTS, WEAPONS/ARMOR/POTIONS, AFFIXES,
+                rollItem/rollTier, item helpers (name/icon/color/save)
 js/world.js     World: seeded gen (WORLD_SEED), tiles, solid, spawnPoints,
                 hasLineOfSight, canStand; TILE/MAP_W/MAP_H consts
 js/net.js       LocalNet (offline) / WSNet (relay); protocol doc in header
@@ -74,6 +76,13 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
 - Names are unique among connected clients: `server.py` holds
   `active_names` (freed on leave), rejects dupes at join with
   `{t:'name_taken'}`, and answers `GET /api/name-available?name=`.
+- Items: gear carries a `tier` + 3 rolled `rows:[{stat,val}]`; equipped
+  gear feeds `deriveStats` via `player.equipAgg()` (str/agi/int/vit/luk
+  add to base stats; hp/mp/atk/matk/crit/spd add to outputs; weapon
+  `dmgMul`/`aspdMul`/`spd` too). `computeBase` multiplies by `d.dmgMul`.
+  Potions stack; `game.usePotion` heals and/or `addBuff`s. Drops are the
+  `'gear'` Pickup kind (carries the item; collect → `addItem`). Save via
+  `itemToSave`/`itemFromSave`. UI reuses `#skill-tooltip` for item tips.
 - Global keydown must not `preventDefault` arrows/space while an
   INPUT/TEXTAREA is focused (chat cursor, volume slider).
 - Sound: gate every new SFX through `beep()` so `SOUND.vol/muted`

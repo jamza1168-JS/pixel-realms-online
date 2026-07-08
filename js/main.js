@@ -186,6 +186,19 @@ class Game {
       p.kills = saved.kills || 0;
       p.bossKills = saved.bossKills || 0;
       p.stats = Object.assign({}, saved.stats);
+      if (Array.isArray(saved.inventory)) {
+        p.inventory = saved.inventory.map(itemFromSave).filter(Boolean);
+      }
+      if (saved.equip) {
+        for (const slot of EQUIP_SLOTS) {
+          const it = itemFromSave(saved.equip[slot]);
+          if (it && it.kind !== 'potion' && it.slot === slot) p.equip[slot] = it;
+        }
+      }
+      if (Array.isArray(saved.quickItems)) {
+        p.quickItems = saved.quickItems.map(q => itemFromSave(q));
+        while (p.quickItems.length < 3) p.quickItems.push(null);
+      }
       const d = p.derived;
       p.hp = d.maxHp; p.mp = d.maxMp;
     }
@@ -568,7 +581,7 @@ class Game {
   /* ---------------- Combat helpers (used by skills) ---------------- */
   computeBase(p, mult) {
     const d = p.derived;
-    return d[p.cls.dmgStat] * mult * p.buffMul('dmgMul');
+    return d[p.cls.dmgStat] * mult * p.buffMul('dmgMul') * (d.dmgMul || 1);
   }
 
   applyHit(owner, e, dmg, color) {
@@ -1026,9 +1039,19 @@ class Game {
       const roll = Math.random();
       if (roll < 0.3) this.pickups.push(new Pickup('heart', x - 10, y, 0.25));
       else if (roll < 0.5) this.pickups.push(new Pickup('orb', x - 10, y, 0.35));
-      const type = ENEMY_TYPES[this.world.spawnPoints[idx] ? this.world.spawnPoints[idx].type : 'slime'];
+      const sp = this.world.spawnPoints[idx];
+      const type = ENEMY_TYPES[sp ? sp.type : 'slime'];
       const [gMin, gMax] = type.gold;
       this.pickups.push(new Pickup('coin', x + 10, y, gMin + Math.floor(Math.random() * (gMax - gMin + 1))));
+
+      // equipment / weapon drops — higher tiers drop more & better;
+      // the boss always drops with a strong rarity bias
+      const tier = sp ? sp.tier : 1;
+      const dropChance = isBoss ? 1 : 0.05 + tier * 0.02;
+      if (Math.random() < dropChance) {
+        const item = rollItem({ ilvl: (tier * 4) + (isBoss ? 12 : 0), bias: isBoss ? 3 : tier - 1 });
+        this.pickups.push(new Pickup('gear', x + (Math.random() * 30 - 15), y + 6, item));
+      }
     }
 
     if (isBoss) {
@@ -1075,6 +1098,14 @@ class Game {
 
   collectPickup(pk, p) {
     const d = p.derived;
+    if (pk.kind === 'gear') {
+      p.addItem(pk.value);
+      this.addFloatText(p.x, p.y - 46, itemIcon(pk.value) + ' ' + itemName(pk.value), itemColor(pk.value));
+      UI.toast(t('inv.got', { name: itemName(pk.value) }), 'gold');
+      this.sfx('levelup');
+      this.save();
+      return;
+    }
     if (pk.kind === 'heart') {
       this.healEntity(p, d.maxHp * pk.value);
       this.sfx('pickup');
@@ -1087,6 +1118,25 @@ class Game {
       this.addFloatText(p.x, p.y - 40, '+' + pk.value + '🪙', '#ffd75e');
       this.sfx('gold');
     }
+  }
+
+  /* Consume one potion: instant heal and/or a timed buff. */
+  usePotion(p, item) {
+    if (!item || item.kind !== 'potion' || !p.inventory.includes(item)) return false;
+    const base = POTIONS[item.key];
+    if (!base) return false;
+    const d = p.derived;
+    if (base.heal === 'hp') {
+      this.healEntity(p, d.maxHp * base.pct);
+    } else if (base.heal === 'mp') {
+      p.mp = Math.min(d.maxMp, p.mp + d.maxMp * base.pct);
+      this.addFloatText(p.x, p.y - 40, '+MP', '#3d8bff');
+    }
+    if (base.buff) p.addBuff(Object.assign({}, base.buff));
+    p.removeItem(item, 1);
+    this.sfx(base.buff ? 'buff' : 'heal');
+    this.save();
+    return true;
   }
 
   onLevelUp(p) {
@@ -1115,6 +1165,9 @@ class Game {
         id: p.id, clsId: p.clsId, level: p.level, xp: p.xp,
         statPoints: p.statPoints, gold: p.gold, kills: p.kills,
         bossKills: p.bossKills, stats: p.stats,
+        inventory: p.inventory.map(itemToSave),
+        equip: Object.fromEntries(EQUIP_SLOTS.map(s => [s, p.equip[s] ? itemToSave(p.equip[s]) : null])),
+        quickItems: p.quickItems.map(q => (q ? itemToSave(q) : null)),
       })),
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -1374,6 +1427,7 @@ window.addEventListener('keydown', e => {
     document.getElementById('board-panel').classList.add('hidden');
     document.getElementById('sound-panel').classList.add('hidden');
     document.getElementById('afk-panel').classList.add('hidden');
+    UI.closeInventory();
   }
 });
 
@@ -1439,6 +1493,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-stats').addEventListener('click', () => {
     if (game && game.players[0]) UI.openStatPanel(game.players[0]);
   });
+
+  // inventory
+  document.getElementById('btn-inv').addEventListener('click', () => UI.openInventory());
+  document.getElementById('btn-inv-close').addEventListener('click', () => UI.closeInventory());
 
   // AFK focus settings
   document.getElementById('afk-cfg-p1').addEventListener('click', () => UI.openAfkPanel());

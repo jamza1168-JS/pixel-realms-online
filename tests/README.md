@@ -26,6 +26,8 @@ node trade_test.js                 # two-client trade flow + accept-reset exploi
 node ui_test.js                    # real-mouse-click stat buttons, sound panel, persistence
 node patch3a_test.js               # HUD name/level+ellipsis, buff chips, AFK focus menu,
                                    #   boss priority/flee, retreat routing, name uniqueness
+node items_test.js                 # roll/tiers, equip stat changes, weapon dmgMul, potions,
+                                   #   drops, pickup->bag, inventory UI equip, save/load
 ```
 
 If Playwright can't find a browser, point `PW_CHROMIUM` at a Chromium binary:

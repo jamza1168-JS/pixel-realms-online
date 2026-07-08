@@ -696,6 +696,86 @@ const UI = {
     this.$('btn-online-disconnect').classList.toggle('hidden', s !== 'on');
   },
 
+  /* ---------- Account ---------- */
+  openAccountPanel() {
+    this.$('account-panel').classList.remove('hidden');
+    this.renderAccountPanel();
+  },
+
+  setAccountMsg(text, kind) {
+    const m = this.$('account-msg');
+    if (!m) return;
+    m.textContent = text || '';
+    m.className = 'acct-msg' + (kind ? ' ' + kind : '');
+  },
+
+  refreshAccountStatus() {
+    const el = this.$('account-title-status');
+    if (el) el.textContent = Account.loggedIn ? t('account.loggedInAs', { name: Account.username }) : '';
+  },
+
+  renderAccountPanel() {
+    const box = this.$('account-content');
+    this.setAccountMsg('');
+    if (!Account.available()) {
+      box.innerHTML = `<div class="acct-status">${escapeHtml(t('account.offlineOnly'))}</div>`;
+      return;
+    }
+    if (Account.loggedIn) {
+      box.innerHTML = `<div class="acct-status ok">${escapeHtml(t('account.loggedInAs', { name: Account.username }))}</div>`;
+      const out = document.createElement('button');
+      out.className = 'pix-btn';
+      out.textContent = t('account.logout');
+      out.addEventListener('click', async () => {
+        await Account.logout();
+        this.renderAccountPanel();
+        this.refreshAccountStatus();
+        if (typeof refreshContinue === 'function') refreshContinue();
+        if (this.game) this.game.sfx('point');
+      });
+      box.appendChild(out);
+      return;
+    }
+    box.innerHTML =
+      `<div class="online-form">` +
+      `<label><span>${escapeHtml(t('account.username'))}</span>` +
+      `<input id="acct-user" class="pix-input" maxlength="16" autocomplete="off"></label>` +
+      `<label><span>${escapeHtml(t('account.password'))}</span>` +
+      `<input id="acct-pass" class="pix-input" type="password" maxlength="64" autocomplete="off"></label>` +
+      `</div>`;
+    const row = document.createElement('div');
+    const mk = (label, fn) => {
+      const b = document.createElement('button');
+      b.className = 'pix-btn'; b.textContent = label;
+      b.addEventListener('click', fn); return b;
+    };
+    row.appendChild(mk(t('account.login'), () => this.submitAccount('login')));
+    row.appendChild(mk(t('account.register'), () => this.submitAccount('register')));
+    box.appendChild(row);
+  },
+
+  async submitAccount(mode) {
+    const u = (this.$('acct-user').value || '').trim();
+    const p = this.$('acct-pass').value || '';
+    if (!u || !p) { this.setAccountMsg(t('account.needFields'), 'err'); return; }
+    this.setAccountMsg(t('account.working'), '');
+    const res = mode === 'register' ? await Account.register(u, p) : await Account.login(u, p);
+    if (!res.ok) {
+      const map = { taken: 'account.err_taken', bad_username: 'account.err_bad_username',
+        bad_password: 'account.err_bad_password', bad_credentials: 'account.err_bad_credentials',
+        offline: 'account.err_offline' };
+      this.setAccountMsg(t(map[res.error] || 'account.err_error'), 'err');
+      if (this.game) this.game.sfx('hurt');
+      return;
+    }
+    await Account.loadCharacter();
+    this.renderAccountPanel();
+    this.refreshAccountStatus();
+    if (typeof refreshContinue === 'function') refreshContinue();
+    this.setAccountMsg(t(mode === 'register' ? 'account.registered' : 'account.welcome', { name: Account.username }), 'ok');
+    if (this.game) this.game.sfx('levelup');
+  },
+
   /* ---------- Leaderboard ---------- */
   boardTab: 'level',
   boardData: null,

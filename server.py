@@ -18,9 +18,12 @@ import asyncio
 import base64
 import functools
 import hashlib
+import hmac
 import json
 import os
+import re
 import secrets
+import sqlite3
 import struct
 import sys
 import time
@@ -153,6 +156,133 @@ def board_tops():
     }
 
 
+# ---------------- Accounts & characters (SQLite) ----------------
+# Stage 1a of docs/SCALING.md: player progress moves off the browser's
+# localStorage onto server-side accounts, so a character follows a login
+# instead of a device. Saved characters are sanitized/clamped on write to
+# block the most blatant edits (full server-authoritative economy is a
+# later stage). Pure stdlib sqlite3 — swappable for Postgres at Stage 2.
+
+DB_FILE = os.path.join(ROOT, "accounts.db")
+PW_ITERS = 200_000
+USER_RE = re.compile(r"^[A-Za-z0-9_]{3,16}$")
+sessions: dict = {}   # token -> account_id (in-memory; cleared on restart)
+
+ALLOWED_CLS = {"warrior", "mage", "archer", "cleric"}
+ALLOWED_TIERS = {"common", "rare", "unique", "legend", "mystic"}
+ALLOWED_POTIONS = {"hp", "mp", "spd", "atk", "aspd", "regen"}
+ALLOWED_ARMOR = {"head", "chest", "legs", "boots"}
+ALLOWED_WEAPONS = {"sword1h", "sword2h", "staff", "bow"}
+ALLOWED_SLOTS = {"head", "chest", "hands", "legs", "boots"}
+ALLOWED_BASESTATS = {"str", "agi", "int", "vit", "luk"}
+ALLOWED_ROWSTATS = {"str", "agi", "int", "vit", "luk", "hp", "mp", "atk", "matk", "crit", "spd"}
+
+
+def db():
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    with db() as c:
+        c.execute("""CREATE TABLE IF NOT EXISTS accounts(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            uname_lc TEXT UNIQUE NOT NULL,
+            pw_hash TEXT NOT NULL, pw_salt TEXT NOT NULL,
+            created REAL NOT NULL)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS characters(
+            account_id INTEGER PRIMARY KEY,
+            data TEXT NOT NULL, updated REAL NOT NULL)""")
+
+
+def hash_pw(pw: str, salt: str = None):
+    salt = salt or secrets.token_hex(16)
+    h = hashlib.pbkdf2_hmac("sha256", pw.encode(), bytes.fromhex(salt), PW_ITERS).hex()
+    return h, salt
+
+
+def clampi(v, lo, hi):
+    try:
+        v = int(v)
+    except (TypeError, ValueError):
+        v = lo
+    return max(lo, min(hi, v))
+
+
+def clean_item(o):
+    if not isinstance(o, dict):
+        return None
+    kind = o.get("kind")
+    if kind == "potion":
+        if o.get("key") not in ALLOWED_POTIONS:
+            return None
+        return {"key": o["key"], "kind": "potion", "count": clampi(o.get("count", 1), 1, 9999)}
+    if kind in ("weapon", "armor"):
+        table = ALLOWED_WEAPONS if kind == "weapon" else ALLOWED_ARMOR
+        if o.get("key") not in table or o.get("slot") not in ALLOWED_SLOTS:
+            return None
+        rows = []
+        for r in (o.get("rows") or [])[:3]:
+            if isinstance(r, dict) and r.get("stat") in ALLOWED_ROWSTATS:
+                rows.append({"stat": r["stat"], "val": clampi(r.get("val", 0), 0, 99999)})
+        tier = o.get("tier") if o.get("tier") in ALLOWED_TIERS else "common"
+        return {"uid": str(o.get("uid", ""))[:32], "key": o["key"], "kind": kind,
+                "slot": o["slot"], "tier": tier, "ilvl": clampi(o.get("ilvl", 1), 1, 9999), "rows": rows}
+    return None
+
+
+def clean_player(p):
+    if not isinstance(p, dict):
+        return None
+    stats = p.get("stats") or {}
+    equip_in = p.get("equip") or {}
+    equip = {}
+    for slot in ALLOWED_SLOTS:
+        ci = clean_item(equip_in.get(slot))
+        equip[slot] = ci if (ci and ci["kind"] != "potion" and ci.get("slot") == slot) else None
+    quick = [(k if k in ALLOWED_POTIONS else None) for k in (p.get("quickItems") or [])[:3]]
+    while len(quick) < 3:
+        quick.append(None)
+    return {
+        "id": clampi(p.get("id", 1), 1, 2),
+        "clsId": p.get("clsId") if p.get("clsId") in ALLOWED_CLS else "warrior",
+        "level": clampi(p.get("level", 1), 1, 999),
+        "xp": clampi(p.get("xp", 0), 0, 10**12),
+        "statPoints": clampi(p.get("statPoints", 0), 0, 99999),
+        "gold": clampi(p.get("gold", 0), 0, 10**9),
+        "kills": clampi(p.get("kills", 0), 0, 10**8),
+        "bossKills": clampi(p.get("bossKills", 0), 0, 10**8),
+        "stats": {k: clampi(stats.get(k, 1), 0, 99999) for k in ALLOWED_BASESTATS},
+        "inventory": [ci for ci in (clean_item(x) for x in (p.get("inventory") or [])[:200]) if ci],
+        "storage": [ci for ci in (clean_item(x) for x in (p.get("storage") or [])[:200]) if ci],
+        "equip": equip,
+        "quickItems": quick,
+    }
+
+
+def sanitize_character(obj):
+    """Clamp a client-sent save to sane bounds; return cleaned dict or None."""
+    if not isinstance(obj, dict):
+        return None
+    players = [cp for cp in (clean_player(x) for x in (obj.get("players") or [])[:2]) if cp]
+    if not players:
+        return None
+    return {"v": 1, "players": players}
+
+
+def account_of(headers: dict, query: str):
+    """Resolve the account id from a Bearer token (header or ?token=)."""
+    tok = None
+    auth = headers.get("authorization", "")
+    if auth.lower().startswith("bearer "):
+        tok = auth[7:].strip()
+    if not tok:
+        tok = urllib.parse.parse_qs(query).get("token", [None])[0]
+    return sessions.get(tok) if tok else None
+
+
 class Client:
     def __init__(self, reader, writer):
         self.reader = reader
@@ -188,7 +318,7 @@ def http_json(writer, status: str, obj):
     )
 
 
-def handle_api(writer, method: str, raw_path: str, body: bytes):
+def handle_api(writer, method: str, raw_path: str, body: bytes, headers: dict):
     path, _, query = raw_path.partition("?")
     if method == "OPTIONS":
         writer.write(("HTTP/1.1 204 No Content\r\n" + CORS_HEADERS + "\r\n").encode())
@@ -208,6 +338,90 @@ def handle_api(writer, method: str, raw_path: str, body: bytes):
         except Exception:
             http_json(writer, "400 Bad Request", {"ok": False})
         return
+
+    # -------- accounts --------
+    if method == "POST" and path in ("/api/register", "/api/login"):
+        try:
+            d = json.loads(body.decode("utf-8"))
+        except Exception:
+            http_json(writer, "400 Bad Request", {"ok": False, "error": "bad_json"})
+            return
+        username = str(d.get("username", "")).strip()
+        password = str(d.get("password", ""))
+        if path == "/api/register":
+            if not USER_RE.match(username):
+                http_json(writer, "400 Bad Request", {"ok": False, "error": "bad_username"})
+                return
+            if not (6 <= len(password) <= 64):
+                http_json(writer, "400 Bad Request", {"ok": False, "error": "bad_password"})
+                return
+            h, salt = hash_pw(password)
+            try:
+                with db() as c:
+                    cur = c.execute(
+                        "INSERT INTO accounts(username, uname_lc, pw_hash, pw_salt, created) "
+                        "VALUES(?,?,?,?,?)",
+                        (username, username.lower(), h, salt, time.time()),
+                    )
+                    acc_id = cur.lastrowid
+            except sqlite3.IntegrityError:
+                http_json(writer, "409 Conflict", {"ok": False, "error": "taken"})
+                return
+            tok = secrets.token_hex(24)
+            sessions[tok] = acc_id
+            http_json(writer, "200 OK", {"ok": True, "token": tok, "username": username})
+            print(f"[acct] registered '{username}' (#{acc_id})")
+            return
+        # login
+        with db() as c:
+            row = c.execute("SELECT * FROM accounts WHERE uname_lc=?", (username.lower(),)).fetchone()
+        if not row or not hmac.compare_digest(hash_pw(password, row["pw_salt"])[0], row["pw_hash"]):
+            http_json(writer, "401 Unauthorized", {"ok": False, "error": "bad_credentials"})
+            return
+        tok = secrets.token_hex(24)
+        sessions[tok] = row["id"]
+        http_json(writer, "200 OK", {"ok": True, "token": tok, "username": row["username"]})
+        return
+
+    if method == "POST" and path == "/api/logout":
+        auth = headers.get("authorization", "")
+        tok = auth[7:].strip() if auth.lower().startswith("bearer ") else None
+        if tok:
+            sessions.pop(tok, None)
+        http_json(writer, "200 OK", {"ok": True})
+        return
+
+    # -------- character (auth required) --------
+    if path == "/api/character":
+        acc_id = account_of(headers, query)
+        if not acc_id:
+            http_json(writer, "401 Unauthorized", {"ok": False, "error": "unauthorized"})
+            return
+        if method == "GET":
+            with db() as c:
+                row = c.execute("SELECT data FROM characters WHERE account_id=?", (acc_id,)).fetchone()
+            char = json.loads(row["data"]) if row else None
+            http_json(writer, "200 OK", {"ok": True, "character": char})
+            return
+        if method == "POST":
+            try:
+                d = json.loads(body.decode("utf-8"))
+            except Exception:
+                http_json(writer, "400 Bad Request", {"ok": False, "error": "bad_json"})
+                return
+            clean = sanitize_character(d.get("character") if isinstance(d, dict) and "character" in d else d)
+            if clean is None:
+                http_json(writer, "400 Bad Request", {"ok": False, "error": "bad_character"})
+                return
+            with db() as c:
+                c.execute(
+                    "INSERT INTO characters(account_id, data, updated) VALUES(?,?,?) "
+                    "ON CONFLICT(account_id) DO UPDATE SET data=excluded.data, updated=excluded.updated",
+                    (acc_id, json.dumps(clean, ensure_ascii=False), time.time()),
+                )
+            http_json(writer, "200 OK", {"ok": True, "character": clean})
+            return
+
     http_json(writer, "404 Not Found", {"ok": False})
 
 
@@ -269,9 +483,9 @@ async def handshake(reader, writer) -> bool:
                 n = int(headers.get("content-length", 0) or 0)
             except ValueError:
                 n = 0
-            if 0 < n <= 65536:
+            if 0 < n <= 262144:   # room for a full inventory/storage character blob
                 body = await reader.readexactly(n)
-            handle_api(writer, method, path, body)
+            handle_api(writer, method, path, body, headers)
         else:
             serve_static(writer, path)
         await writer.drain()
@@ -478,6 +692,7 @@ async def handle_client(reader, writer):
 
 async def main():
     load_board()
+    init_db()
     server = await asyncio.start_server(handle_client, "0.0.0.0", PORT)
     print("=" * 52)
     print("  Pixel Realms Online - game & relay server")

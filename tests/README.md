@@ -21,6 +21,8 @@ python3 ../server.py 8900 &        # from this folder (or repo root: server.py 8
 python3 ws_test.py                 # relay: join/host, chat, fragmentation, migration
 python3 shard_test.py              # public world 20-cap sharding + private-room passwords
 node rooms_ui_test.js              # public/private join flow, wrong/right password (browser)
+python3 accounts_test.py           # register/login/logout, auth, character save+sanitize
+node account_ui_test.js            # account panel + cloud save/load + Continue (browser)
 node feature_test.js               # heal circle, leveling, AFK keeps points, stat buttons
 node bot_test.js                   # line of sight, unstuck/blacklist, manual override,
                                    #   retreat fight-back, cursor aim, live AFK farm (~1 min)

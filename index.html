@@ -42,6 +42,7 @@
         <button id="btn-help" class="pix-btn small">?</button>
         <button id="btn-keys" class="pix-btn small">⌨</button>
         <button id="btn-minimap" class="pix-btn small" title="Minimap">🗺</button>
+        <button id="btn-account" class="pix-btn small" title="Account">👤</button>
         <button id="btn-inv" class="pix-btn small" title="Inventory">🎒</button>
         <button id="btn-shop" class="pix-btn small" title="Shop">🛒</button>
         <button id="btn-online" class="pix-btn small">🌐</button>
@@ -82,7 +83,9 @@
       <div class="title-lang">
         <button class="pix-btn small lang-choice" data-lang="en">English</button>
         <button class="pix-btn small lang-choice" data-lang="th">ภาษาไทย</button>
+        <button id="btn-account-title" class="pix-btn small">👤 <span data-i18n="account.btn">Account</span></button>
       </div>
+      <div id="account-title-status" class="acct-title-status"></div>
       <h2 data-i18n="title.chooseClass">Choose your class</h2>
       <div id="class-grid"></div>
       <div class="title-buttons">
@@ -163,6 +166,17 @@
       </div>
       <div id="inv-actions"></div>
       <button id="btn-inv-close" class="pix-btn" data-i18n="ui.close">Close</button>
+    </div>
+  </div>
+
+  <!-- ===== ACCOUNT ===== -->
+  <div id="account-panel" class="overlay hidden">
+    <div class="panel">
+      <h2 data-i18n="account.title">👤 Account</h2>
+      <p class="hint" data-i18n="account.blurb">Sign in to save your character on the server — it follows your login, not this browser.</p>
+      <div id="account-content"></div>
+      <div id="account-msg" class="acct-msg"></div>
+      <button id="btn-account-close" class="pix-btn" data-i18n="ui.close">Close</button>
     </div>
   </div>
 
@@ -266,6 +280,7 @@
 <script src="js/items.js"></script>
 <script src="js/world.js"></script>
 <script src="js/net.js"></script>
+<script src="js/account.js"></script>
 <script src="js/entities.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/main.js"></script>

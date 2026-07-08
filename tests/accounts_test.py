@@ -1,6 +1,7 @@
 """Accounts + server-side character store tests. Server on 8900.
 Uses only the Python stdlib (urllib) to hit the HTTP API."""
 import json
+import time
 import urllib.request
 import urllib.error
 
@@ -77,6 +78,7 @@ st, r = call("GET", "/api/character", token=token)
 ok(st == 200 and r["character"]["players"][0]["level"] == 12
    and r["character"]["players"][0]["gold"] == 300, "character loads back with the same data")
 
+time.sleep(2.2)   # server rate-limits character writes to 1 / 2s
 # 8. sanitization clamps a blatantly cheated save
 cheat = {"v": 1, "players": [{
     "id": 1, "clsId": "wizard_hacker", "level": 999999, "gold": 9 * 10**18,

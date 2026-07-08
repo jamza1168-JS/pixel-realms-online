@@ -107,12 +107,21 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
 - Accounts (Stage 1a): `sqlite3` (`accounts.db`, gitignored) with pbkdf2
   passwords; `POST /api/register|login|logout`, auth-guarded
   `GET/POST /api/character` (Bearer token; sessions in-memory, cleared on
-  restart). Saved characters run through `sanitize_character` (clamps
-  class/level/gold/stats/items) — this blocks blatant edits but the server
-  still trusts the sanitized blob; **server-authoritative economy
-  (computing XP/drops/gold) is the next Stage-1 step**. Client `Account`
-  cloud-saves on `game.save()` (throttled; forced on unload); `Continue`
-  prefers the cloud character. Offline play still uses `localStorage`.
+  restart). Client `Account` cloud-saves on `game.save()` (throttled; forced
+  on unload); `Continue` prefers the cloud character. Offline uses
+  `localStorage`.
+- Anti-tamper on save (Stage 1b, server-only): `sanitize_character` clamps
+  absolute bounds AND (a) clamps gear rows to `row_cap(stat,tier,ilvl)` +
+  `MAX_ILVL=28` so crafted gear can't beat a real drop; (b)
+  `enforce_player_invariants` forces the base-stat point budget
+  (`used+statPoints == 5*(level-1)`, stats ≥ class base) so stat inflation is
+  neutralised; `apply_save_caps` caps per-save gold (`+100k`) and level
+  (`+10`) gain vs the previous save; `xp` clamped below the next threshold.
+  Char writes rate-limited to 1/2s per account; failed logins to 10/min per
+  username. **Not full anti-cheat** — the server still can't verify kills
+  happened (no combat sim); closing that is Stage 2 (`docs/SCALING.md`).
+  Constants (`CLASS_BASE`, `TIER_MULT`, `AFFIX_MAX`, `xp_to_next`) mirror
+  `data.js`/`items.js` — keep them in sync if the client formulas change.
 
 ## Deploy
 
@@ -139,12 +148,13 @@ password-protected private rooms.
 2. Balance the new gear and tiers.
 3. Sound effects for normal (common/rare) item pickups.
 
-**Scaling — in progress (see `docs/SCALING.md`):** Stage 1a shipped —
-accounts + server-side cloud character store (SQLite) with save
-sanitization. **Next Stage-1 step:** make the server authoritative over the
-economy (compute XP/level, roll drops, own gold/inventory, validate item
-use + trades) so a forged `/api/character` POST can't inject progress;
-then movement/attack validation + rate limits.
+**Scaling — in progress (see `docs/SCALING.md`):** Stage 1a shipped
+(accounts + cloud character store). Stage 1b shipped (server-only
+anti-tamper hardening: gear-row caps, stat-point invariant, per-save
+gold/level caps, xp clamp, write + login rate limits). **Remaining for full
+anti-cheat:** the server still can't verify kills happened — that needs
+server-authoritative combat (Stage 2: zone workers), which also unlocks
+raising the 20-player cap.
 
 **Open proposal, awaiting the user's go-ahead:** make the *server* host the
 public World so it never depends on a player's device. Two paths discussed —

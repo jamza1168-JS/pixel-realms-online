@@ -178,8 +178,10 @@ class Game {
     this.g.imageSmoothingEnabled = false;
   }
 
-  /* The player's chosen display name (online name, else saved, else Hero). */
+  /* The player's display name. Signed in → the account name (this is
+   * the online identity too); guests fall back to a saved/local name. */
   heroName() {
+    if (Account.loggedIn && Account.username) return Account.username;
     return (this.net && this.net.name) || localStorage.getItem('pixelrealms_name') || 'Hero';
   }
 
@@ -744,13 +746,14 @@ class Game {
   }
 
   /* ---------------- Networking glue ---------------- */
-  goOnline(url, room, name, password = '', publicWorld = false) {
+  /* Signing in drops the player straight into the shared public World;
+   * there is no manual server address, room, or password any more. */
+  goOnline(name) {
     if (this.net instanceof WSNet) this.net.disconnect();   // also kills a pending 'connecting' socket
-    localStorage.setItem('pixelrealms_name', name);
     const net = new WSNet(this);
     this.net = net;
-    net.connect(url, room, name, password, publicWorld);
-    for (const p of this.players) p.name = name;   // reflect the chosen name at once
+    net.connect(serverUrl(), '', name, '', true);
+    for (const p of this.players) p.name = name;   // reflect the name at once
   }
 
   goOffline() {
@@ -761,6 +764,7 @@ class Game {
   onNetDisconnect() {
     this.remotePlayers.clear();
     this.ghosts.clear();
+    if (this.trade) this.returnTradeEscrow(this.trade);
     this.trade = null;
     this.pendingTrade = null;
     UI.hideTradeRequest();
@@ -871,7 +875,7 @@ class Game {
     if (this.trade || !this.net.isOnline) return;
     this.trade = {
       stage: 'waiting', me: fromPlayer, withKey: targetKey, withName: targetName,
-      myGold: 0, theirGold: 0, myAccept: false, theirAccept: false,
+      myGold: 0, theirGold: 0, myItems: [], theirItems: [], myAccept: false, theirAccept: false,
     };
     this.net.send({ t: 'trade_req', to: targetKey, fromKey: this.myKey(fromPlayer), name: this.myName() });
     UI.renderTrade(this);
@@ -907,6 +911,7 @@ class Game {
       case 'trade_set':
         if (tr && tr.stage === 'open' && m.fromKey === tr.withKey) {
           tr.theirGold = Math.max(0, Math.floor(+m.gold || 0));
+          tr.theirItems = Array.isArray(m.items) ? m.items.map(itemFromSave).filter(Boolean) : [];
           tr.theirAccept = false;
           // offer changed: my accept must be re-confirmed too
           if (tr.myAccept) {
@@ -925,6 +930,7 @@ class Game {
         break;
       case 'trade_cancel':
         if (tr && m.fromKey === tr.withKey) {
+          this.returnTradeEscrow(tr);
           this.trade = null;
           UI.renderTrade(this);
           UI.closeTrade();
@@ -949,7 +955,7 @@ class Game {
     }
     this.trade = {
       stage: 'open', me: pt.player, withKey: pt.fromKey, withName: pt.name,
-      myGold: 0, theirGold: 0, myAccept: false, theirAccept: false,
+      myGold: 0, theirGold: 0, myItems: [], theirItems: [], myAccept: false, theirAccept: false,
     };
     this.net.send({ t: 'trade_ok', to: pt.fromKey, fromKey: this.myKey(pt.player) });
     UI.openTradePanel();
@@ -959,8 +965,65 @@ class Game {
     const tr = this.trade;
     if (!tr || tr.stage !== 'open' || tr.myAccept) return;
     tr.myGold = Math.max(0, Math.min(tr.me.gold, Math.floor(+n) || 0));
-    this.net.send({ t: 'trade_set', to: tr.withKey, fromKey: this.myKey(tr.me), gold: tr.myGold });
+    this.sendTradeOffer();
+  }
+
+  /* Broadcast my current offer (gold + items). Any change resets accepts
+   * (the receiver clears theirs; anti-scam mirror of the gold path). */
+  sendTradeOffer() {
+    const tr = this.trade;
+    if (!tr || tr.stage !== 'open') return;
+    this.net.send({ t: 'trade_set', to: tr.withKey, fromKey: this.myKey(tr.me),
+      gold: tr.myGold, items: tr.myItems.map(itemToSave) });
     UI.renderTrade(this);
+  }
+
+  /* Escrow one item from my bag into the offer (removed from the bag so it
+   * can't be used or duped mid-trade). Potions move one at a time. */
+  addTradeItem(item) {
+    const tr = this.trade;
+    if (!tr || tr.stage !== 'open' || tr.myAccept) return;
+    const p = tr.me;
+    if (!p.inventory.includes(item)) return;
+    if (tr.myItems.length >= 15 && !(item.kind === 'potion')) return;
+    if (item.kind === 'potion') {
+      p._removeFrom(p.inventory, item, 1);
+      const stack = tr.myItems.find(i => i.kind === 'potion' && i.key === item.key);
+      if (stack) stack.count += 1;
+      else tr.myItems.push({ uid: itemUid(), key: item.key, kind: 'potion', count: 1 });
+    } else {
+      p._removeFrom(p.inventory, item, 1);
+      tr.myItems.push(item);
+    }
+    this.sendTradeOffer();
+  }
+
+  /* Pull one item back out of my offer and into my bag. */
+  removeTradeItem(item) {
+    const tr = this.trade;
+    if (!tr || tr.stage !== 'open' || tr.myAccept) return;
+    const p = tr.me;
+    const idx = tr.myItems.indexOf(item);
+    if (idx < 0) return;
+    if (item.kind === 'potion') {
+      p._addTo(p.inventory, { uid: itemUid(), key: item.key, kind: 'potion', count: 1 });
+      if ((item.count || 1) > 1) item.count -= 1;
+      else tr.myItems.splice(idx, 1);
+    } else {
+      tr.myItems.splice(idx, 1);
+      p._addTo(p.inventory, item);
+    }
+    this.sendTradeOffer();
+  }
+
+  /* Return every escrowed item to the bag (trade aborted). */
+  returnTradeEscrow(tr) {
+    if (!tr || !tr.myItems) return;
+    for (const it of tr.myItems) {
+      if (it.kind === 'potion') tr.me._addTo(tr.me.inventory, { uid: itemUid(), key: it.key, kind: 'potion', count: it.count || 1 });
+      else tr.me._addTo(tr.me.inventory, it);
+    }
+    tr.myItems = [];
   }
 
   toggleTradeAccept() {
@@ -976,7 +1039,10 @@ class Game {
     const tr = this.trade;
     if (tr && tr.stage === 'open' && tr.myAccept && tr.theirAccept) {
       tr.stage = 'done';
-      tr.me.gold += tr.theirGold - tr.myGold;
+      tr.me.gold = Math.max(0, tr.me.gold + tr.theirGold - tr.myGold);
+      // my offered items are already escrowed out of the bag; take in theirs
+      for (const it of tr.theirItems) tr.me.addItem(it);
+      tr.me.clampVitals();
       this.trade = null;
       UI.renderTrade(this);
       UI.closeTrade();
@@ -989,6 +1055,7 @@ class Game {
   cancelTrade() {
     const tr = this.trade;
     if (!tr) return;
+    this.returnTradeEscrow(tr);
     this.net.send({ t: 'trade_cancel', to: tr.withKey, fromKey: this.myKey(tr.me) });
     this.trade = null;
     UI.renderTrade(this);
@@ -996,6 +1063,7 @@ class Game {
 
   onPeerLeft(clientId) {
     if (this.trade && this.trade.withKey.indexOf(clientId + ':') === 0) {
+      this.returnTradeEscrow(this.trade);
       this.trade = null;
       UI.renderTrade(this);
       UI.closeTrade();
@@ -1089,7 +1157,7 @@ class Game {
   }
 
   boardName(p) {
-    return this.net.name || localStorage.getItem('pixelrealms_name') || 'Hero';
+    return this.heroName();
   }
 
   submitScores(useBeacon) {
@@ -1229,14 +1297,16 @@ class Game {
         quickItems: p.quickItems.slice(),   // potion keys (or null)
       })),
     };
-    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-    // when signed in, also sync the character to the server (throttled)
+    // Signed in → the server is the source of truth. Guests keep their
+    // character only in sessionStorage: it survives a refresh but is wiped
+    // when the browser/tab closes, so guest progress never persists.
+    try { sessionStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) { /* private mode */ }
     if (Account.loggedIn) Account.saveCharacter(data, force);
   }
 
   static loadSave() {
     try {
-      const raw = localStorage.getItem(SAVE_KEY);
+      const raw = sessionStorage.getItem(SAVE_KEY);
       if (!raw) return null;
       const data = JSON.parse(raw);
       if (!data.players || !data.players.length) return null;
@@ -1452,7 +1522,22 @@ function startGame(clsId, saved) {
   document.getElementById('title-screen').classList.add('hidden');
   document.getElementById('hud').classList.remove('hidden');
   game.save();
+  // Signed-in players auto-join the shared public World; guests stay local.
+  if (Account.loggedIn) game.goOnline(game.heroName());
   game.start();
+}
+
+/* Smart default relay address, derived from how the page was served.
+ * server.py serves the page and the WebSocket on the SAME host+port, so
+ * we mirror the page origin:
+ *  - https page -> wss:// same host (cloud deploy, TLS)
+ *  - http page  -> ws:// same host+port (server.py on this machine/LAN)
+ *  - file://    -> ws://<hostname|localhost>:8765 (dev fallback)
+ */
+function serverUrl() {
+  if (location.protocol === 'https:') return 'wss://' + location.host;
+  if (location.protocol === 'http:') return 'ws://' + location.host;
+  return 'ws://' + (location.hostname || 'localhost') + ':8765';
 }
 
 /* ---------------- Global listeners ---------------- */
@@ -1502,7 +1587,6 @@ window.addEventListener('keydown', e => {
     if (game && game.trade) game.cancelTrade();
     UI.closeTrade();
     document.getElementById('help-panel').classList.add('hidden');
-    document.getElementById('online-panel').classList.add('hidden');
     document.getElementById('board-panel').classList.add('hidden');
     document.getElementById('sound-panel').classList.add('hidden');
     document.getElementById('afk-panel').classList.add('hidden');
@@ -1514,8 +1598,18 @@ window.addEventListener('keydown', e => {
 
 window.addEventListener('keyup', e => keys.delete(e.code));
 window.addEventListener('pointerdown', ensureAudio);
-window.addEventListener('beforeunload', () => { if (game) game.save(true); });
-window.addEventListener('pagehide', () => { if (game) { game.submitScores(true); game.save(true); } });
+// Return any items escrowed in an open trade to the bag before the final
+// save, so a mid-trade close can't drop them (they live only in trade state).
+window.addEventListener('beforeunload', () => {
+  if (!game) return;
+  if (game.trade) game.returnTradeEscrow(game.trade);
+  game.save(true);
+});
+window.addEventListener('pagehide', () => {
+  if (!game) return;
+  if (game.trade) game.returnTradeEscrow(game.trade);
+  game.submitScores(true); game.save(true);
+});
 
 document.addEventListener('DOMContentLoaded', () => {
   initTitle();
@@ -1660,41 +1754,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (game) game.answerTradeRequest(false);
   });
 
-  // smart default server address:
-  //  - https page  -> wss:// same host (cloud deploy, TLS)
-  //  - http page   -> ws://<hostname>:8765 (server.py on the same machine/LAN)
-  //  - file://     -> ws://localhost:8765
-  const urlInput = document.getElementById('online-url');
-  if (location.protocol === 'https:') urlInput.value = 'wss://' + location.host;
-  else if (location.protocol === 'http:' && location.port === '8765') urlInput.value = 'ws://' + location.host;
-  else urlInput.value = 'ws://' + (location.hostname || 'localhost') + ':8765';
-
-  // online multiplayer
-  document.getElementById('btn-online').addEventListener('click', () => UI.openOnlinePanel());
-  document.getElementById('btn-online-close').addEventListener('click', () =>
-    document.getElementById('online-panel').classList.add('hidden'));
-  const onlineJoin = async (publicWorld) => {
-    if (!game) return;
-    const name = document.getElementById('online-name').value.trim() || 'Hero';
-    const url = document.getElementById('online-url').value.trim();
-    const room = document.getElementById('online-room').value.trim();
-    const pass = document.getElementById('online-pass').value;
-    if (!publicWorld && !room) { UI.toast(t('online.needRoom'), 'info'); game.sfx('hurt'); return; }
-    await UI.checkNameAvailable();          // final check before we connect
-    if (UI._nameOk === false) { game.sfx('hurt'); return; }   // name taken — block
-    game.goOnline(url, room, name, pass, publicWorld);
-  };
-  document.getElementById('btn-online-public').addEventListener('click', () => onlineJoin(true));
-  document.getElementById('btn-online-private').addEventListener('click', () => onlineJoin(false));
-  document.getElementById('btn-online-disconnect').addEventListener('click', () => {
-    if (game) game.goOffline();
-  });
-  // live name-availability feedback (debounced)
-  let nameCheckT = null;
-  document.getElementById('online-name').addEventListener('input', () => {
-    clearTimeout(nameCheckT);
-    nameCheckT = setTimeout(() => UI.checkNameAvailable(), 350);
-  });
+  // Character progress no longer lives in localStorage: signed-in players
+  // save on the server, guests only in sessionStorage. Drop any legacy
+  // local save so an old browser copy can't resurrect a guest character.
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) { /* ignore */ }
 
   // rebuild language-dependent DOM when language changes
   document.addEventListener('langchange', () => {

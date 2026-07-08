@@ -20,7 +20,7 @@ python3 ../server.py 8900 &        # from this folder (or repo root: server.py 8
 
 python3 ws_test.py                 # relay: join/host, chat, fragmentation, migration
 python3 shard_test.py              # public world 20-cap sharding + private-room passwords
-node rooms_ui_test.js              # public/private join flow, wrong/right password (browser)
+node session_flow_test.js          # guest = sessionStorage/offline, login auto-joins World (browser)
 python3 accounts_test.py           # register/login/logout, auth, character save+sanitize
 node account_ui_test.js            # account panel + cloud save/load + Continue (browser)
 python3 hardening_test.py          # anti-tamper: gear caps, stat invariant, gold/level
@@ -29,6 +29,8 @@ node feature_test.js               # heal circle, leveling, AFK keeps points, st
 node bot_test.js                   # line of sight, unstuck/blacklist, manual override,
                                    #   retreat fight-back, cursor aim, live AFK farm (~1 min)
 node trade_test.js                 # two-client trade flow + accept-reset exploit regression
+node inv_trade_test.js             # inventory filter/tier-sort, stat-panel gear bonus,
+                                   #   equipped-compare tooltip, two-client item trade
 node ui_test.js                    # real-mouse-click stat buttons, sound panel, persistence
 node patch3a_test.js               # HUD name/level+ellipsis, buff chips, AFK focus menu,
                                    #   boss priority/flee, retreat routing, name uniqueness

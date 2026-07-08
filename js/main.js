@@ -1216,7 +1216,7 @@ class Game {
   sfx(name) { if (SFX[name]) SFX[name](); }
 
   /* ---------------- Save / Load ---------------- */
-  save() {
+  save(force) {
     const data = {
       v: 1,
       players: this.players.map(p => ({
@@ -1230,6 +1230,8 @@ class Game {
       })),
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    // when signed in, also sync the character to the server (throttled)
+    if (Account.loggedIn) Account.saveCharacter(data, force);
   }
 
   static loadSave() {
@@ -1405,6 +1407,16 @@ class Game {
 
 let game = null;
 
+/* Continue is available from a cloud character (if signed in) or a
+ * local save. The cloud character takes precedence. */
+function continueData() {
+  return (Account.loggedIn && Account.character) || Game.loadSave();
+}
+function refreshContinue() {
+  const btn = document.getElementById('btn-continue');
+  if (btn) btn.classList.toggle('hidden', !continueData());
+}
+
 function initTitle() {
   applyI18n();
   UI.buildClassCards('class-grid', clsId => {
@@ -1412,17 +1424,19 @@ function initTitle() {
     document.getElementById('btn-start').disabled = false;
   });
 
-  const saveData = Game.loadSave();
-  if (saveData) document.getElementById('btn-continue').classList.remove('hidden');
+  refreshContinue();
+  UI.refreshAccountStatus();
+  // if already signed in, pull the cloud character and update Continue
+  if (Account.loggedIn) Account.loadCharacter().then(() => { refreshContinue(); UI.refreshAccountStatus(); });
 
   document.getElementById('btn-start').addEventListener('click', () => {
     startGame(UI.selectedClass, null);
   });
 
   document.getElementById('btn-continue').addEventListener('click', () => {
-    const data = Game.loadSave();
+    const data = continueData();
     if (data) startGame(data.players[0].clsId, data.players[0]);
-    else document.getElementById('btn-continue').classList.add('hidden');
+    else refreshContinue();
   });
 
   document.querySelectorAll('.lang-choice').forEach(btn => {
@@ -1492,6 +1506,7 @@ window.addEventListener('keydown', e => {
     document.getElementById('board-panel').classList.add('hidden');
     document.getElementById('sound-panel').classList.add('hidden');
     document.getElementById('afk-panel').classList.add('hidden');
+    document.getElementById('account-panel').classList.add('hidden');
     UI.closeInventory();
     UI.closeShop();
   }
@@ -1499,8 +1514,8 @@ window.addEventListener('keydown', e => {
 
 window.addEventListener('keyup', e => keys.delete(e.code));
 window.addEventListener('pointerdown', ensureAudio);
-window.addEventListener('beforeunload', () => { if (game) game.save(); });
-window.addEventListener('pagehide', () => { if (game) game.submitScores(true); });
+window.addEventListener('beforeunload', () => { if (game) game.save(true); });
+window.addEventListener('pagehide', () => { if (game) { game.submitScores(true); game.save(true); } });
 
 document.addEventListener('DOMContentLoaded', () => {
   initTitle();
@@ -1559,6 +1574,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-stats').addEventListener('click', () => {
     if (game && game.players[0]) UI.openStatPanel(game.players[0]);
   });
+
+  // account
+  document.getElementById('btn-account').addEventListener('click', () => UI.openAccountPanel());
+  document.getElementById('btn-account-title').addEventListener('click', () => UI.openAccountPanel());
+  document.getElementById('btn-account-close').addEventListener('click', () =>
+    document.getElementById('account-panel').classList.add('hidden'));
 
   // inventory
   document.getElementById('btn-inv').addEventListener('click', () => UI.openInventory());

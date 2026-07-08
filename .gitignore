@@ -5,3 +5,6 @@ __pycache__/
 
 # server runtime data
 leaderboard.json
+accounts.db
+accounts.db-wal
+accounts.db-shm

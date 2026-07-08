@@ -30,6 +30,8 @@ js/items.js     ITEM_TIERS, EQUIP_SLOTS, WEAPONS/ARMOR/POTIONS, AFFIXES,
 js/world.js     World: seeded gen (WORLD_SEED), tiles, solid, spawnPoints,
                 hasLineOfSight, canStand; TILE/MAP_W/MAP_H consts
 js/net.js       LocalNet (offline) / WSNet (relay); protocol doc in header
+js/account.js   Account: register/login/logout, cloud character save/load
+                (Stage 1a; server accounts over same-origin /api/*)
 js/entities.js  Player, RemotePlayer (net mirror), Enemy (sim or ghost),
                 Projectile, Pickup
 js/ui.js        UI singleton: HUD, panels, minimap, trade/board rendering
@@ -102,6 +104,15 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
   (persisted under `pixelrealms_sound`) applies.
 - `server.py` stays pure stdlib — no pip dependencies, Render free tier
   runs it as-is (`render.yaml`); disk is ephemeral (leaderboard resets).
+- Accounts (Stage 1a): `sqlite3` (`accounts.db`, gitignored) with pbkdf2
+  passwords; `POST /api/register|login|logout`, auth-guarded
+  `GET/POST /api/character` (Bearer token; sessions in-memory, cleared on
+  restart). Saved characters run through `sanitize_character` (clamps
+  class/level/gold/stats/items) — this blocks blatant edits but the server
+  still trusts the sanitized blob; **server-authoritative economy
+  (computing XP/drops/gold) is the next Stage-1 step**. Client `Account`
+  cloud-saves on `game.save()` (throttled; forced on unload); `Continue`
+  prefers the cloud character. Offline play still uses `localStorage`.
 
 ## Deploy
 
@@ -127,6 +138,13 @@ password-protected private rooms.
 1. Shield / off-hand slot to pair with the one-hand sword.
 2. Balance the new gear and tiers.
 3. Sound effects for normal (common/rare) item pickups.
+
+**Scaling — in progress (see `docs/SCALING.md`):** Stage 1a shipped —
+accounts + server-side cloud character store (SQLite) with save
+sanitization. **Next Stage-1 step:** make the server authoritative over the
+economy (compute XP/level, roll drops, own gold/inventory, validate item
+use + trades) so a forged `/api/character` POST can't inject progress;
+then movement/attack validation + rate limits.
 
 **Open proposal, awaiting the user's go-ahead:** make the *server* host the
 public World so it never depends on a player's device. Two paths discussed —

@@ -137,4 +137,6 @@ environment can run Node alongside Python before starting.
 
 **Bigger backlog:** raise the 20-players/channel cap for a true massive
 shared world — requires server-authoritative simulation + area-of-interest
-(grid) filtering.
+(grid) filtering. Full architecture + staged migration plan (accounts/DB,
+server authority, zone sharding, anti-cheat, cost levers) is in
+`docs/SCALING.md` — start there.

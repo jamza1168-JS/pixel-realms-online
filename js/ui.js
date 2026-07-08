@@ -114,6 +114,151 @@ const UI = {
     if (tip) tip.classList.add('hidden');
   },
 
+  /* ---------- Item tooltip (shares the skill-tooltip element) ---------- */
+  itemTipHtml(item) {
+    const col = itemColor(item);
+    let h = `<b style="color:${col}">${escapeHtml(itemName(item))}</b>`;
+    if (item.kind === 'potion') {
+      h += `<div class="it-desc">${escapeHtml(t('itemd.' + item.key))}</div>`;
+      if ((item.count || 1) > 1) h += `<div class="it-sub">×${item.count}</div>`;
+      return h;
+    }
+    h += `<div class="it-sub">${escapeHtml(t('slot.' + item.slot))} · ${escapeHtml(t('tier.' + item.tier))}</div>`;
+    for (const r of item.rows) h += `<div class="it-row">+${r.val} ${escapeHtml(t('rstat.' + r.stat))}</div>`;
+    const base = itemBase(item);
+    if (base && base.base) {
+      const mods = [];
+      const pct = v => (v > 1 ? '+' : '') + Math.round((v - 1) * 100) + '%';
+      if (base.base.dmgMul && base.base.dmgMul !== 1) mods.push(pct(base.base.dmgMul) + ' DMG');
+      if (base.base.aspdMul && base.base.aspdMul !== 1) mods.push(pct(base.base.aspdMul) + ' ATK SPD');
+      if (base.base.spd) mods.push((base.base.spd > 0 ? '+' : '') + base.base.spd + ' SPD');
+      if (mods.length) h += `<div class="it-sub">${mods.join(' · ')}</div>`;
+      if (base.two) h += `<div class="it-sub">${escapeHtml(t('inv.twoHanded'))}</div>`;
+    }
+    return h;
+  },
+
+  showItemTip(item, ev) {
+    const tip = this.$('skill-tooltip');
+    if (!tip) return;
+    tip.innerHTML = this.itemTipHtml(item);
+    tip.classList.remove('hidden');
+    this.moveSkillTip(ev);
+  },
+
+  /* ---------- Inventory & equipment ---------- */
+  invSel: null,
+
+  openInventory() {
+    this.invSel = null;
+    this.$('inv-panel').classList.remove('hidden');
+    this.renderInventory();
+  },
+
+  closeInventory() {
+    this.invSel = null;
+    this.hideSkillTip();
+    this.$('inv-panel').classList.add('hidden');
+  },
+
+  _invHover(el, item) {
+    el.addEventListener('mouseenter', ev => this.showItemTip(item, ev));
+    el.addEventListener('mousemove', ev => this.moveSkillTip(ev));
+    el.addEventListener('mouseleave', () => this.hideSkillTip());
+  },
+
+  invBtn(label, fn, danger) {
+    const b = document.createElement('button');
+    b.className = 'pix-btn small';
+    b.textContent = label;
+    if (fn) b.addEventListener('click', fn);
+    return b;
+  },
+
+  renderInventory() {
+    const p = this.game && this.game.players[0];
+    if (!p) return;
+
+    // equipped slots — click to unequip
+    const slots = this.$('inv-slots');
+    slots.innerHTML = '';
+    for (const slot of EQUIP_SLOTS) {
+      const it = p.equip[slot];
+      const row = document.createElement('div');
+      row.className = 'inv-slot';
+      row.innerHTML =
+        `<span class="is-icon">${it ? itemIcon(it) : '▫'}</span>` +
+        `<span class="is-label">${escapeHtml(t('slot.' + slot))}</span>` +
+        `<span class="is-name ${it ? '' : 'empty'}" ${it ? `style="color:${itemColor(it)}"` : ''}>` +
+        `${it ? escapeHtml(itemName(it)) : escapeHtml(t('inv.emptySlot'))}</span>`;
+      if (it) {
+        this._invHover(row, it);
+        row.addEventListener('click', () => {
+          p.unequipItem(slot);
+          this.invSel = null; this.game.save(); this.hideSkillTip();
+          this.renderInventory(); this.game.sfx('point');
+        });
+      }
+      slots.appendChild(row);
+    }
+
+    // bag grid — click to select
+    const grid = this.$('inv-grid');
+    grid.innerHTML = '';
+    if (!p.inventory.length) {
+      grid.innerHTML = `<div class="inv-empty">${escapeHtml(t('inv.empty'))}</div>`;
+    }
+    for (const it of p.inventory) {
+      const cell = document.createElement('div');
+      cell.className = 'inv-cell' + (this.invSel === it ? ' selected' : '');
+      cell.style.borderColor = itemColor(it);
+      cell.innerHTML = itemIcon(it) +
+        (it.kind === 'potion' && (it.count || 1) > 1 ? `<span class="ic-count">${it.count}</span>` : '');
+      this._invHover(cell, it);
+      cell.addEventListener('click', () => {
+        this.invSel = (this.invSel === it ? null : it);
+        this.renderInventory();
+      });
+      grid.appendChild(cell);
+    }
+
+    // action row for the selected item
+    const act = this.$('inv-actions');
+    act.innerHTML = '';
+    const sel = this.invSel;
+    if (sel && p.inventory.includes(sel)) {
+      const nm = document.createElement('span');
+      nm.className = 'ia-name'; nm.style.color = itemColor(sel);
+      nm.textContent = itemName(sel);
+      act.appendChild(nm);
+      if (sel.kind === 'weapon' || sel.kind === 'armor') {
+        act.appendChild(this.invBtn(t('inv.equip'), () => {
+          p.equipItem(sel); this.invSel = null; this.game.save();
+          this.renderInventory(); this.game.sfx('buff');
+        }));
+      }
+      if (sel.kind === 'potion') {
+        act.appendChild(this.invBtn(t('inv.use'), () => {
+          this.game.usePotion(p, sel);
+          if (!p.inventory.includes(sel)) this.invSel = null;
+          this.renderInventory();
+        }));
+      }
+      // two-step destroy (no blocking browser dialog)
+      const del = this.invBtn(t('inv.destroy'), null);
+      let armed = false;
+      del.addEventListener('click', () => {
+        if (!armed) { armed = true; del.textContent = '⚠ ' + t('inv.destroy'); del.classList.add('selected'); return; }
+        p.removeItem(sel, sel.count || 1);
+        this.invSel = null; this.game.save();
+        this.renderInventory(); this.game.sfx('point');
+      });
+      act.appendChild(del);
+    } else if (this.invSel && !p.inventory.includes(this.invSel)) {
+      this.invSel = null;
+    }
+  },
+
   /* ---------- Buff / debuff status chips ---------- */
   renderBuffs(p, pre) {
     const box = this.$('buffbar-' + pre);

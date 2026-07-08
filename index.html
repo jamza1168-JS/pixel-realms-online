@@ -42,6 +42,7 @@
         <button id="btn-help" class="pix-btn small">?</button>
         <button id="btn-keys" class="pix-btn small">⌨</button>
         <button id="btn-minimap" class="pix-btn small" title="Minimap">🗺</button>
+        <button id="btn-inv" class="pix-btn small" title="Inventory">🎒</button>
         <button id="btn-online" class="pix-btn small">🌐</button>
         <button id="btn-trade" class="pix-btn small">🤝</button>
         <button id="btn-board" class="pix-btn small">🏆</button>
@@ -144,6 +145,25 @@
     </div>
   </div>
 
+  <!-- ===== INVENTORY ===== -->
+  <div id="inv-panel" class="overlay hidden">
+    <div class="panel inv-box">
+      <h2 data-i18n="inv.title">🎒 Inventory</h2>
+      <div class="inv-cols">
+        <div class="inv-col">
+          <h3 data-i18n="inv.equipped">Equipped</h3>
+          <div id="inv-slots"></div>
+        </div>
+        <div class="inv-col">
+          <h3 data-i18n="inv.bag">Bag</h3>
+          <div id="inv-grid"></div>
+        </div>
+      </div>
+      <div id="inv-actions"></div>
+      <button id="btn-inv-close" class="pix-btn" data-i18n="ui.close">Close</button>
+    </div>
+  </div>
+
   <!-- ===== AFK SETTINGS ===== -->
   <div id="afk-panel" class="overlay hidden">
     <div class="panel">
@@ -215,6 +235,7 @@
 <script src="js/i18n.js"></script>
 <script src="js/sprites.js"></script>
 <script src="js/data.js"></script>
+<script src="js/items.js"></script>
 <script src="js/world.js"></script>
 <script src="js/net.js"></script>
 <script src="js/entities.js"></script>

@@ -32,6 +32,10 @@ class Player {
     this.bossKills = 0;
     this.stats = Object.assign({}, this.cls.base);
 
+    this.inventory = [];                // item instances (gear + potion stacks)
+    this.equip = { head: null, chest: null, hands: null, legs: null, boots: null };
+    this.quickItems = [null, null, null];   // hotkey potion slots (PR-B)
+
     this.x = game.world.spawnX;
     this.y = game.world.spawnY + 20;
     this.face = { x: 0, y: 1 };
@@ -67,6 +71,71 @@ class Player {
     this.buffs.push(Object.assign({ dur: spec.t, debuff: spec.v < 1 }, spec));
   }
 
+  /* ---------- Items: inventory & equipment ---------- */
+  /* Aggregate stat bonuses from all equipped gear. */
+  equipAgg() {
+    const agg = { str: 0, agi: 0, int: 0, vit: 0, luk: 0,
+                  hp: 0, mp: 0, atk: 0, matk: 0, crit: 0, spd: 0,
+                  dmgMul: 1, aspdMul: 1 };
+    for (const slot of EQUIP_SLOTS) {
+      const it = this.equip[slot];
+      if (!it) continue;
+      for (const row of it.rows) if (row.stat in agg) agg[row.stat] += row.val;
+      const base = itemBase(it);
+      if (base && base.base) {
+        if (base.base.dmgMul) agg.dmgMul *= base.base.dmgMul;
+        if (base.base.aspdMul) agg.aspdMul *= base.base.aspdMul;
+        if (base.base.spd) agg.spd += base.base.spd;
+      }
+    }
+    return agg;
+  }
+
+  addItem(item) {
+    if (!item) return;
+    if (item.kind === 'potion') {
+      const stack = this.inventory.find(i => i.kind === 'potion' && i.key === item.key);
+      if (stack) { stack.count += (item.count || 1); return; }
+    }
+    this.inventory.push(item);
+  }
+
+  removeItem(item, n = 1) {
+    const i = this.inventory.indexOf(item);
+    if (i < 0) return;
+    if (item.kind === 'potion' && (item.count || 1) > n) { item.count -= n; return; }
+    this.inventory.splice(i, 1);
+  }
+
+  /* Equip a gear item from the inventory into its slot,
+   * swapping any current occupant back into the bag. */
+  equipItem(item) {
+    if (!item || (item.kind !== 'weapon' && item.kind !== 'armor')) return false;
+    const slot = item.slot;
+    this.removeItem(item);
+    const prev = this.equip[slot];
+    this.equip[slot] = item;
+    if (prev) this.inventory.push(prev);
+    this.clampVitals();
+    return true;
+  }
+
+  unequipItem(slot) {
+    const it = this.equip[slot];
+    if (!it) return false;
+    this.equip[slot] = null;
+    this.inventory.push(it);
+    this.clampVitals();
+    return true;
+  }
+
+  /* Keep hp/mp within (possibly reduced) maximums after a gear change. */
+  clampVitals() {
+    const d = this.derived;
+    this.hp = Math.min(this.hp, d.maxHp);
+    this.mp = Math.min(this.mp, d.maxMp);
+  }
+
   update(dt, input) {
     const g = this.game;
     const d = this.derived;
@@ -84,9 +153,10 @@ class Player {
       return;
     }
 
-    // regen
-    this.hp = Math.min(d.maxHp, this.hp + d.hpRegen * dt);
-    this.mp = Math.min(d.maxMp, this.mp + d.mpRegen * dt);
+    // regen (regenMul buff — e.g. a Regen potion — speeds it up)
+    const regenMul = this.buffMul('regenMul');
+    this.hp = Math.min(d.maxHp, this.hp + d.hpRegen * regenMul * dt);
+    this.mp = Math.min(d.maxMp, this.mp + d.mpRegen * regenMul * dt);
 
     // movement
     let mx = input.mx, my = input.my;
@@ -105,9 +175,9 @@ class Player {
     // bot may aim without moving
     if (input.face) this.face = input.face;
 
-    // basic attack
+    // basic attack (aspdMul buff — e.g. an Attack-Speed potion — shortens the gap)
     if (input.attack && this.attackT <= 0) {
-      this.attackT = d.atkCd;
+      this.attackT = d.atkCd / this.buffMul('aspdMul');
       if (this.cls.attackType === 'melee') {
         g.meleeArc(this, this.cls.attackRange, 1.0, '#ffffff');
         g.addEffect({ type: 'slash', x: this.x + this.face.x * 26, y: this.y + this.face.y * 26 - 12, dur: 0.15, color: '#ffffff', r: 24 });
@@ -504,11 +574,11 @@ class Projectile {
 
 class Pickup {
   constructor(kind, x, y, value) {
-    this.kind = kind;   // 'heart' | 'orb' | 'coin'
+    this.kind = kind;   // 'heart' | 'orb' | 'coin' | 'gear'
     this.x = x; this.y = y;
-    this.value = value;
+    this.value = value;               // gear: the item instance
     this.t = 0;
-    this.life = 25;
+    this.life = kind === 'gear' ? 60 : 25;   // gear lingers longer
   }
 
   update(dt, game) {
@@ -527,7 +597,24 @@ class Pickup {
 
   draw(g2d, cam) {
     const bob = Math.round(Math.sin(this.t * 4) * 3);
+    const px = Math.round(this.x - cam.x), py = Math.round(this.y - cam.y - 12 + bob);
+    if (this.kind === 'gear') {
+      // tier-colored gem with the item's emoji icon and a soft glow
+      const col = itemColor(this.value);
+      g2d.globalAlpha = 0.35 + Math.sin(this.t * 5) * 0.12;
+      g2d.fillStyle = col;
+      g2d.beginPath(); g2d.arc(px, py + 8, 13, 0, Math.PI * 2); g2d.fill();
+      g2d.globalAlpha = 1;
+      g2d.fillStyle = col;
+      g2d.fillRect(px - 9, py - 1, 18, 18);
+      g2d.strokeStyle = '#0a0c14'; g2d.lineWidth = 2;
+      g2d.strokeRect(px - 9, py - 1, 18, 18);
+      g2d.font = '13px monospace'; g2d.textAlign = 'center'; g2d.textBaseline = 'middle';
+      g2d.fillText(itemIcon(this.value), px, py + 9);
+      g2d.textBaseline = 'alphabetic';
+      return;
+    }
     const sprite = SPRITES[this.kind];
-    g2d.drawImage(sprite, Math.round(this.x - cam.x - 8), Math.round(this.y - cam.y - 12 + bob), 16, 16);
+    g2d.drawImage(sprite, px - 8, py, 16, 16);
   }
 }

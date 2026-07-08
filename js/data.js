@@ -9,19 +9,26 @@ function xpToNext(level) {
   return Math.floor(45 * Math.pow(level, 1.45));
 }
 
-/* Derived combat stats from base stats + level + buffs */
+/* Derived combat stats from base stats + level + equipped gear.
+ * Timed buffs are NOT folded in here (they apply at use sites via
+ * buffMul) so the sheet reflects gear/stats; gear IS included. */
+const EMPTY_AGG = { str: 0, agi: 0, int: 0, vit: 0, luk: 0, hp: 0, mp: 0, atk: 0, matk: 0, crit: 0, spd: 0, dmgMul: 1, aspdMul: 1 };
 function deriveStats(p) {
   const s = p.stats;
+  const e = (p.equipAgg ? p.equipAgg() : EMPTY_AGG);
+  const str = s.str + e.str, agi = s.agi + e.agi, int = s.int + e.int,
+        vit = s.vit + e.vit, luk = s.luk + e.luk;
   return {
-    maxHp: 70 + s.vit * 12 + p.level * 6,
-    maxMp: 25 + s.int * 7 + p.level * 3,
-    atk: 4 + s.str * 2 + p.level,
-    matk: 4 + s.int * 2 + p.level,
-    speed: Math.min(270, 128 + s.agi * 2.6),
-    atkCd: Math.max(0.22, 0.62 - s.agi * 0.009),
-    crit: Math.min(60, 5 + s.luk * 0.7),
-    hpRegen: 0.6 + s.vit * 0.09,
-    mpRegen: 0.8 + s.int * 0.09,
+    maxHp: 70 + vit * 12 + p.level * 6 + e.hp,
+    maxMp: 25 + int * 7 + p.level * 3 + e.mp,
+    atk: 4 + str * 2 + p.level + e.atk,
+    matk: 4 + int * 2 + p.level + e.matk,
+    speed: Math.min(320, 128 + agi * 2.6 + e.spd),
+    atkCd: Math.max(0.16, (0.62 - agi * 0.009) / (e.aspdMul || 1)),
+    crit: Math.min(75, 5 + luk * 0.7 + e.crit),
+    hpRegen: 0.6 + vit * 0.09,
+    mpRegen: 0.8 + int * 0.09,
+    dmgMul: e.dmgMul || 1,
   };
 }
 

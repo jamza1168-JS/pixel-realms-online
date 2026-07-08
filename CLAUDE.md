@@ -109,3 +109,32 @@ Render auto-deploys `main` (blueprint in `render.yaml`). Flow used so far:
 feature branch → PR → merge to main → Render redeploys. Server-side fixes
 only take effect after a redeploy; remind players to hard-refresh for
 client changes.
+
+## Roadmap — where we left off (resume here)
+
+Everything below is on `main` and live-deployable. Continued from any
+machine: `git pull`, then pick up the queue.
+
+**Recently shipped (PRs #4–#9):** skill tooltips; boss leaderboard; player
+names in HUD/head/toasts; new default hotkeys (Space/1-3, potions 4-6);
+buff/debuff chips; server-side name uniqueness; the full item system
+(tiers, random 3-stat gear, weapons/armor/potions, drops, inventory,
+storage stash, merchant shop, hotkey potions); Legend/Mystic drop fanfare;
+tooltip-above-overlay fix; and public World channels (cap 20) +
+password-protected private rooms.
+
+**Deferred by the user — remind them when they return:**
+1. Shield / off-hand slot to pair with the one-hand sword.
+2. Balance the new gear and tiers.
+3. Sound effects for normal (common/rare) item pickups.
+
+**Open proposal, awaiting the user's go-ahead:** make the *server* host the
+public World so it never depends on a player's device. Two paths discussed —
+(A) a headless Node process that loads the existing JS as an always-on host
+(reuses code, recommended), or (B) port the monster sim to Python
+(server-authoritative, bigger rewrite). Needs confirmation that the Render
+environment can run Node alongside Python before starting.
+
+**Bigger backlog:** raise the 20-players/channel cap for a true massive
+shared world — requires server-authoritative simulation + area-of-interest
+(grid) filtering.

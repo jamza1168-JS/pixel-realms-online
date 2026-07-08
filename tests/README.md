@@ -23,6 +23,8 @@ python3 shard_test.py              # public world 20-cap sharding + private-room
 node rooms_ui_test.js              # public/private join flow, wrong/right password (browser)
 python3 accounts_test.py           # register/login/logout, auth, character save+sanitize
 node account_ui_test.js            # account panel + cloud save/load + Continue (browser)
+python3 hardening_test.py          # anti-tamper: gear caps, stat invariant, gold/level
+                                   #   caps, xp clamp, write + login rate limits
 node feature_test.js               # heal circle, leveling, AFK keeps points, stat buttons
 node bot_test.js                   # line of sight, unstuck/blacklist, manual override,
                                    #   retreat fight-back, cursor aim, live AFK farm (~1 min)

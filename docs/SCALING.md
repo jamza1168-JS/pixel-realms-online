@@ -150,6 +150,16 @@ Incremental — each stage ships value and never breaks the working game.
 
 ### Stage 1 — Server owns the economy (biggest security win, still cheap)
 *Kills save-file hacking; gets to hundreds of concurrent players.*
+
+> **Status:** ✅ **1a done** — accounts + server-side cloud character store
+> (SQLite). ✅ **1b done** — server-only anti-tamper hardening on save
+> (gear-row caps vs tier/ilvl, base-stat point invariant, per-save
+> gold/level caps, xp clamp, write + login rate limits). **Remaining:** true
+> server authority (server computes kills/drops/gold) is bounded by the fact
+> that the server can't yet verify a kill happened — that needs Stage 2's
+> combat sim. The pragmatic call was to ship cheap hardening now and defer
+> full authority to Stage 2.
+
 1. Add **accounts** (lightweight auth) + a **database** (start with Postgres,
    or SQLite for a first cut).
 2. Move **characters, inventory, storage, gold, leaderboard** into the DB;

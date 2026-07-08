@@ -177,6 +177,54 @@ ALLOWED_SLOTS = {"head", "chest", "hands", "legs", "boots"}
 ALLOWED_BASESTATS = {"str", "agi", "int", "vit", "luk"}
 ALLOWED_ROWSTATS = {"str", "agi", "int", "vit", "luk", "hp", "mp", "atk", "matk", "crit", "spd"}
 
+# --- anti-tamper reference values (mirror the client's data.js/items.js) ---
+POINTS_PER_LEVEL = 5
+CLASS_BASE = {
+    "warrior": {"str": 8, "agi": 4, "int": 1, "vit": 8, "luk": 3},
+    "mage":    {"str": 1, "agi": 3, "int": 10, "vit": 4, "luk": 4},
+    "archer":  {"str": 4, "agi": 10, "int": 2, "vit": 4, "luk": 6},
+    "cleric":  {"str": 3, "agi": 3, "int": 8, "vit": 7, "luk": 3},
+}
+TIER_MULT = {"common": 1.0, "rare": 1.5, "unique": 2.1, "legend": 3.0, "mystic": 4.3}
+AFFIX_MAX = {"str": 5, "agi": 5, "int": 5, "vit": 5, "luk": 5, "hp": 45, "mp": 22,
+             "atk": 9, "matk": 9, "crit": 6, "spd": 9}
+MAX_ILVL = 28   # highest item level a real drop reaches (tier-4 boss: 4*4 + 12)
+# per-save injection caps (legit play never approaches these between ~8-15s saves)
+GOLD_GAIN_PER_SAVE = 100_000
+LEVEL_GAIN_PER_SAVE = 10
+CHAR_WRITE_MIN_GAP = 2.0   # seconds between character writes per account
+
+char_write_at: dict = {}   # account_id -> last write ts (rate limit)
+login_attempts: dict = {}  # uname_lc -> [count, window_start] (brute-force limit)
+
+
+def xp_to_next(level):
+    return int(45 * (level ** 1.45))
+
+
+def row_cap(stat, tier, ilvl):
+    """Largest legit rolled value for a stat on this tier/item-level (+ tolerance)."""
+    scale = 1 + (max(1, ilvl) - 1) * 0.12
+    return int(AFFIX_MAX[stat] * TIER_MULT.get(tier, 1.0) * scale) + 3
+
+
+def enforce_player_invariants(pl):
+    """Force self-consistency a legit client always satisfies, so tampering is
+    neutralised: base stats >= class base and within the level's point budget,
+    statPoints derived from level, xp below the next-level threshold."""
+    cls = pl["clsId"]
+    base = CLASS_BASE[cls]
+    for k in ALLOWED_BASESTATS:
+        pl["stats"][k] = max(base[k], clampi(pl["stats"].get(k, base[k]), 0, 99999))
+    used = sum(pl["stats"][k] - base[k] for k in ALLOWED_BASESTATS)
+    available = POINTS_PER_LEVEL * (pl["level"] - 1)
+    if used > available:            # more points spent than the level grants → cheat
+        pl["stats"] = dict(base)
+        used = 0
+    pl["statPoints"] = max(0, available - used)
+    pl["xp"] = clampi(pl.get("xp", 0), 0, max(0, xp_to_next(pl["level"]) - 1))
+    return pl
+
 
 def db():
     conn = sqlite3.connect(DB_FILE)
@@ -223,13 +271,15 @@ def clean_item(o):
         table = ALLOWED_WEAPONS if kind == "weapon" else ALLOWED_ARMOR
         if o.get("key") not in table or o.get("slot") not in ALLOWED_SLOTS:
             return None
+        tier = o.get("tier") if o.get("tier") in ALLOWED_TIERS else "common"
+        ilvl = clampi(o.get("ilvl", 1), 1, MAX_ILVL)
         rows = []
         for r in (o.get("rows") or [])[:3]:
             if isinstance(r, dict) and r.get("stat") in ALLOWED_ROWSTATS:
-                rows.append({"stat": r["stat"], "val": clampi(r.get("val", 0), 0, 99999)})
-        tier = o.get("tier") if o.get("tier") in ALLOWED_TIERS else "common"
+                # clamp to the strongest a legit drop of this tier/ilvl could roll
+                rows.append({"stat": r["stat"], "val": clampi(r.get("val", 0), 0, row_cap(r["stat"], tier, ilvl))})
         return {"uid": str(o.get("uid", ""))[:32], "key": o["key"], "kind": kind,
-                "slot": o["slot"], "tier": tier, "ilvl": clampi(o.get("ilvl", 1), 1, 9999), "rows": rows}
+                "slot": o["slot"], "tier": tier, "ilvl": ilvl, "rows": rows}
     return None
 
 
@@ -245,7 +295,7 @@ def clean_player(p):
     quick = [(k if k in ALLOWED_POTIONS else None) for k in (p.get("quickItems") or [])[:3]]
     while len(quick) < 3:
         quick.append(None)
-    return {
+    pl = {
         "id": clampi(p.get("id", 1), 1, 2),
         "clsId": p.get("clsId") if p.get("clsId") in ALLOWED_CLS else "warrior",
         "level": clampi(p.get("level", 1), 1, 999),
@@ -260,6 +310,25 @@ def clean_player(p):
         "equip": equip,
         "quickItems": quick,
     }
+    return enforce_player_invariants(pl)
+
+
+def apply_save_caps(clean, prev):
+    """Cap per-save gold/level increases vs the previously stored character,
+    so progress can't be injected in a single write. Skips a fresh character
+    (different class = a new game the player legitimately restarted)."""
+    if not prev or not isinstance(prev.get("players"), list):
+        return clean
+    for i, pl in enumerate(clean["players"]):
+        pv = prev["players"][i] if i < len(prev["players"]) else None
+        if not pv or pv.get("clsId") != pl["clsId"]:
+            continue
+        pl["gold"] = min(pl["gold"], clampi(pv.get("gold", 0), 0, 10**9) + GOLD_GAIN_PER_SAVE)
+        max_lvl = clampi(pv.get("level", 1), 1, 999) + LEVEL_GAIN_PER_SAVE
+        if pl["level"] > max_lvl:
+            pl["level"] = max_lvl
+            enforce_player_invariants(pl)   # keep statPoints/xp consistent
+    return clean
 
 
 def sanitize_character(obj):
@@ -372,12 +441,23 @@ def handle_api(writer, method: str, raw_path: str, body: bytes, headers: dict):
             http_json(writer, "200 OK", {"ok": True, "token": tok, "username": username})
             print(f"[acct] registered '{username}' (#{acc_id})")
             return
-        # login
+        # login — throttle password guessing per username
+        lc = username.lower()
+        rec = login_attempts.get(lc)
+        tnow = time.time()
+        if not rec or tnow - rec[1] > 60:
+            login_attempts[lc] = [0, tnow]
+            rec = login_attempts[lc]
+        if rec[0] >= 10:
+            http_json(writer, "429 Too Many Requests", {"ok": False, "error": "too_many"})
+            return
         with db() as c:
-            row = c.execute("SELECT * FROM accounts WHERE uname_lc=?", (username.lower(),)).fetchone()
+            row = c.execute("SELECT * FROM accounts WHERE uname_lc=?", (lc,)).fetchone()
         if not row or not hmac.compare_digest(hash_pw(password, row["pw_salt"])[0], row["pw_hash"]):
+            rec[0] += 1   # count only failures toward the limit
             http_json(writer, "401 Unauthorized", {"ok": False, "error": "bad_credentials"})
             return
+        login_attempts.pop(lc, None)   # success clears the counter
         tok = secrets.token_hex(24)
         sessions[tok] = row["id"]
         http_json(writer, "200 OK", {"ok": True, "token": tok, "username": row["username"]})
@@ -404,6 +484,10 @@ def handle_api(writer, method: str, raw_path: str, body: bytes, headers: dict):
             http_json(writer, "200 OK", {"ok": True, "character": char})
             return
         if method == "POST":
+            now = time.time()
+            if now - char_write_at.get(acc_id, 0) < CHAR_WRITE_MIN_GAP:
+                http_json(writer, "429 Too Many Requests", {"ok": False, "error": "rate_limited"})
+                return
             try:
                 d = json.loads(body.decode("utf-8"))
             except Exception:
@@ -414,11 +498,15 @@ def handle_api(writer, method: str, raw_path: str, body: bytes, headers: dict):
                 http_json(writer, "400 Bad Request", {"ok": False, "error": "bad_character"})
                 return
             with db() as c:
+                row = c.execute("SELECT data FROM characters WHERE account_id=?", (acc_id,)).fetchone()
+                prev = json.loads(row["data"]) if row else None
+                clean = apply_save_caps(clean, prev)   # cap per-save gold/level injection
                 c.execute(
                     "INSERT INTO characters(account_id, data, updated) VALUES(?,?,?) "
                     "ON CONFLICT(account_id) DO UPDATE SET data=excluded.data, updated=excluded.updated",
-                    (acc_id, json.dumps(clean, ensure_ascii=False), time.time()),
+                    (acc_id, json.dumps(clean, ensure_ascii=False), now),
                 )
+            char_write_at[acc_id] = now
             http_json(writer, "200 OK", {"ok": True, "character": clean})
             return
 

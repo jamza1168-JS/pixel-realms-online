@@ -28,20 +28,21 @@ const USER = 'Cloud' + Math.floor(1000 + Math.random() * 8999);
   await page.click('#btn-account-close');
 
   // 2. start a game and progress it; cloud save should receive it
-  await page.evaluate(() => {
-    startGame('mage', null);
-    const p = game.players[0];
-    p.level = 22; p.gold = 777;
-    p.addItem(rollItem({ kind: 'weapon', tier: 'legend', ilvl: 15 }));
-    game.save(true);   // force an immediate cloud push
-  });
+  await page.evaluate(() => startGame('mage', null));
   await page.waitForFunction(() => game && game.running, null, { timeout: 5000 });
+  await page.waitForTimeout(2300);  // startGame auto-saves; wait past the 2s write rate-limit
+  await page.evaluate(() => {
+    const p = game.players[0];
+    p.level = 8; p.gold = 777;
+    p.addItem(rollItem({ kind: 'weapon', tier: 'legend', ilvl: 15 }));
+    game.save(true);   // force a cloud push
+  });
   await page.waitForTimeout(500);   // let the POST land
   const saved = await page.evaluate(async () => {
     const r = await fetch('/api/character', { headers: { Authorization: 'Bearer ' + Account.token } });
     return (await r.json()).character;
   });
-  assert(saved && saved.players[0].level === 22 && saved.players[0].gold === 777, 'character synced to the server');
+  assert(saved && saved.players[0].level === 8 && saved.players[0].gold === 777, 'character synced to the server');
 
   // 3. log out, then reload — should be signed out and cloud char cleared locally
   await page.evaluate(() => Account.logout());
@@ -56,14 +57,14 @@ const USER = 'Cloud' + Math.floor(1000 + Math.random() * 8999);
   await page.fill('#acct-pass', 'secret123');
   await page.click('#account-content .pix-btn:has-text("Log in")');
   await page.waitForFunction(() => Account.loggedIn && Account.character, null, { timeout: 5000 });
-  assert(await page.evaluate(() => Account.character.players[0].level === 22), 'login pulled the cloud character');
+  assert(await page.evaluate(() => Account.character.players[0].level === 8), 'login pulled the cloud character');
   await page.click('#btn-account-close');
   await page.waitForFunction(() => !document.getElementById('btn-continue').classList.contains('hidden'), null, { timeout: 3000 });
   assert(true, 'Continue button appears after cloud character loads');
   await page.click('#btn-continue');
   await page.waitForFunction(() => game && game.running, null, { timeout: 5000 });
   const loaded = await page.evaluate(() => ({ level: game.players[0].level, gold: game.players[0].gold, cls: game.players[0].clsId }));
-  assert(loaded.level === 22 && loaded.gold === 777 && loaded.cls === 'mage', 'Continue restored the exact cloud character');
+  assert(loaded.level === 8 && loaded.gold === 777 && loaded.cls === 'mage', 'Continue restored the exact cloud character');
 
   // 5. wrong password rejected in the panel
   await page.evaluate(() => Account.logout());

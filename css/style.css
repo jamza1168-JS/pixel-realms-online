@@ -244,7 +244,7 @@ html, body {
 
 /* skill hover tooltip */
 #skill-tooltip {
-  position: absolute; z-index: 60;
+  position: absolute; z-index: 100;   /* above overlays (z-index 50) */
   max-width: 230px;
   background: rgba(14,17,30,.96);
   border: 2px solid var(--panel-border);

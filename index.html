@@ -60,9 +60,6 @@
 
     <div id="toast-area"></div>
 
-    <!-- skill hover tooltip -->
-    <div id="skill-tooltip" class="hidden"></div>
-
     <!-- chat -->
     <div id="chat-box">
       <div id="chat-log"></div>
@@ -249,6 +246,9 @@
       <button id="btn-online-close" class="pix-btn" data-i18n="ui.close">Close</button>
     </div>
   </div>
+
+  <!-- hover tooltip (skills + items) — top level so it renders above overlays -->
+  <div id="skill-tooltip" class="hidden"></div>
 </div>
 
 <script src="js/i18n.js"></script>

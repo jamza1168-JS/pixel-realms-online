@@ -131,6 +131,13 @@ const SFX = {
   point:  () => beep(700, 0.05, 'square', 0.05),
   die:    () => beep(120, 0.4, 'sawtooth', 0.07, 40),
   levelup:() => { beep(520, 0.1, 'square', 0.06); setTimeout(() => beep(660, 0.1, 'square', 0.06), 100); setTimeout(() => beep(880, 0.2, 'square', 0.06), 200); },
+  // shimmering fanfare for a rare (Legend / Mystic) drop
+  legendary:() => {
+    beep(880, 0.12, 'sine', 0.07, 1200);
+    setTimeout(() => beep(1320, 0.12, 'sine', 0.07, 1600), 90);
+    setTimeout(() => beep(1760, 0.26, 'sine', 0.08, 2300), 180);
+    setTimeout(() => beep(2640, 0.18, 'triangle', 0.05, 3000), 300);
+  },
 };
 
 /* ============================================================ */
@@ -1054,6 +1061,12 @@ class Game {
       if (Math.random() < dropChance) {
         const item = rollItem({ ilvl: (tier * 4) + (isBoss ? 12 : 0), bias: isBoss ? 3 : tier - 1 });
         this.pickups.push(new Pickup('gear', x + (Math.random() * 30 - 15), y + 6, item));
+        // fanfare + a callout toast when something truly rare drops
+        if (item.tier === 'legend' || item.tier === 'mystic') {
+          this.sfx('legendary');
+          this.addEffect({ type: 'ring', x, y: y - 12, dur: 0.6, color: itemColor(item), r: 46 });
+          UI.toast(itemIcon(item) + ' ' + t('inv.rareDrop', { name: itemName(item) }), 'gold');
+        }
       }
     }
 

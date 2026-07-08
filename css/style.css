@@ -380,6 +380,7 @@ html, body {
 .online-status.err { color: var(--hp); }
 .online-status.connecting { color: var(--gold); }
 #online-panel .hint { margin: 10px auto; max-width: 460px; line-height: 1.7; }
+.online-divider { color: var(--muted); font-size: 10px; margin: 10px 0 8px; }
 
 /* ===== Chat ===== */
 #chat-box {

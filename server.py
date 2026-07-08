@@ -46,6 +46,36 @@ STATIC_TYPES = {
 # room name -> {client_id: Client}, insertion order = host order
 rooms: dict = {}
 
+# passwords for private rooms (room name -> password); public channels have none
+room_pw: dict = {}
+
+# Each room/shard holds at most this many players; the public world
+# auto-shards into channels ("@world-1", "@world-2", ...) as they fill.
+ROOM_CAP = 20
+PUBLIC_PREFIX = "@world-"
+
+
+def public_channel() -> str:
+    """First public world channel with a free slot (create the next if full)."""
+    i = 1
+    while True:
+        name = f"{PUBLIC_PREFIX}{i}"
+        room = rooms.get(name)
+        if room is None or len(room) < ROOM_CAP:
+            return name
+        i += 1
+
+
+def room_display(name: str) -> dict:
+    """How a room is shown to clients: public channel number, or private name."""
+    if name.startswith(PUBLIC_PREFIX):
+        try:
+            ch = int(name[len(PUBLIC_PREFIX):])
+        except ValueError:
+            ch = 1
+        return {"room": "world", "channel": ch, "public": True}
+    return {"room": name, "channel": 0, "public": False}
+
 # names currently in use by connected clients (lowercased -> client id),
 # so two players can't play under the same name at once
 active_names: dict = {}
@@ -329,17 +359,42 @@ def host_id(room: dict):
     return next(iter(room), None)
 
 
-def join_room(client: Client, room_name: str, name: str):
+def join_room(client: Client, req_room: str, name: str, password: str, public: bool):
     name = (name or "Hero")[:14]
     # reject duplicate names so no two players share one at once
     if name_taken(name):
         client.send({"t": "name_taken", "name": name})
         print(f"[!] name '{name}' rejected for {client.id} (already in use)")
         return
+
+    if public:
+        # shared world: drop into the first channel with a free slot
+        room_name = public_channel()
+    else:
+        # private room by name; '@' prefix is reserved for public channels
+        room_name = (req_room or "realm-1").lstrip("@")[:24] or "realm-1"
+        existing = rooms.get(room_name)
+        if existing is None:
+            # first person in — they set the room's password
+            room_pw[room_name] = password
+        else:
+            if len(existing) >= ROOM_CAP:
+                client.send({"t": "room_full", "room": room_name})
+                print(f"[!] room '{room_name}' full — rejected {client.id}")
+                return
+            if room_pw.get(room_name, "") != password:
+                client.send({"t": "wrong_password", "room": room_name})
+                print(f"[!] wrong password for '{room_name}' — rejected {client.id}")
+                return
+
+    room = rooms.setdefault(room_name, {})
+    if len(room) >= ROOM_CAP:                     # safety net (races/edges)
+        client.send({"t": "room_full", "room": room_name})
+        return
+
     client.room = room_name
     client.name = name
     active_names[name.lower()] = client.id
-    room = rooms.setdefault(room_name, {})
     is_host = len(room) == 0
     client.send(
         {
@@ -347,13 +402,13 @@ def join_room(client: Client, room_name: str, name: str):
             "id": client.id,
             "host": is_host,
             "peers": [{"id": c.id, "name": c.name} for c in room.values()],
+            **room_display(room_name),
         }
     )
     broadcast(room, {"t": "peer", "id": client.id, "name": client.name})
     room[client.id] = client
-    print(f"[+] {client.name} ({client.id}) joined room '{room_name}' "
-          f"({len(room)} player{'s' if len(room) != 1 else ''})"
-          + (" as HOST" if is_host else ""))
+    print(f"[+] {client.name} ({client.id}) joined '{room_name}' "
+          f"({len(room)}/{ROOM_CAP})" + (" as HOST" if is_host else ""))
 
 
 def leave_room(client: Client):
@@ -369,6 +424,7 @@ def leave_room(client: Client):
     print(f"[-] {client.name} ({client.id}) left room '{client.room}'")
     if not room:
         del rooms[client.room]
+        room_pw.pop(client.room, None)   # forget an emptied private room's password
         return
     broadcast(room, {"t": "leave", "id": client.id, "name": client.name})
     if was_host:
@@ -396,7 +452,13 @@ async def handle_client(reader, writer):
 
             if msg.get("t") == "join":
                 if client.room is None:
-                    join_room(client, str(msg.get("room", "realm-1"))[:24], str(msg.get("name", "")))
+                    join_room(
+                        client,
+                        str(msg.get("room", "") or "")[:24],
+                        str(msg.get("name", "")),
+                        str(msg.get("password", "") or "")[:32],
+                        bool(msg.get("public")),
+                    )
                 continue
 
             # relay everything else to the rest of the room

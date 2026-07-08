@@ -744,12 +744,12 @@ class Game {
   }
 
   /* ---------------- Networking glue ---------------- */
-  goOnline(url, room, name) {
+  goOnline(url, room, name, password = '', publicWorld = false) {
     if (this.net instanceof WSNet) this.net.disconnect();   // also kills a pending 'connecting' socket
     localStorage.setItem('pixelrealms_name', name);
     const net = new WSNet(this);
     this.net = net;
-    net.connect(url, room, name);
+    net.connect(url, room, name, password, publicWorld);
     for (const p of this.players) p.name = name;   // reflect the chosen name at once
   }
 
@@ -1652,17 +1652,19 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-online').addEventListener('click', () => UI.openOnlinePanel());
   document.getElementById('btn-online-close').addEventListener('click', () =>
     document.getElementById('online-panel').classList.add('hidden'));
-  document.getElementById('btn-online-connect').addEventListener('click', async () => {
+  const onlineJoin = async (publicWorld) => {
     if (!game) return;
     const name = document.getElementById('online-name').value.trim() || 'Hero';
+    const url = document.getElementById('online-url').value.trim();
+    const room = document.getElementById('online-room').value.trim();
+    const pass = document.getElementById('online-pass').value;
+    if (!publicWorld && !room) { UI.toast(t('online.needRoom'), 'info'); game.sfx('hurt'); return; }
     await UI.checkNameAvailable();          // final check before we connect
     if (UI._nameOk === false) { game.sfx('hurt'); return; }   // name taken — block
-    game.goOnline(
-      document.getElementById('online-url').value.trim(),
-      document.getElementById('online-room').value.trim() || 'realm-1',
-      name
-    );
-  });
+    game.goOnline(url, room, name, pass, publicWorld);
+  };
+  document.getElementById('btn-online-public').addEventListener('click', () => onlineJoin(true));
+  document.getElementById('btn-online-private').addEventListener('click', () => onlineJoin(false));
   document.getElementById('btn-online-disconnect').addEventListener('click', () => {
     if (game) game.goOffline();
   });

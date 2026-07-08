@@ -30,10 +30,14 @@ python server.py            # game + relay on port 8765
 python server.py 9000       # custom port (or set PORT env var)
 ```
 
-1. Everyone clicks the **🌐** button, keeps the pre-filled server address
-   (or types `ws://<host-ip>:8765`), enters the same **room** name, and a name.
-2. Play together! The first player in a room becomes the **host** (★) and
-   simulates monsters; if the host leaves, the next player is promoted
+1. Everyone clicks the **🌐** button, enters a name, then either:
+   - **🌍 Join Public World** — drops you into the shared world with everyone
+     else. The world auto-shards into **channels of 20 players** each, so it
+     never gets too crowded (you'll see "World · Ch 1", "Ch 2", …).
+   - **🔒 Enter Private Room** — type a **room name + password**; friends who
+     know both join you (max 20 per room).
+2. Play together! The first player in a room/channel becomes the **host** (★)
+   and simulates monsters; if the host leaves, the next player is promoted
    automatically. The world map is generated from a shared seed, so only
    entity state is synced.
 

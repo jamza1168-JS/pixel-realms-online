@@ -229,19 +229,28 @@
         <label><span data-i18n="online.server">Server address</span>
           <input id="online-url" class="pix-input" value="ws://localhost:8765">
         </label>
-        <label><span data-i18n="online.room">Room</span>
-          <input id="online-room" class="pix-input" value="realm-1" maxlength="24">
-        </label>
         <label><span data-i18n="online.name">Your name</span>
           <input id="online-name" class="pix-input" value="" maxlength="14">
         </label>
         <div id="online-name-check" class="name-check"></div>
       </div>
-      <div id="online-status" class="online-status"></div>
-      <div>
-        <button id="btn-online-connect" class="pix-btn big" data-i18n="online.connect">Connect</button>
-        <button id="btn-online-disconnect" class="pix-btn hidden" data-i18n="online.disconnect">Disconnect</button>
+
+      <div id="online-connect-area">
+        <button id="btn-online-public" class="pix-btn big" data-i18n="online.joinPublic">🌍 Join Public World</button>
+        <div class="online-divider" data-i18n="online.orPrivate">— or private room —</div>
+        <div class="online-form">
+          <label><span data-i18n="online.room">Room</span>
+            <input id="online-room" class="pix-input" value="" maxlength="24" data-i18n-ph="online.roomPh">
+          </label>
+          <label><span data-i18n="online.password">Password</span>
+            <input id="online-pass" class="pix-input" type="password" maxlength="32" autocomplete="off">
+          </label>
+        </div>
+        <button id="btn-online-private" class="pix-btn" data-i18n="online.enterPrivate">🔒 Enter Private Room</button>
       </div>
+
+      <div id="online-status" class="online-status"></div>
+      <button id="btn-online-disconnect" class="pix-btn hidden" data-i18n="online.disconnect">Disconnect</button>
       <p class="hint" id="online-hint"></p>
       <button id="btn-online-close" class="pix-btn" data-i18n="ui.close">Close</button>
     </div>

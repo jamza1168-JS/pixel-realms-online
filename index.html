@@ -19,13 +19,14 @@
       <div class="player-frame" id="frame-p1">
         <div class="pf-head">
           <span class="pf-playername" id="p1-playername">Hero</span>
-          <span class="pf-level"><span data-i18n="ui.lv">Lv</span> <span id="p1-level">1</span></span>
           <button class="pix-btn small afk-btn" id="afk-p1" data-i18n="ui.afk">AUTO</button>
+          <button class="pix-btn small afk-cfg" id="afk-cfg-p1" title="AFK settings">⚙</button>
         </div>
-        <div class="pf-name" id="p1-name">Warrior</div>
+        <div class="pf-name"><span id="p1-name">Warrior</span> <span class="pf-level"><span data-i18n="ui.lv">Lv</span> <span id="p1-level">1</span></span></div>
         <div class="bar hp-bar"><div class="bar-fill" id="p1-hp"></div><span class="bar-text" id="p1-hp-text"></span></div>
         <div class="bar mp-bar"><div class="bar-fill" id="p1-mp"></div><span class="bar-text" id="p1-mp-text"></span></div>
         <div class="bar xp-bar"><div class="bar-fill" id="p1-xp"></div></div>
+        <div class="buffbar" id="buffbar-p1"></div>
         <button class="pix-btn small" id="btn-stats">＋ <span data-i18n="ui.stats">Stats</span><b id="stats-badge" class="hidden"></b></button>
         <div class="pf-points hidden" id="p1-points-hint">✨ <span data-i18n="ui.pointsHint">Stat points!</span></div>
       </div>
@@ -143,6 +144,23 @@
     </div>
   </div>
 
+  <!-- ===== AFK SETTINGS ===== -->
+  <div id="afk-panel" class="overlay hidden">
+    <div class="panel">
+      <h2 data-i18n="afk.title">🤖 AFK Auto-Farm</h2>
+      <p class="hint" data-i18n="afk.hint">Choose what your hero hunts while auto-farming.</p>
+      <div id="afk-focus-opts">
+        <button class="pix-btn afk-opt" data-focus="boss">
+          <span data-i18n="afk.boss">Boss</span><small data-i18n="afk.bossHint">approach &amp; fight bosses (off = flee)</small>
+        </button>
+        <button class="pix-btn afk-opt" data-focus="monster">
+          <span data-i18n="afk.monster">Monster</span><small data-i18n="afk.monsterHint">hunt monsters (off = walk past)</small>
+        </button>
+      </div>
+      <button id="btn-afk-close" class="pix-btn" data-i18n="ui.close">Close</button>
+    </div>
+  </div>
+
   <!-- ===== LEADERBOARD ===== -->
   <div id="board-panel" class="overlay hidden">
     <div class="panel">
@@ -181,6 +199,7 @@
         <label><span data-i18n="online.name">Your name</span>
           <input id="online-name" class="pix-input" value="" maxlength="14">
         </label>
+        <div id="online-name-check" class="name-check"></div>
       </div>
       <div id="online-status" class="online-status"></div>
       <div>

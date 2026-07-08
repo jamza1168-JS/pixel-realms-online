@@ -60,6 +60,13 @@ class Player {
     return m;
   }
 
+  /* Apply a buff/debuff; re-applying the same tag refreshes it
+   * (so the HUD shows one icon, not a growing stack). */
+  addBuff(spec) {
+    if (spec.tag) this.buffs = this.buffs.filter(b => b.tag !== spec.tag);
+    this.buffs.push(Object.assign({ dur: spec.t, debuff: spec.v < 1 }, spec));
+  }
+
   update(dt, input) {
     const g = this.game;
     const d = this.derived;

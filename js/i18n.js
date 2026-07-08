@@ -35,6 +35,16 @@ const I18N = {
     'ui.afkOn': '🤖 AFK farming ON — {name}',
     'ui.afkOff': 'AFK farming OFF — {name}',
 
+    'afk.title': '🤖 AFK Auto-Farm',
+    'afk.hint': 'Choose what your hero hunts while auto-farming.',
+    'afk.boss': 'Boss',
+    'afk.bossHint': 'approach & fight bosses (off = flee from them)',
+    'afk.monster': 'Monster',
+    'afk.monsterHint': 'hunt monsters (off = walk past them)',
+
+    'buff.warcry': 'War Cry — +35% damage',
+    'buff.swift': 'Swift Step — +45% move speed',
+
     'keys.title': 'Hotkey Settings',
     'keys.action': 'Action',
     'keys.key': 'Key',
@@ -58,6 +68,9 @@ const I18N = {
     'online.players': 'ONLINE · {n} players',
     'online.hint': 'The server address is filled in for you — just choose a room name and connect to play with everyone else on this server.',
     'online.hintLocal': 'Start the server with:  python server.py  — friends on your network join with your IP and the same room name.',
+    'online.nameChecking': 'Checking name…',
+    'online.nameFree': '✓ Name available',
+    'online.nameTaken': '✗ Name already taken — pick another',
     'online.joined': '🟢 {name} joined the realm!',
     'online.left': '🔴 {name} left the realm',
 
@@ -218,6 +231,16 @@ const I18N = {
     'ui.afkOn': '🤖 เปิดฟาร์มอัตโนมัติ — {name}',
     'ui.afkOff': 'ปิดฟาร์มอัตโนมัติ — {name}',
 
+    'afk.title': '🤖 ฟาร์มอัตโนมัติ',
+    'afk.hint': 'เลือกว่าจะให้ฮีโร่ล่าอะไรระหว่างฟาร์มอัตโนมัติ',
+    'afk.boss': 'บอส',
+    'afk.bossHint': 'เข้าไปสู้กับบอส (ปิด = วิ่งหนีบอส)',
+    'afk.monster': 'มอนสเตอร์',
+    'afk.monsterHint': 'ล่ามอนสเตอร์ (ปิด = เดินผ่านไป)',
+
+    'buff.warcry': 'คำรามศึก — โจมตี +35%',
+    'buff.swift': 'ก้าวสายลม — ความเร็ว +45%',
+
     'keys.title': 'ตั้งค่าปุ่มลัด',
     'keys.action': 'การกระทำ',
     'keys.key': 'ปุ่ม',
@@ -241,6 +264,9 @@ const I18N = {
     'online.players': 'ออนไลน์ · {n} คน',
     'online.hint': 'ที่อยู่เซิร์ฟเวอร์ถูกกรอกให้แล้ว — แค่ตั้งชื่อห้องแล้วกดเชื่อมต่อเพื่อเล่นกับคนอื่นบนเซิร์ฟเวอร์นี้',
     'online.hintLocal': 'เริ่มเซิร์ฟเวอร์ด้วยคำสั่ง:  python server.py  — เพื่อนในเครือข่ายเข้าร่วมด้วย IP ของคุณและชื่อห้องเดียวกัน',
+    'online.nameChecking': 'กำลังตรวจสอบชื่อ…',
+    'online.nameFree': '✓ ใช้ชื่อนี้ได้',
+    'online.nameTaken': '✗ ชื่อนี้ถูกใช้แล้ว — กรุณาเลือกชื่ออื่น',
     'online.joined': '🟢 {name} เข้าร่วมโลกแล้ว!',
     'online.left': '🔴 {name} ออกจากโลกไปแล้ว',
 

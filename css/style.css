@@ -127,12 +127,45 @@ html, body {
   padding: 8px 10px;
   width: 230px;
 }
-.pf-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
-.pf-playername { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; }
+.pf-head { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; font-size: 11px; }
+.pf-playername {
+  color: var(--text); flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  pointer-events: auto; cursor: help;   /* hover shows the full name (title) */
+}
 .pf-name { color: var(--gold); font-size: 10px; text-align: left; margin-bottom: 6px; }
-.pf-level { color: var(--muted); margin-left: auto; margin-right: 8px; }
+.pf-name .pf-level { color: var(--muted); margin-left: 4px; }
+.afk-cfg { padding: 3px 6px; margin: 0; font-size: 9px; }
 .pf-points { margin-top: 5px; font-size: 9px; color: var(--gold); animation: blink 1s infinite; }
 @keyframes blink { 50% { opacity: .35; } }
+
+/* buff / debuff status chips */
+.buffbar { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 6px; min-height: 0; }
+.buff-chip {
+  position: relative; display: flex; align-items: center; gap: 3px;
+  padding: 2px 5px 4px; font-size: 9px;
+  background: rgba(94,201,106,.16); border: 1px solid var(--green);
+  pointer-events: auto; cursor: help;
+}
+.buff-chip.debuff { background: rgba(232,72,79,.16); border-color: var(--hp); }
+.buff-chip .bc-time { color: var(--muted); }
+.buff-chip .bc-bar { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--green); }
+.buff-chip.debuff .bc-bar { background: var(--hp); }
+
+/* AFK focus settings */
+#afk-focus-opts { display: flex; gap: 12px; justify-content: center; margin: 8px 0 16px; flex-wrap: wrap; }
+.afk-opt {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  width: 190px; padding: 12px; text-align: center;
+}
+.afk-opt small { color: var(--muted); font-size: 8px; line-height: 1.4; }
+.afk-opt.selected small { color: #d8ffe0; }
+
+/* name availability check */
+.name-check { font-size: 9px; min-height: 12px; margin: -2px 0 4px; text-align: right; }
+.name-check.ok { color: var(--green); }
+.name-check.err { color: var(--hp); }
+.name-check.checking { color: var(--muted); }
 
 .bar { position: relative; height: 14px; background: #0a0c14; border: 1px solid #3a3f5c; margin-bottom: 4px; }
 .bar-fill { height: 100%; width: 100%; transition: width .15s; }

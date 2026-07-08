@@ -64,6 +64,16 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
   `world.hasLineOfSight` before attacking; blacklists unreachable targets
   in `bot.avoid`; yields to any manual key press (see `Game.update`).
   Manual play aims at `game.mouse` cursor; the bot sets `out.face` itself.
+  `AFK_FOCUS {boss,monster}` (persisted `pixelrealms_afk`) gates targeting:
+  boss off = flee bosses, monster off = walk past mobs; a nearby boss
+  (focus on, level ≥ 18) outranks mobs. `botSteer` probes `botPathClear`
+  and bends the heading around solids before the sidestep fallback.
+- Buffs/debuffs: `player.addBuff({tag,kind,v,t,icon,name,debuff})` — same
+  `tag` refreshes (no stack); `UI.renderBuffs` shows an icon+timer chip
+  (green buff / red debuff) keyed by a tag signature.
+- Names are unique among connected clients: `server.py` holds
+  `active_names` (freed on leave), rejects dupes at join with
+  `{t:'name_taken'}`, and answers `GET /api/name-available?name=`.
 - Global keydown must not `preventDefault` arrows/space while an
   INPUT/TEXTAREA is focused (chat cursor, volume slider).
 - Sound: gate every new SFX through `beep()` so `SOUND.vol/muted`

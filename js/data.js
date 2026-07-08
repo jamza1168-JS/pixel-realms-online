@@ -93,7 +93,7 @@ const SKILLS = {
   warcry: {
     id: 'warcry', icon: '💢', mp: 12, cd: 16, bot: { kind: 'buff' },
     cast(g, p) {
-      p.buffs.push({ kind: 'dmgMul', v: 1.35, t: 8 });
+      p.addBuff({ tag: 'warcry', kind: 'dmgMul', v: 1.35, t: 8, icon: '💢', name: 'buff.warcry' });
       g.addEffect({ type: 'ring', x: p.x, y: p.y - 10, dur: 0.5, color: '#ff4040', r: 50 });
       g.sfx('buff');
     },
@@ -137,7 +137,7 @@ const SKILLS = {
   swift: {
     id: 'swift', icon: '💨', mp: 10, cd: 12, bot: { kind: 'buff' },
     cast(g, p) {
-      p.buffs.push({ kind: 'spdMul', v: 1.45, t: 5 });
+      p.addBuff({ tag: 'swift', kind: 'spdMul', v: 1.45, t: 5, icon: '💨', name: 'buff.swift' });
       g.addEffect({ type: 'ring', x: p.x, y: p.y - 10, dur: 0.4, color: '#a0ffc0', r: 40 });
       g.sfx('buff');
     },

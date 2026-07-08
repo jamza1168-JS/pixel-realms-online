@@ -114,6 +114,69 @@ const UI = {
     if (tip) tip.classList.add('hidden');
   },
 
+  /* ---------- Buff / debuff status chips ---------- */
+  renderBuffs(p, pre) {
+    const box = this.$('buffbar-' + pre);
+    if (!box) return;
+    const buffs = p.buffs.filter(b => b.icon);
+    const sig = buffs.map(b => (b.tag || b.icon) + (b.debuff ? 'd' : '')).join(',');
+    if (sig !== box.dataset.sig) {
+      box.dataset.sig = sig;
+      box.innerHTML = buffs.map(b =>
+        `<span class="buff-chip ${b.debuff ? 'debuff' : ''}" title="${escapeHtml(b.name ? t(b.name) : '')}">` +
+        `<span>${b.icon}</span><span class="bc-time"></span><span class="bc-bar"></span></span>`
+      ).join('');
+    }
+    box.querySelectorAll('.buff-chip').forEach((el, i) => {
+      const b = buffs[i];
+      if (!b) return;
+      el.querySelector('.bc-time').textContent = Math.ceil(b.t) + 's';
+      el.querySelector('.bc-bar').style.width =
+        Math.max(0, Math.min(100, (b.t / (b.dur || b.t)) * 100)) + '%';
+    });
+  },
+
+  /* ---------- AFK focus settings ---------- */
+  openAfkPanel() {
+    this.$('afk-panel').classList.remove('hidden');
+    this.renderAfkPanel();
+  },
+
+  renderAfkPanel() {
+    document.querySelectorAll('.afk-opt').forEach(btn =>
+      btn.classList.toggle('selected', !!AFK_FOCUS[btn.dataset.focus]));
+  },
+
+  /* ---------- Online name availability ---------- */
+  onlineApiBase() {
+    const url = (this.$('online-url').value || '').trim();
+    if (/^wss?:\/\//i.test(url)) return url.replace(/^ws/i, 'http').replace(/\/+$/, '');
+    return null;
+  },
+
+  async checkNameAvailable() {
+    const box = this.$('online-name-check');
+    const name = (this.$('online-name').value || '').trim();
+    this._nameOk = false;
+    if (!name) { box.textContent = ''; box.className = 'name-check'; return; }
+    const base = this.onlineApiBase();
+    if (base === null) { box.textContent = ''; box.className = 'name-check'; return; }
+    box.textContent = t('online.nameChecking'); box.className = 'name-check checking';
+    const token = (this._nameToken = (this._nameToken || 0) + 1);
+    try {
+      const res = await fetch(base + '/api/name-available?name=' + encodeURIComponent(name));
+      const data = await res.json();
+      if (token !== this._nameToken) return;   // a newer check superseded this one
+      this._nameOk = !!data.available;
+      box.textContent = data.available ? t('online.nameFree') : t('online.nameTaken');
+      box.className = 'name-check ' + (data.available ? 'ok' : 'err');
+    } catch (e) {
+      if (token !== this._nameToken) return;
+      this._nameOk = true;   // server unreachable for pre-check; let join decide
+      box.textContent = ''; box.className = 'name-check';
+    }
+  },
+
   rebuildSkillbars() {
     if (!this.game) return;
     for (const p of this.game.players) this.buildSkillbar(p);
@@ -137,7 +200,9 @@ const UI = {
       p.name = game.heroName();          // keep name live (head, stat window, toasts)
       const d = p.derived;
       const pre = 'p' + p.id;
-      this.$(pre + '-playername').textContent = p.name;
+      const nameEl = this.$(pre + '-playername');
+      nameEl.textContent = p.name;
+      nameEl.title = p.name;             // hover shows the full (possibly truncated) name
       this.$(pre + '-level').textContent = p.level;
       this.$(pre + '-hp').style.width = Math.max(0, (p.hp / d.maxHp) * 100) + '%';
       this.$(pre + '-mp').style.width = Math.max(0, (p.mp / d.maxMp) * 100) + '%';
@@ -147,6 +212,7 @@ const UI = {
       this.$(pre + '-name').textContent = t('class.' + p.clsId);
       this.$(pre + '-points-hint').classList.toggle('hidden', p.statPoints <= 0);
       this.$('afk-' + pre).classList.toggle('selected', p.afk);
+      this.renderBuffs(p, pre);
 
       // skill cooldown overlays
       const bar = this.$('skillbar-p' + p.id);

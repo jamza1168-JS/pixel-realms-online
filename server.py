@@ -24,6 +24,7 @@ import secrets
 import struct
 import sys
 import time
+import urllib.parse
 
 # unbuffered logging so joins show up immediately, even when piped
 print = functools.partial(print, flush=True)
@@ -44,6 +45,14 @@ STATIC_TYPES = {
 
 # room name -> {client_id: Client}, insertion order = host order
 rooms: dict = {}
+
+# names currently in use by connected clients (lowercased -> client id),
+# so two players can't play under the same name at once
+active_names: dict = {}
+
+
+def name_taken(name: str) -> bool:
+    return name.strip().lower() in active_names
 
 # ---------------- Leaderboard ----------------
 # Persisted to leaderboard.json. Note: on free cloud tiers the disk
@@ -149,12 +158,18 @@ def http_json(writer, status: str, obj):
     )
 
 
-def handle_api(writer, method: str, path: str, body: bytes):
+def handle_api(writer, method: str, raw_path: str, body: bytes):
+    path, _, query = raw_path.partition("?")
     if method == "OPTIONS":
         writer.write(("HTTP/1.1 204 No Content\r\n" + CORS_HEADERS + "\r\n").encode())
         return
     if method == "GET" and path == "/api/leaderboard":
         http_json(writer, "200 OK", board_tops())
+        return
+    if method == "GET" and path == "/api/name-available":
+        params = urllib.parse.parse_qs(query)
+        name = (params.get("name", [""])[0] or "").strip()[:14]
+        http_json(writer, "200 OK", {"available": bool(name) and not name_taken(name)})
         return
     if method == "POST" and path == "/api/score":
         try:
@@ -226,7 +241,7 @@ async def handshake(reader, writer) -> bool:
                 n = 0
             if 0 < n <= 65536:
                 body = await reader.readexactly(n)
-            handle_api(writer, method, path.split("?", 1)[0], body)
+            handle_api(writer, method, path, body)
         else:
             serve_static(writer, path)
         await writer.drain()
@@ -315,8 +330,15 @@ def host_id(room: dict):
 
 
 def join_room(client: Client, room_name: str, name: str):
+    name = (name or "Hero")[:14]
+    # reject duplicate names so no two players share one at once
+    if name_taken(name):
+        client.send({"t": "name_taken", "name": name})
+        print(f"[!] name '{name}' rejected for {client.id} (already in use)")
+        return
     client.room = room_name
-    client.name = (name or "Hero")[:14]
+    client.name = name
+    active_names[name.lower()] = client.id
     room = rooms.setdefault(room_name, {})
     is_host = len(room) == 0
     client.send(
@@ -335,6 +357,10 @@ def join_room(client: Client, room_name: str, name: str):
 
 
 def leave_room(client: Client):
+    # release the client's reserved name
+    key = (client.name or "").lower()
+    if active_names.get(key) == client.id:
+        del active_names[key]
     room = rooms.get(client.room)
     if not room or client.id not in room:
         return

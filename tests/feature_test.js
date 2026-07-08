@@ -75,7 +75,7 @@ const URL = 'http://127.0.0.1:8900';
 
   // --- save/load roundtrip still works ---
   await P.evaluate(() => game.save());
-  const saved = await P.evaluate(() => JSON.parse(localStorage.getItem('pixelrealms_save')).players[0]);
+  const saved = await P.evaluate(() => JSON.parse(sessionStorage.getItem('pixelrealms_save')).players[0]);
   if (saved.statPoints !== rst.pts) throw new Error('FAIL save: ' + JSON.stringify(saved));
   console.log('PASS save contains refunded points');
 

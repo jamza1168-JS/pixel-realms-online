@@ -36,7 +36,8 @@ js/entities.js  Player, RemotePlayer (net mirror), Enemy (sim or ghost),
                 Projectile, Pickup
 js/ui.js        UI singleton: HUD, panels, minimap, trade/board rendering
 js/main.js      Game class: loop, input, AFK bot, combat, trade state,
-                save (localStorage), leaderboard posts; bootstrap listeners
+                save (server if signed in, else sessionStorage), leaderboard
+                posts; bootstrap listeners
 server.py       HTTP static + /api/score + /api/leaderboard + WS relay
 ```
 
@@ -51,6 +52,12 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
   `wrong_password`, full → `room_full`. `welcome` carries
   `{room, channel, public}` (via `room_display`); the client shows
   `net.roomLabel` ("World · Ch N" or the room name).
+- **Client entry (renewed):** the manual online panel is gone. Only
+  **signed-in** players go online, and `startGame` auto-joins the public
+  World (`game.goOnline(name)` → `{join, public:true}`; name = account
+  username). Guests never connect — they play a local `LocalNet` session.
+  The server still supports private rooms / channels (kept for the relay
+  and its tests), but no client UI reaches them any more.
 - Host simulates enemies and broadcasts snapshots ~10 Hz keyed by
   **spawn-point index** (`e.idx`); worlds are identical via `WORLD_SEED`,
   so only entity state syncs. Clients keep `ghosts` (Enemy with
@@ -108,8 +115,14 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
   passwords; `POST /api/register|login|logout`, auth-guarded
   `GET/POST /api/character` (Bearer token; sessions in-memory, cleared on
   restart). Client `Account` cloud-saves on `game.save()` (throttled; forced
-  on unload); `Continue` prefers the cloud character. Offline uses
-  `localStorage`.
+  on unload); `Continue` prefers the cloud character.
+- **Save routing (renewed):** login is the gate for persistence. Signed-in
+  players are the server's responsibility (cloud character is the source of
+  truth). Guests get **no** durable save — `game.save()` writes the blob to
+  `sessionStorage` only (survives a refresh, wiped when the tab/browser
+  closes), and any legacy `localStorage` `pixelrealms_save` is cleared at
+  startup. Signing in mid-session promotes the guest to online + cloud save;
+  logging out drops back to a local guest session.
 - Anti-tamper on save (Stage 1b, server-only): `sanitize_character` clamps
   absolute bounds AND (a) clamps gear rows to `row_cap(stat,tier,ilvl)` +
   `MAX_ILVL=28` so crafted gear can't beat a real drop; (b)
@@ -142,6 +155,15 @@ buff/debuff chips; server-side name uniqueness; the full item system
 storage stash, merchant shop, hotkey potions); Legend/Mystic drop fanfare;
 tooltip-above-overlay fix; and public World channels (cap 20) +
 password-protected private rooms.
+
+**Renewed session model (latest):** removed the manual online panel (server
+address, Join Public World, private room + password). Multiplayer is now
+login-gated and automatic — signing in auto-joins the shared public World;
+guests play a local session that lives only in `sessionStorage` (wiped on
+browser close, so guest progress never persists). See the "Client entry"
+and "Save routing" notes above. Server-side rooms/channels stay intact for
+the relay + `ws_test.py`/`shard_test.py`; the client just no longer exposes
+them.
 
 **Deferred by the user — remind them when they return:**
 1. Shield / off-hand slot to pair with the one-hand sword.

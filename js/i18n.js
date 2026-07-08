@@ -12,7 +12,7 @@ const I18N = {
     'title.chooseClass': 'Choose your class',
     'title.start': 'START ADVENTURE',
     'title.continue': 'CONTINUE',
-    'title.coopHint': 'Play with friends online — click 🌐 in game',
+    'title.coopHint': "Guest mode — progress isn't saved. Log in to keep your hero and play online with everyone.",
 
     'ui.lv': 'Lv',
     'ui.points': 'Points',
@@ -25,6 +25,7 @@ const I18N = {
     'ui.recommend': '★ Recommended build',
     'ui.resetStat': '↺ Reset stats',
     'ui.online': 'OFFLINE',
+    'ui.guest': 'GUEST',
     'ui.dead': '{name} fell! Respawning in {s}...',
     'ui.levelUp': '{name} reached level {lv}! +5 stat points',
     'ui.saved': 'Game saved',
@@ -310,7 +311,7 @@ const I18N = {
     'title.chooseClass': 'เลือกอาชีพของคุณ',
     'title.start': 'เริ่มการผจญภัย',
     'title.continue': 'เล่นต่อ',
-    'title.coopHint': 'เล่นกับเพื่อนออนไลน์ — กดปุ่ม 🌐 ในเกม',
+    'title.coopHint': 'โหมดผู้เยี่ยมชม — ความคืบหน้าจะไม่ถูกบันทึก เข้าสู่ระบบเพื่อเก็บฮีโร่และเล่นออนไลน์กับทุกคน',
 
     'ui.lv': 'เลเวล',
     'ui.points': 'แต้ม',
@@ -323,6 +324,7 @@ const I18N = {
     'ui.recommend': '★ อัพตามสายแนะนำ',
     'ui.resetStat': '↺ รีเซ็ตสเตตัส',
     'ui.online': 'ออฟไลน์',
+    'ui.guest': 'ผู้เยี่ยมชม',
     'ui.dead': '{name} ล้มลง! เกิดใหม่ใน {s} วินาที...',
     'ui.levelUp': '{name} เลเวลอัพเป็น {lv}! ได้รับ 5 แต้มสเตตัส',
     'ui.saved': 'บันทึกเกมแล้ว',

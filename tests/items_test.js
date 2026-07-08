@@ -132,7 +132,7 @@ function assert(c, m) { if (!c) throw new Error('FAIL: ' + m); console.log('PASS
   // 9. save/load round-trips inventory + equipment
   const persisted = await page.evaluate(() => {
     game.save();
-    const raw = JSON.parse(localStorage.getItem('pixelrealms_save'));
+    const raw = JSON.parse(sessionStorage.getItem('pixelrealms_save'));
     const pl = raw.players[0];
     return { equipHead: pl.equip.head && pl.equip.head.key, rows: pl.equip.head && pl.equip.head.rows.length };
   });

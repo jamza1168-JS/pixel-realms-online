@@ -8,7 +8,7 @@ const WS = 'ws://127.0.0.1:8900';
 async function boot(page, name) {
   await page.goto(URL);
   await page.evaluate(() => startGame('warrior', null));
-  await page.evaluate(ws => game.goOnline(ws, 'trade-room', window.__name), WS);
+  await page.evaluate(() => game.goOnline(window.__name));
   await page.waitForFunction(() => game.net.isOnline, null, { timeout: 5000 });
 }
 

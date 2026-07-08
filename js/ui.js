@@ -402,35 +402,6 @@ const UI = {
   },
 
   /* ---------- Online name availability ---------- */
-  onlineApiBase() {
-    const url = (this.$('online-url').value || '').trim();
-    if (/^wss?:\/\//i.test(url)) return url.replace(/^ws/i, 'http').replace(/\/+$/, '');
-    return null;
-  },
-
-  async checkNameAvailable() {
-    const box = this.$('online-name-check');
-    const name = (this.$('online-name').value || '').trim();
-    this._nameOk = false;
-    if (!name) { box.textContent = ''; box.className = 'name-check'; return; }
-    const base = this.onlineApiBase();
-    if (base === null) { box.textContent = ''; box.className = 'name-check'; return; }
-    box.textContent = t('online.nameChecking'); box.className = 'name-check checking';
-    const token = (this._nameToken = (this._nameToken || 0) + 1);
-    try {
-      const res = await fetch(base + '/api/name-available?name=' + encodeURIComponent(name));
-      const data = await res.json();
-      if (token !== this._nameToken) return;   // a newer check superseded this one
-      this._nameOk = !!data.available;
-      box.textContent = data.available ? t('online.nameFree') : t('online.nameTaken');
-      box.className = 'name-check ' + (data.available ? 'ok' : 'err');
-    } catch (e) {
-      if (token !== this._nameToken) return;
-      this._nameOk = true;   // server unreachable for pre-check; let join decide
-      box.textContent = ''; box.className = 'name-check';
-    }
-  },
-
   rebuildSkillbars() {
     if (!this.game) return;
     for (const p of this.game.players) this.buildSkillbar(p);
@@ -501,7 +472,8 @@ const UI = {
       this.$('online-text').textContent = t('online.players', { n: game.net.playerCount }) +
         where + (game.net.isHost ? ' ★' : '');
     } else {
-      this.$('online-text').textContent = t('ui.online') + ' · ' + game.net.playerCount + 'P';
+      // signed out = a local guest session; no shared world
+      this.$('online-text').textContent = t('ui.guest');
     }
 
     // re-render the stat panel ONLY when its data changed — rebuilding
@@ -667,34 +639,10 @@ const UI = {
     return true;
   },
 
-  /* ---------- Online panel ---------- */
-  openOnlinePanel() {
-    if (!this.$('online-name').value) {
-      this.$('online-name').value = 'Hero' + Math.floor(100 + Math.random() * 900);
-    }
-    this.$('online-panel').classList.remove('hidden');
-    this.updateOnlinePanel();
-  },
-
-  updateOnlinePanel() {
-    const status = this.$('online-status');
-    if (!status) return;
-    // hint: deployed (https) pages auto-fill the address; local play needs server.py
-    const hint = this.$('online-hint');
-    if (hint) hint.textContent = t(location.protocol === 'https:' ? 'online.hint' : 'online.hintLocal');
-    const net = this.game ? this.game.net : null;
-    const s = net ? net.status : 'off';
-    status.className = 'online-status ' + (s === 'on' ? 'on' : s === 'error' ? 'err' : s === 'connecting' ? 'connecting' : '');
-    const where = (net && net.roomLabel) ? ' · ' + net.roomLabel : '';
-    status.textContent =
-      s === 'on' ? '● ' + t('online.on') + where + (net.isHost ? ' ★ ' + t('online.host') : '') :
-      s === 'connecting' ? t('online.connecting') :
-      s === 'error' ? t('online.error') : t('online.off');
-    // show the join controls only while disconnected
-    const area = this.$('online-connect-area');
-    if (area) area.classList.toggle('hidden', s === 'on');
-    this.$('btn-online-disconnect').classList.toggle('hidden', s !== 'on');
-  },
+  /* Online state now surfaces only through the HUD badge (updateHud);
+   * kept as a safe no-op because the net layer still pings it on
+   * connect/disconnect. */
+  updateOnlinePanel() {},
 
   /* ---------- Account ---------- */
   openAccountPanel() {
@@ -712,6 +660,9 @@ const UI = {
   refreshAccountStatus() {
     const el = this.$('account-title-status');
     if (el) el.textContent = Account.loggedIn ? t('account.loggedInAs', { name: Account.username }) : '';
+    // the guest hint only applies while signed out
+    const hint = this.$('title-coop-hint');
+    if (hint) hint.classList.toggle('hidden', Account.loggedIn);
   },
 
   renderAccountPanel() {
@@ -728,6 +679,11 @@ const UI = {
       out.textContent = t('account.logout');
       out.addEventListener('click', async () => {
         await Account.logout();
+        // logging out drops back to a local guest session
+        if (this.game && this.game.running && this.game.net.isOnline) {
+          this.game.goOffline();
+          for (const pl of this.game.players) pl.name = this.game.heroName();
+        }
         this.renderAccountPanel();
         this.refreshAccountStatus();
         if (typeof refreshContinue === 'function') refreshContinue();
@@ -774,6 +730,11 @@ const UI = {
     if (typeof refreshContinue === 'function') refreshContinue();
     this.setAccountMsg(t(mode === 'register' ? 'account.registered' : 'account.welcome', { name: Account.username }), 'ok');
     if (this.game) this.game.sfx('levelup');
+    // signing in during a guest session promotes it to online right away
+    if (this.game && this.game.running && !this.game.net.isOnline) {
+      for (const pl of this.game.players) pl.name = Account.username;
+      this.game.goOnline(Account.username);
+    }
   },
 
   /* ---------- Leaderboard ---------- */

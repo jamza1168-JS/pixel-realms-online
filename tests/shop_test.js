@@ -137,7 +137,7 @@ function assert(c, m) { if (!c) throw new Error('FAIL: ' + m); console.log('PASS
     p.storage = [rollItem({ kind: 'weapon', tier: 'mystic', ilvl: 20 })];
     p.quickItems = ['hp', null, 'mp'];
     game.save();
-    return JSON.parse(localStorage.getItem('pixelrealms_save')).players[0];
+    return JSON.parse(sessionStorage.getItem('pixelrealms_save')).players[0];
   });
   assert(persisted.storage.length === 1 && persisted.quickItems[0] === 'hp' && persisted.quickItems[2] === 'mp',
     'storage + quick slots saved');

@@ -20,7 +20,7 @@ python3 ../server.py 8900 &        # from this folder (or repo root: server.py 8
 
 python3 ws_test.py                 # relay: join/host, chat, fragmentation, migration
 python3 shard_test.py              # public world 20-cap sharding + private-room passwords
-node rooms_ui_test.js              # public/private join flow, wrong/right password (browser)
+node session_flow_test.js          # guest = sessionStorage/offline, login auto-joins World (browser)
 python3 accounts_test.py           # register/login/logout, auth, character save+sanitize
 node account_ui_test.js            # account panel + cloud save/load + Continue (browser)
 python3 hardening_test.py          # anti-tamper: gear caps, stat invariant, gold/level

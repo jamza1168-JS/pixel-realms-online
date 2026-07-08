@@ -136,11 +136,11 @@ function assert(c, m) { if (!c) throw new Error('FAIL: ' + m); console.log('PASS
   const b2 = await chromium.launch({ executablePath: exe });
   const pa = await b2.newPage(), pb = await b2.newPage();
   for (const pg of [pa, pb]) { await pg.goto(URL); await pg.evaluate(() => startGame('mage', null)); }
-  await pa.evaluate(ws => game.goOnline(ws, 'nameroom', 'DupName'), WS);
+  await pa.evaluate(() => game.goOnline('DupName'));
   await pa.waitForFunction(() => game.net.isOnline, null, { timeout: 5000 });
   const taken = await pa.evaluate(async () => (await (await fetch('/api/name-available?name=DupName')).json()).available);
   assert(taken === false, 'a connected name reports as taken');
-  await pb.evaluate(ws => game.goOnline(ws, 'nameroom', 'DupName'), WS);
+  await pb.evaluate(() => game.goOnline('DupName'));
   await pb.waitForFunction(() => game.net.nameTaken === true || game.net.status === 'error', null, { timeout: 5000 });
   const rejected = await pb.evaluate(() => ({ taken: !!game.net.nameTaken, online: game.net.isOnline }));
   assert(rejected.taken && !rejected.online, 'second client with a duplicate name is rejected');

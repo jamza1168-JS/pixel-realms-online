@@ -18,10 +18,11 @@
     <div id="hud-top-left">
       <div class="player-frame" id="frame-p1">
         <div class="pf-head">
-          <span class="pf-name" id="p1-name">P1</span>
+          <span class="pf-playername" id="p1-playername">Hero</span>
           <span class="pf-level"><span data-i18n="ui.lv">Lv</span> <span id="p1-level">1</span></span>
           <button class="pix-btn small afk-btn" id="afk-p1" data-i18n="ui.afk">AUTO</button>
         </div>
+        <div class="pf-name" id="p1-name">Warrior</div>
         <div class="bar hp-bar"><div class="bar-fill" id="p1-hp"></div><span class="bar-text" id="p1-hp-text"></span></div>
         <div class="bar mp-bar"><div class="bar-fill" id="p1-mp"></div><span class="bar-text" id="p1-mp-text"></span></div>
         <div class="bar xp-bar"><div class="bar-fill" id="p1-xp"></div></div>
@@ -31,16 +32,19 @@
     </div>
 
     <div id="hud-top-right">
-      <button id="btn-lang" class="pix-btn small"></button>
-      <button id="btn-sound" class="pix-btn small">🔊</button>
-      <button id="btn-help" class="pix-btn small">?</button>
-      <button id="btn-keys" class="pix-btn small">⌨</button>
-      <button id="btn-online" class="pix-btn small">🌐</button>
-      <button id="btn-trade" class="pix-btn small">🤝</button>
-      <button id="btn-board" class="pix-btn small">🏆</button>
-      <div id="online-badge"><span class="dot"></span><span id="online-text"></span></div>
       <canvas id="minimap" width="150" height="150"></canvas>
       <div id="zone-name"></div>
+      <div id="online-badge"><span class="dot"></span><span id="online-text"></span></div>
+      <div id="menu-buttons">
+        <button id="btn-lang" class="pix-btn small"></button>
+        <button id="btn-sound" class="pix-btn small">🔊</button>
+        <button id="btn-help" class="pix-btn small">?</button>
+        <button id="btn-keys" class="pix-btn small">⌨</button>
+        <button id="btn-minimap" class="pix-btn small" title="Minimap">🗺</button>
+        <button id="btn-online" class="pix-btn small">🌐</button>
+        <button id="btn-trade" class="pix-btn small">🤝</button>
+        <button id="btn-board" class="pix-btn small">🏆</button>
+      </div>
     </div>
 
     <div id="hud-bottom">
@@ -51,6 +55,9 @@
     </div>
 
     <div id="toast-area"></div>
+
+    <!-- skill hover tooltip -->
+    <div id="skill-tooltip" class="hidden"></div>
 
     <!-- chat -->
     <div id="chat-box">
@@ -143,6 +150,7 @@
       <div id="board-tabs">
         <button class="pix-btn small board-tab" data-tab="level" data-i18n="board.level">Level</button>
         <button class="pix-btn small board-tab" data-tab="kills" data-i18n="board.kills">Mob Kills</button>
+        <button class="pix-btn small board-tab" data-tab="bosses" data-i18n="board.bosses">Boss Kills</button>
         <button class="pix-btn small board-tab" data-tab="gold" data-i18n="board.gold">Gold</button>
       </div>
       <div id="board-content"></div>
@@ -179,7 +187,7 @@
         <button id="btn-online-connect" class="pix-btn big" data-i18n="online.connect">Connect</button>
         <button id="btn-online-disconnect" class="pix-btn hidden" data-i18n="online.disconnect">Disconnect</button>
       </div>
-      <p class="hint" data-i18n="online.hint"></p>
+      <p class="hint" id="online-hint"></p>
       <button id="btn-online-close" class="pix-btn" data-i18n="ui.close">Close</button>
     </div>
   </div>

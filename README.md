@@ -62,10 +62,10 @@ everyone in the room.
 
 ## Leaderboards 🏆
 
-Click the **🏆** button for three server-wide rankings — **Level**,
-**Mob Kills**, and **Gold** (each player's best marks). Scores submit
-automatically while you play (level-ups, boss kills, every 45s, and when
-you leave). Your own entry is highlighted with ★.
+Click the **🏆** button for four server-wide rankings — **Level**,
+**Mob Kills**, **Boss Kills**, and **Gold** (each player's best marks).
+Scores submit automatically while you play (level-ups, boss kills, every
+45s, and when you leave). Your own entry is highlighted with ★.
 
 > Board data lives in `leaderboard.json` next to `server.py`. On free
 > cloud tiers the disk is ephemeral, so the board resets when the service
@@ -115,8 +115,8 @@ saved in the browser. Defaults:
 |            | Key |
 |------------|-----|
 | Move       | `W A S D` |
-| Attack     | `J` |
-| Skills 1-3 | `U` `I` `O` |
+| Attack     | `SPACE` |
+| Skills 1-3 | `1` `2` `3` |
 | Stat panel | `C` |
 | AFK farm   | `F` |
 | Chat       | `Enter` |

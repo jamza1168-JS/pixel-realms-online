@@ -79,6 +79,13 @@ function readInput() {
   };
 }
 
+/* ---------------- AFK auto-farm focus ---------------- */
+/* What the bot hunts: boss and/or monsters (both on by default). */
+const AFK_KEY = 'pixelrealms_afk';
+const AFK_FOCUS = { boss: true, monster: true };
+try { Object.assign(AFK_FOCUS, JSON.parse(localStorage.getItem(AFK_KEY)) || {}); } catch (e) { /* defaults */ }
+function saveAfkFocus() { localStorage.setItem(AFK_KEY, JSON.stringify(AFK_FOCUS)); }
+
 /* ---------------- Tiny synth SFX ---------------- */
 const SOUND_KEY = 'pixelrealms_sound';
 const SOUND = { vol: 1, muted: false };
@@ -405,6 +412,21 @@ class Game {
       }
     }
 
+    // if boss-focus is OFF and a boss is close, run away from it
+    if (!AFK_FOCUS.boss) {
+      let boss = null, bd = 420;
+      for (const e of this.enemies) {
+        if (e.dead || !e.type.boss) continue;
+        const dd = Math.hypot(e.x - p.x, e.y - p.y);
+        if (dd < bd) { bd = dd; boss = e; }
+      }
+      if (boss) {
+        const ax = p.x - boss.x, ay = p.y - boss.y, l = Math.hypot(ax, ay) || 1;
+        this.botSteer(out, p, p.x + (ax / l) * 320, p.y + (ay / l) * 320, bs, dt);
+        return out;
+      }
+    }
+
     // grab nearby loot first
     let goal = null;
     let bestPk = null, bestPkD = 150;
@@ -415,21 +437,31 @@ class Game {
     if (bestPk) goal = { x: bestPk.x, y: bestPk.y };
 
     // pick a target enemy suited to our level; prefer ones we can
-    // actually hit (line of sight), skip recently-unreachable ones
+    // actually hit (line of sight), skip recently-unreachable ones.
+    // A nearby boss (when boss-focus is on) takes priority over mobs.
     const maxTier = p.level < 5 ? 1 : p.level < 10 ? 2 : p.level < 16 ? 3 : 4;
     let target = null, bestD = 520, hasLos = true;
     let blocked = null, blockedD = 520;
+    let boss = null, bossD = 760, bossLos = true;
     for (const e of this.enemies) {
       if (e.dead) continue;
-      if (e.type.boss && p.level < 18) continue;
-      if (e.tier > maxTier && e.state !== 'chase') continue;
       if ((bs.avoid.get(e) || 0) > this.time) continue;
       const dd = Math.hypot(e.x - p.x, e.y - p.y);
-      if (this.world.hasLineOfSight(p.x, p.y, e.x, e.y)) {
+      const los = this.world.hasLineOfSight(p.x, p.y, e.x, e.y);
+      if (e.type.boss) {
+        // boss handled separately for priority; requires level & focus
+        if (AFK_FOCUS.boss && p.level >= 18 && dd < bossD) { bossD = dd; boss = e; bossLos = los; }
+        continue;
+      }
+      if (!AFK_FOCUS.monster) continue;                 // walk past monsters
+      if (e.tier > maxTier && e.state !== 'chase') continue;
+      if (los) {
         if (dd < bestD) { bestD = dd; target = e; }
       } else if (dd < blockedD) { blockedD = dd; blocked = e; }
     }
     if (!target && blocked) { target = blocked; bestD = blockedD; hasLos = false; }
+    // a boss in range outranks any monster choice
+    if (boss) { target = boss; bestD = bossD; hasLos = bossLos; }
 
     let goalIsTarget = false;
     if (!goal && target) {
@@ -478,7 +510,16 @@ class Game {
     return out;
   }
 
-  /* Walk toward (gx,gy) with an escalating unstuck detour. */
+  /* Is the straight path ahead walkable for `dist` px? */
+  botPathClear(p, dx, dy, dist) {
+    for (let d = 14; d <= dist; d += 14) {
+      if (!this.world.canStand(p.x + dx * d, p.y + dy * d)) return false;
+    }
+    return true;
+  }
+
+  /* Walk toward (gx,gy), steering around obstacles proactively and
+   * escalating to a sidestep detour if genuinely stuck. */
   botSteer(out, p, gx, gy, bs, dt) {
     bs.checkT += dt;
     if (bs.unstuckT > 0) {
@@ -488,7 +529,18 @@ class Game {
     }
     const dx = gx - p.x, dy = gy - p.y;
     const dist = Math.hypot(dx, dy) || 1;
-    out.mx = dx / dist; out.my = dy / dist;
+    let dirx = dx / dist, diry = dy / dist;
+    // proactive routing: if a tree/rock blocks the straight line, rotate
+    // the heading to the nearest clear angle so we curve around it
+    const probe = Math.min(64, dist);
+    if (!this.botPathClear(p, dirx, diry, probe)) {
+      for (const a of [0.6, -0.6, 1.1, -1.1, 1.7, -1.7, 2.4, -2.4]) {
+        const c = Math.cos(a), s = Math.sin(a);
+        const nx = dirx * c - diry * s, ny = dirx * s + diry * c;
+        if (this.botPathClear(p, nx, ny, probe)) { dirx = nx; diry = ny; break; }
+      }
+    }
+    out.mx = dirx; out.my = diry;
     if (bs.checkT > 0.5) {
       const moved = Math.hypot(p.x - bs.lastX, p.y - bs.lastY);
       if (moved < 6 && dist > 30) {
@@ -1321,6 +1373,7 @@ window.addEventListener('keydown', e => {
     document.getElementById('online-panel').classList.add('hidden');
     document.getElementById('board-panel').classList.add('hidden');
     document.getElementById('sound-panel').classList.add('hidden');
+    document.getElementById('afk-panel').classList.add('hidden');
   }
 });
 
@@ -1385,6 +1438,19 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('btn-stats').addEventListener('click', () => {
     if (game && game.players[0]) UI.openStatPanel(game.players[0]);
+  });
+
+  // AFK focus settings
+  document.getElementById('afk-cfg-p1').addEventListener('click', () => UI.openAfkPanel());
+  document.getElementById('btn-afk-close').addEventListener('click', () =>
+    document.getElementById('afk-panel').classList.add('hidden'));
+  document.querySelectorAll('.afk-opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      AFK_FOCUS[btn.dataset.focus] = !AFK_FOCUS[btn.dataset.focus];
+      saveAfkFocus();
+      UI.renderAfkPanel();
+      if (game) game.sfx('point');
+    });
   });
 
   // hotkey settings
@@ -1452,16 +1518,25 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btn-online').addEventListener('click', () => UI.openOnlinePanel());
   document.getElementById('btn-online-close').addEventListener('click', () =>
     document.getElementById('online-panel').classList.add('hidden'));
-  document.getElementById('btn-online-connect').addEventListener('click', () => {
+  document.getElementById('btn-online-connect').addEventListener('click', async () => {
     if (!game) return;
+    const name = document.getElementById('online-name').value.trim() || 'Hero';
+    await UI.checkNameAvailable();          // final check before we connect
+    if (UI._nameOk === false) { game.sfx('hurt'); return; }   // name taken — block
     game.goOnline(
       document.getElementById('online-url').value.trim(),
       document.getElementById('online-room').value.trim() || 'realm-1',
-      document.getElementById('online-name').value.trim() || 'Hero'
+      name
     );
   });
   document.getElementById('btn-online-disconnect').addEventListener('click', () => {
     if (game) game.goOffline();
+  });
+  // live name-availability feedback (debounced)
+  let nameCheckT = null;
+  document.getElementById('online-name').addEventListener('input', () => {
+    clearTimeout(nameCheckT);
+    nameCheckT = setTimeout(() => UI.checkNameAvailable(), 350);
   });
 
   // rebuild language-dependent DOM when language changes

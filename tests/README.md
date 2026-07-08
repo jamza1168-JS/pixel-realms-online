@@ -24,6 +24,8 @@ node bot_test.js                   # line of sight, unstuck/blacklist, manual ov
                                    #   retreat fight-back, cursor aim, live AFK farm (~1 min)
 node trade_test.js                 # two-client trade flow + accept-reset exploit regression
 node ui_test.js                    # real-mouse-click stat buttons, sound panel, persistence
+node patch3a_test.js               # HUD name/level+ellipsis, buff chips, AFK focus menu,
+                                   #   boss priority/flee, retreat routing, name uniqueness
 ```
 
 If Playwright can't find a browser, point `PW_CHROMIUM` at a Chromium binary:

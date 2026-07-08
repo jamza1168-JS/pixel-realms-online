@@ -116,6 +116,14 @@ class WSNet extends NetAdapter {
   handle(m) {
     const g = this.game;
     switch (m.t) {
+      case 'name_taken':
+        // server refused the join: this name is already in use
+        this.nameTaken = true;
+        this.disconnect();       // closes socket, sets status 'off'
+        this.status = 'error';   // surface the failure in the panel
+        UI.toast(t('online.nameTaken'), 'info');
+        UI.updateOnlinePanel();
+        break;
       case 'welcome':
         this.id = m.id;
         this.host = m.host;

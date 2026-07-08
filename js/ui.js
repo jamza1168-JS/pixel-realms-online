@@ -148,9 +148,11 @@ const UI = {
 
   /* ---------- Inventory & equipment ---------- */
   invSel: null,
+  invTab: 'bag',
 
   openInventory() {
     this.invSel = null;
+    this.invTab = 'bag';
     this.$('inv-panel').classList.remove('hidden');
     this.renderInventory();
   },
@@ -202,13 +204,19 @@ const UI = {
       slots.appendChild(row);
     }
 
-    // bag grid — click to select
+    // Bag / Storage tab highlight + active list
+    document.querySelectorAll('.inv-tab').forEach(b =>
+      b.classList.toggle('selected', b.dataset.tab === this.invTab));
+    const inStorage = this.invTab === 'storage';
+    const list = inStorage ? p.storage : p.inventory;
+
+    // item grid — click to select
     const grid = this.$('inv-grid');
     grid.innerHTML = '';
-    if (!p.inventory.length) {
-      grid.innerHTML = `<div class="inv-empty">${escapeHtml(t('inv.empty'))}</div>`;
+    if (!list.length) {
+      grid.innerHTML = `<div class="inv-empty">${escapeHtml(t(inStorage ? 'inv.emptyStore' : 'inv.empty'))}</div>`;
     }
-    for (const it of p.inventory) {
+    for (const it of list) {
       const cell = document.createElement('div');
       cell.className = 'inv-cell' + (this.invSel === it ? ' selected' : '');
       cell.style.borderColor = itemColor(it);
@@ -226,36 +234,76 @@ const UI = {
     const act = this.$('inv-actions');
     act.innerHTML = '';
     const sel = this.invSel;
-    if (sel && p.inventory.includes(sel)) {
-      const nm = document.createElement('span');
-      nm.className = 'ia-name'; nm.style.color = itemColor(sel);
-      nm.textContent = itemName(sel);
-      act.appendChild(nm);
+    if (!sel || !list.includes(sel)) { this.invSel = null; return; }
+    const re = () => this.renderInventory();
+    const nm = document.createElement('span');
+    nm.className = 'ia-name'; nm.style.color = itemColor(sel);
+    nm.textContent = itemName(sel);
+    act.appendChild(nm);
+
+    if (inStorage) {
+      act.appendChild(this.invBtn(t('inv.withdraw'), () => {
+        p.withdrawItem(sel); this.invSel = null; this.game.save(); re(); this.game.sfx('point');
+      }));
+    } else {
       if (sel.kind === 'weapon' || sel.kind === 'armor') {
         act.appendChild(this.invBtn(t('inv.equip'), () => {
-          p.equipItem(sel); this.invSel = null; this.game.save();
-          this.renderInventory(); this.game.sfx('buff');
+          p.equipItem(sel); this.invSel = null; this.game.save(); re(); this.game.sfx('buff');
         }));
       }
       if (sel.kind === 'potion') {
         act.appendChild(this.invBtn(t('inv.use'), () => {
           this.game.usePotion(p, sel);
           if (!p.inventory.includes(sel)) this.invSel = null;
-          this.renderInventory();
+          re();
         }));
+        // assign to a hotkey slot
+        for (let i = 0; i < 3; i++) {
+          const label = t('inv.toSlot', { k: prettyKey(KEYS['quick' + (i + 1)]) });
+          act.appendChild(this.invBtn(label, () => {
+            p.quickItems[i] = sel.key; this.game.save(); re(); this.game.sfx('point');
+          }));
+        }
       }
-      // two-step destroy (no blocking browser dialog)
-      const del = this.invBtn(t('inv.destroy'), null);
-      let armed = false;
-      del.addEventListener('click', () => {
-        if (!armed) { armed = true; del.textContent = '⚠ ' + t('inv.destroy'); del.classList.add('selected'); return; }
-        p.removeItem(sel, sel.count || 1);
-        this.invSel = null; this.game.save();
-        this.renderInventory(); this.game.sfx('point');
+      act.appendChild(this.invBtn(t('inv.deposit'), () => {
+        p.depositItem(sel); this.invSel = null; this.game.save(); re(); this.game.sfx('point');
+      }));
+    }
+
+    // two-step destroy (no blocking browser dialog)
+    const del = this.invBtn(t('inv.destroy'), null);
+    let armed = false;
+    del.addEventListener('click', () => {
+      if (!armed) { armed = true; del.textContent = '⚠ ' + t('inv.destroy'); del.classList.add('selected'); return; }
+      p._removeFrom(list, sel, sel.count || 1);
+      this.invSel = null; this.game.save(); re(); this.game.sfx('point');
+    });
+    act.appendChild(del);
+  },
+
+  /* ---------- HUD hotkey potion bar ---------- */
+  renderQuick(p, pre) {
+    const box = this.$('quickbar-' + pre);
+    if (!box) return;
+    const keys = ['quick1', 'quick2', 'quick3'];
+    const sig = p.quickItems.map((k, i) => k + ':' + this.game.quickCount(p, i)).join(',');
+    if (sig !== box.dataset.sig) {
+      box.dataset.sig = sig;
+      box.innerHTML = keys.map((qk, i) => {
+        const key = p.quickItems[i];
+        const kl = prettyKey(KEYS[qk]);
+        if (!key) return `<div class="quick-slot empty" data-i="${i}"><span class="qs-key">${kl}</span>＋</div>`;
+        const cnt = this.game.quickCount(p, i);
+        return `<div class="quick-slot ${cnt ? '' : 'out'}" data-i="${i}" title="${escapeHtml(t('item.' + key))}">` +
+          `<span class="qs-key">${kl}</span>${POTIONS[key].icon}<span class="qs-count">${cnt}</span></div>`;
+      }).join('');
+      box.querySelectorAll('.quick-slot').forEach(el => {
+        const i = +el.dataset.i;
+        el.addEventListener('click', () => {
+          if (p.quickItems[i]) this.game.useQuickItem(p, i);
+          else { this.openInventory(); }   // empty slot → open bag to assign
+        });
       });
-      act.appendChild(del);
-    } else if (this.invSel && !p.inventory.includes(this.invSel)) {
-      this.invSel = null;
     }
   },
 
@@ -290,6 +338,67 @@ const UI = {
   renderAfkPanel() {
     document.querySelectorAll('.afk-opt').forEach(btn =>
       btn.classList.toggle('selected', !!AFK_FOCUS[btn.dataset.focus]));
+  },
+
+  /* ---------- Merchant shop ---------- */
+  shopTab: 'buy',
+
+  openShop() {
+    this.shopTab = 'buy';
+    this.$('shop-panel').classList.remove('hidden');
+    this.renderShop();
+  },
+
+  closeShop() {
+    this.hideSkillTip();
+    this.$('shop-panel').classList.add('hidden');
+  },
+
+  renderShop() {
+    const p = this.game && this.game.players[0];
+    if (!p) return;
+    this.$('shop-gold').textContent = p.gold;
+    document.querySelectorAll('.shop-tab').forEach(b =>
+      b.classList.toggle('selected', b.dataset.tab === this.shopTab));
+    const box = this.$('shop-content');
+    box.innerHTML = '';
+
+    if (this.shopTab === 'buy') {
+      for (const key of Object.keys(POTIONS)) {
+        const base = POTIONS[key];
+        const row = document.createElement('div');
+        row.className = 'shop-row';
+        row.innerHTML =
+          `<span class="sr-icon">${base.icon}</span>` +
+          `<span class="sr-name">${escapeHtml(t('item.' + key))}<small>${escapeHtml(t('itemd.' + key))}</small></span>` +
+          `<span class="sr-price">🪙 ${base.price}</span>`;
+        const buy = this.invBtn(t('shop.buyBtn'), () => {
+          if (this.game.buyPotion(p, key, 1)) this.renderShop();
+        });
+        row.appendChild(buy);
+        box.appendChild(row);
+      }
+    } else {
+      const sellable = p.inventory;
+      if (!sellable.length) {
+        box.innerHTML = `<div class="shop-empty">${escapeHtml(t('shop.nothing'))}</div>`;
+        return;
+      }
+      for (const it of sellable) {
+        const row = document.createElement('div');
+        row.className = 'shop-row';
+        const cnt = it.kind === 'potion' && (it.count || 1) > 1 ? ` ×${it.count}` : '';
+        row.innerHTML =
+          `<span class="sr-icon">${itemIcon(it)}</span>` +
+          `<span class="sr-name" style="color:${itemColor(it)}">${escapeHtml(itemName(it))}${cnt}</span>` +
+          `<span class="sr-price">🪙 ${sellValue(it)}</span>`;
+        this._invHover(row, it);
+        row.appendChild(this.invBtn(t('shop.sellBtn'), () => {
+          this.game.sellItem(p, it); this.renderShop();
+        }));
+        box.appendChild(row);
+      }
+    }
   },
 
   /* ---------- Online name availability ---------- */
@@ -358,6 +467,7 @@ const UI = {
       this.$(pre + '-points-hint').classList.toggle('hidden', p.statPoints <= 0);
       this.$('afk-' + pre).classList.toggle('selected', p.afk);
       this.renderBuffs(p, pre);
+      this.renderQuick(p, pre);
 
       // skill cooldown overlays
       const bar = this.$('skillbar-p' + p.id);

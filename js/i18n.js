@@ -61,6 +61,21 @@ const I18N = {
     'inv.emptySlot': '(empty)',
     'inv.twoHanded': 'Two-handed',
     'inv.destroyConfirm': 'Destroy {name}? This cannot be undone.',
+    'inv.storage': 'Storage',
+    'inv.emptyStore': 'Storage is empty — deposit items here to keep them safe.',
+    'inv.deposit': 'Deposit',
+    'inv.withdraw': 'Withdraw',
+    'inv.toSlot': '⌨ {k}',
+
+    'shop.title': '🛒 Merchant',
+    'shop.buy': 'Buy',
+    'shop.sell': 'Sell',
+    'shop.buyBtn': 'Buy',
+    'shop.sellBtn': 'Sell',
+    'shop.poor': 'Not enough gold!',
+    'shop.nothing': 'Nothing in your bag to sell.',
+
+    'quick.out': 'Out of {name}!',
 
     'tier.common': 'Common',
     'tier.rare': 'Rare',
@@ -107,6 +122,7 @@ const I18N = {
     'keys.reset': 'Reset to defaults',
     'act.up': 'Move up', 'act.down': 'Move down', 'act.left': 'Move left', 'act.right': 'Move right',
     'act.attack': 'Attack', 'act.skill1': 'Skill 1', 'act.skill2': 'Skill 2', 'act.skill3': 'Skill 3',
+    'act.quick1': 'Potion 1', 'act.quick2': 'Potion 2', 'act.quick3': 'Potion 3',
     'act.panel': 'Stat panel', 'act.afk': 'AFK auto-farm',
 
     'online.title': '🌐 Online Multiplayer',
@@ -312,6 +328,21 @@ const I18N = {
     'inv.emptySlot': '(ว่าง)',
     'inv.twoHanded': 'สองมือ',
     'inv.destroyConfirm': 'ทำลาย {name}? ไม่สามารถย้อนกลับได้',
+    'inv.storage': 'คลังเก็บ',
+    'inv.emptyStore': 'คลังว่างเปล่า — ฝากไอเทมไว้ที่นี่เพื่อเก็บรักษา',
+    'inv.deposit': 'ฝาก',
+    'inv.withdraw': 'ถอน',
+    'inv.toSlot': '⌨ {k}',
+
+    'shop.title': '🛒 พ่อค้า',
+    'shop.buy': 'ซื้อ',
+    'shop.sell': 'ขาย',
+    'shop.buyBtn': 'ซื้อ',
+    'shop.sellBtn': 'ขาย',
+    'shop.poor': 'ทองไม่พอ!',
+    'shop.nothing': 'ไม่มีไอเทมในกระเป๋าให้ขาย',
+
+    'quick.out': '{name} หมดแล้ว!',
 
     'tier.common': 'ธรรมดา',
     'tier.rare': 'หายาก',
@@ -358,6 +389,7 @@ const I18N = {
     'keys.reset': 'คืนค่าเริ่มต้น',
     'act.up': 'เดินขึ้น', 'act.down': 'เดินลง', 'act.left': 'เดินซ้าย', 'act.right': 'เดินขวา',
     'act.attack': 'โจมตี', 'act.skill1': 'สกิล 1', 'act.skill2': 'สกิล 2', 'act.skill3': 'สกิล 3',
+    'act.quick1': 'ยา 1', 'act.quick2': 'ยา 2', 'act.quick3': 'ยา 3',
     'act.panel': 'หน้าต่างสเตตัส', 'act.afk': 'ฟาร์มอัตโนมัติ (AFK)',
 
     'online.title': '🌐 เล่นออนไลน์หลายคน',

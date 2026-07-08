@@ -18,11 +18,12 @@ if (!PID) {
 }
 
 /* ---------------- Rebindable hotkeys ---------------- */
-const KEY_ACTIONS = ['up', 'down', 'left', 'right', 'attack', 'skill1', 'skill2', 'skill3', 'panel', 'afk'];
+const KEY_ACTIONS = ['up', 'down', 'left', 'right', 'attack', 'skill1', 'skill2', 'skill3', 'quick1', 'quick2', 'quick3', 'panel', 'afk'];
 
 const DEFAULT_KEYS = {
   up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD',
   attack: 'Space', skill1: 'Digit1', skill2: 'Digit2', skill3: 'Digit3',
+  quick1: 'Digit4', quick2: 'Digit5', quick3: 'Digit6',
   panel: 'KeyC', afk: 'KeyF',
 };
 
@@ -189,6 +190,9 @@ class Game {
       if (Array.isArray(saved.inventory)) {
         p.inventory = saved.inventory.map(itemFromSave).filter(Boolean);
       }
+      if (Array.isArray(saved.storage)) {
+        p.storage = saved.storage.map(itemFromSave).filter(Boolean);
+      }
       if (saved.equip) {
         for (const slot of EQUIP_SLOTS) {
           const it = itemFromSave(saved.equip[slot]);
@@ -196,8 +200,7 @@ class Game {
         }
       }
       if (Array.isArray(saved.quickItems)) {
-        p.quickItems = saved.quickItems.map(q => itemFromSave(q));
-        while (p.quickItems.length < 3) p.quickItems.push(null);
+        p.quickItems = [0, 1, 2].map(i => (POTIONS[saved.quickItems[i]] ? saved.quickItems[i] : null));
       }
       const d = p.derived;
       p.hp = d.maxHp; p.mp = d.maxMp;
@@ -1139,6 +1142,48 @@ class Game {
     return true;
   }
 
+  /* ---------- Shop ---------- */
+  buyPotion(p, key, qty = 1) {
+    const base = POTIONS[key];
+    if (!base) return false;
+    const cost = base.price * qty;
+    if (p.gold < cost) { UI.toast(t('shop.poor'), 'info'); this.sfx('point'); return false; }
+    p.gold -= cost;
+    p.addItem(makePotion(key, qty));
+    this.sfx('gold');
+    this.save();
+    return true;
+  }
+
+  /* Sell a bag item to the merchant for gold. */
+  sellItem(p, item) {
+    if (!item || !p.inventory.includes(item)) return false;
+    const gold = sellValue(item);
+    p.gold += gold;
+    p.removeItem(item, item.count || 1);
+    this.addFloatText(p.x, p.y - 40, '+' + gold + '🪙', '#ffd75e');
+    this.sfx('gold');
+    this.save();
+    return true;
+  }
+
+  /* ---------- Hotkey potion slots ---------- */
+  /* Use the potion assigned to quick slot `i` (0-2), if any in the bag. */
+  useQuickItem(p, i) {
+    const key = p.quickItems[i];
+    if (!key) return false;
+    const stack = p.inventory.find(it => it.kind === 'potion' && it.key === key);
+    if (!stack) { UI.toast(t('quick.out', { name: t('item.' + key) }), 'info'); this.sfx('point'); return false; }
+    return this.usePotion(p, stack);
+  }
+
+  quickCount(p, i) {
+    const key = p.quickItems[i];
+    if (!key) return 0;
+    const stack = p.inventory.find(it => it.kind === 'potion' && it.key === key);
+    return stack ? (stack.count || 1) : 0;
+  }
+
   onLevelUp(p) {
     UI.toast(t('ui.levelUp', { name: p.name, lv: p.level }));
     this.addEffect({ type: 'ring', x: p.x, y: p.y - 12, dur: 0.6, color: '#ffd75e', r: 60 });
@@ -1166,8 +1211,9 @@ class Game {
         statPoints: p.statPoints, gold: p.gold, kills: p.kills,
         bossKills: p.bossKills, stats: p.stats,
         inventory: p.inventory.map(itemToSave),
+        storage: p.storage.map(itemToSave),
         equip: Object.fromEntries(EQUIP_SLOTS.map(s => [s, p.equip[s] ? itemToSave(p.equip[s]) : null])),
-        quickItems: p.quickItems.map(q => (q ? itemToSave(q) : null)),
+        quickItems: p.quickItems.slice(),   // potion keys (or null)
       })),
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -1413,6 +1459,12 @@ window.addEventListener('keydown', e => {
     else UI.openStatPanel(p1);
   }
   if (p1 && e.code === KEYS.afk) game.toggleAfk(p1);
+  // quick potion slots (edge-triggered so one press = one potion)
+  if (p1 && !e.repeat) {
+    if (e.code === KEYS.quick1) game.useQuickItem(p1, 0);
+    else if (e.code === KEYS.quick2) game.useQuickItem(p1, 1);
+    else if (e.code === KEYS.quick3) game.useQuickItem(p1, 2);
+  }
   if (e.code === 'Enter') {
     e.preventDefault();
     document.getElementById('chat-input').focus();
@@ -1428,6 +1480,7 @@ window.addEventListener('keydown', e => {
     document.getElementById('sound-panel').classList.add('hidden');
     document.getElementById('afk-panel').classList.add('hidden');
     UI.closeInventory();
+    UI.closeShop();
   }
 });
 
@@ -1497,6 +1550,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // inventory
   document.getElementById('btn-inv').addEventListener('click', () => UI.openInventory());
   document.getElementById('btn-inv-close').addEventListener('click', () => UI.closeInventory());
+  document.querySelectorAll('.inv-tab').forEach(btn => {
+    btn.addEventListener('click', () => { UI.invTab = btn.dataset.tab; UI.invSel = null; UI.renderInventory(); });
+  });
+
+  // shop
+  document.getElementById('btn-shop').addEventListener('click', () => UI.openShop());
+  document.getElementById('btn-shop-close').addEventListener('click', () => UI.closeShop());
+  document.querySelectorAll('.shop-tab').forEach(btn => {
+    btn.addEventListener('click', () => { UI.shopTab = btn.dataset.tab; UI.renderShop(); });
+  });
 
   // AFK focus settings
   document.getElementById('afk-cfg-p1').addEventListener('click', () => UI.openAfkPanel());

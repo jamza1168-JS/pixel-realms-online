@@ -43,6 +43,7 @@
         <button id="btn-keys" class="pix-btn small">⌨</button>
         <button id="btn-minimap" class="pix-btn small" title="Minimap">🗺</button>
         <button id="btn-inv" class="pix-btn small" title="Inventory">🎒</button>
+        <button id="btn-shop" class="pix-btn small" title="Shop">🛒</button>
         <button id="btn-online" class="pix-btn small">🌐</button>
         <button id="btn-trade" class="pix-btn small">🤝</button>
         <button id="btn-board" class="pix-btn small">🏆</button>
@@ -51,6 +52,7 @@
 
     <div id="hud-bottom">
       <div id="skillbar-p1" class="skillbar"></div>
+      <div id="quickbar-p1" class="quickbar"></div>
       <div id="hud-center-info">
         <div id="gold-display">🪙 <span id="gold-amount">0</span></div>
       </div>
@@ -155,12 +157,29 @@
           <div id="inv-slots"></div>
         </div>
         <div class="inv-col">
-          <h3 data-i18n="inv.bag">Bag</h3>
+          <div class="inv-tabs">
+            <button class="pix-btn small inv-tab" data-tab="bag" data-i18n="inv.bag">Bag</button>
+            <button class="pix-btn small inv-tab" data-tab="storage" data-i18n="inv.storage">Storage</button>
+          </div>
           <div id="inv-grid"></div>
         </div>
       </div>
       <div id="inv-actions"></div>
       <button id="btn-inv-close" class="pix-btn" data-i18n="ui.close">Close</button>
+    </div>
+  </div>
+
+  <!-- ===== SHOP ===== -->
+  <div id="shop-panel" class="overlay hidden">
+    <div class="panel inv-box">
+      <h2 data-i18n="shop.title">🛒 Merchant</h2>
+      <div class="shop-gold">🪙 <span id="shop-gold">0</span></div>
+      <div class="inv-tabs shop-tabs">
+        <button class="pix-btn small shop-tab" data-tab="buy" data-i18n="shop.buy">Buy</button>
+        <button class="pix-btn small shop-tab" data-tab="sell" data-i18n="shop.sell">Sell</button>
+      </div>
+      <div id="shop-content"></div>
+      <button id="btn-shop-close" class="pix-btn" data-i18n="ui.close">Close</button>
     </div>
   </div>
 

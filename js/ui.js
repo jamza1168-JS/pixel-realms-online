@@ -69,8 +69,49 @@ const UI = {
       el.dataset.skill = s.id || '';
       el.innerHTML = `<span class="ss-key">${keys[i]}</span><span class="ss-icon">${s.icon}</span>` +
         `<span class="ss-name">${s.name}</span><div class="ss-cd" style="height:0"></div>`;
+      // hover tooltip with the skill description
+      el.addEventListener('mouseenter', ev => this.showSkillTip(s, ev));
+      el.addEventListener('mousemove', ev => this.moveSkillTip(ev));
+      el.addEventListener('mouseleave', () => this.hideSkillTip());
       bar.appendChild(el);
     });
+  },
+
+  /* ---------- Skill hover tooltip ---------- */
+  showSkillTip(slot, ev) {
+    const tip = this.$('skill-tooltip');
+    if (!tip) return;
+    if (slot.id) {
+      const sk = SKILLS[slot.id];
+      tip.innerHTML =
+        `<b>${slot.icon} ${escapeHtml(t('skill.' + slot.id))}</b>` +
+        `<div class="st-desc">${escapeHtml(t('skilld.' + slot.id))}</div>` +
+        `<div class="st-cost">${t('skill.mp')} ${sk.mp} · ${t('skill.cd')} ${sk.cd}s</div>`;
+    } else {
+      tip.innerHTML =
+        `<b>${slot.icon} ${escapeHtml(t('act.attack'))}</b>` +
+        `<div class="st-desc">${escapeHtml(t('skilld.attack'))}</div>`;
+    }
+    tip.classList.remove('hidden');
+    this.moveSkillTip(ev);
+  },
+
+  moveSkillTip(ev) {
+    const tip = this.$('skill-tooltip');
+    if (!tip || tip.classList.contains('hidden')) return;
+    const pad = 8;
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let left = ev.clientX - w / 2;
+    let top = ev.clientY - h - 14;
+    left = Math.max(pad, Math.min(window.innerWidth - w - pad, left));
+    if (top < pad) top = ev.clientY + 18;
+    tip.style.left = left + 'px';
+    tip.style.top = top + 'px';
+  },
+
+  hideSkillTip() {
+    const tip = this.$('skill-tooltip');
+    if (tip) tip.classList.add('hidden');
   },
 
   rebuildSkillbars() {
@@ -93,8 +134,10 @@ const UI = {
     let gold = 0;
     for (const p of game.players) {
       gold += p.gold;
+      p.name = game.heroName();          // keep name live (head, stat window, toasts)
       const d = p.derived;
       const pre = 'p' + p.id;
+      this.$(pre + '-playername').textContent = p.name;
       this.$(pre + '-level').textContent = p.level;
       this.$(pre + '-hp').style.width = Math.max(0, (p.hp / d.maxHp) * 100) + '%';
       this.$(pre + '-mp').style.width = Math.max(0, (p.mp / d.maxMp) * 100) + '%';
@@ -191,7 +234,7 @@ const UI = {
   },
 
   spSig(p) {
-    return currentLang + ':' + p.level + ':' + p.statPoints + ':' +
+    return currentLang + ':' + p.name + ':' + p.level + ':' + p.statPoints + ':' +
            STAT_KEYS.map(k => p.stats[k]).join(',');
   },
 
@@ -314,6 +357,9 @@ const UI = {
   updateOnlinePanel() {
     const status = this.$('online-status');
     if (!status) return;
+    // hint: deployed (https) pages auto-fill the address; local play needs server.py
+    const hint = this.$('online-hint');
+    if (hint) hint.textContent = t(location.protocol === 'https:' ? 'online.hint' : 'online.hintLocal');
     const net = this.game ? this.game.net : null;
     const s = net ? net.status : 'off';
     status.className = 'online-status ' + (s === 'on' ? 'on' : s === 'error' ? 'err' : s === 'connecting' ? 'connecting' : '');
@@ -359,7 +405,8 @@ const UI = {
     const medals = ['🥇', '🥈', '🥉'];
     const valueOf = e =>
       this.boardTab === 'level' ? 'Lv ' + e.level :
-      this.boardTab === 'kills' ? '☠ ' + e.kills : '🪙 ' + e.gold;
+      this.boardTab === 'kills' ? '☠ ' + e.kills :
+      this.boardTab === 'bosses' ? '👑 ' + (e.bosses || 0) : '🪙 ' + e.gold;
     box.innerHTML = list.map((e, i) => {
       const mine = typeof PID !== 'undefined' && e.id && e.id.indexOf(PID + '-') === 0;
       return `<div class="board-row ${mine ? 'mine' : ''}">` +

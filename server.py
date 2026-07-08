@@ -83,7 +83,7 @@ def update_score(d: dict):
             v = 0
         return max(0, min(hi, v))
 
-    e = board.get(pid, {"level": 0, "kills": 0, "gold": 0})
+    e = board.get(pid, {"level": 0, "kills": 0, "bosses": 0, "gold": 0})
     e["id"] = pid
     e["name"] = (str(d.get("name", "Hero"))[:16]) or "Hero"
     e["cls"] = d.get("cls") if d.get("cls") in BOARD_CLASSES else "warrior"
@@ -91,6 +91,7 @@ def update_score(d: dict):
     # keep each player's best marks
     e["level"] = max(e["level"], clamp("level", 999))
     e["kills"] = max(e["kills"], clamp("kills", 10**7))
+    e["bosses"] = max(e.get("bosses", 0), clamp("bosses", 10**7))
     e["gold"] = max(e["gold"], clamp("gold", 10**9))
     board[pid] = e
     while len(board) > 500:  # cap: drop the stalest entry
@@ -105,7 +106,12 @@ def board_tops():
     def top(key):
         return sorted(entries, key=lambda e: -e.get(key, 0))[:10]
 
-    return {"level": top("level"), "kills": top("kills"), "gold": top("gold")}
+    return {
+        "level": top("level"),
+        "kills": top("kills"),
+        "bosses": top("bosses"),
+        "gold": top("gold"),
+    }
 
 
 class Client:

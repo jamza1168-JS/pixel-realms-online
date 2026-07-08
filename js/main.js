@@ -22,7 +22,7 @@ const KEY_ACTIONS = ['up', 'down', 'left', 'right', 'attack', 'skill1', 'skill2'
 
 const DEFAULT_KEYS = {
   up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD',
-  attack: 'KeyJ', skill1: 'KeyU', skill2: 'KeyI', skill3: 'KeyO',
+  attack: 'Space', skill1: 'Digit1', skill2: 'Digit2', skill3: 'Digit3',
   panel: 'KeyC', afk: 'KeyF',
 };
 
@@ -163,14 +163,21 @@ class Game {
     this.g.imageSmoothingEnabled = false;
   }
 
+  /* The player's chosen display name (online name, else saved, else Hero). */
+  heroName() {
+    return (this.net && this.net.name) || localStorage.getItem('pixelrealms_name') || 'Hero';
+  }
+
   addPlayer(id, clsId, saved) {
     const p = new Player(id, clsId, this);
+    p.name = this.heroName();
     if (saved) {
       p.level = saved.level;
       p.xp = saved.xp;
       p.statPoints = saved.statPoints;
       p.gold = saved.gold;
       p.kills = saved.kills || 0;
+      p.bossKills = saved.bossKills || 0;
       p.stats = Object.assign({}, saved.stats);
       const d = p.derived;
       p.hp = d.maxHp; p.mp = d.maxMp;
@@ -668,6 +675,7 @@ class Game {
     const net = new WSNet(this);
     this.net = net;
     net.connect(url, room, name);
+    for (const p of this.players) p.name = name;   // reflect the chosen name at once
   }
 
   goOffline() {
@@ -944,7 +952,10 @@ class Game {
     // mob-kill counter for the leaderboard
     let killerPlayer = localKiller;
     if (!killerPlayer && weKilled) killerPlayer = (gh && gh.lastLocalOwner) || this.players[0];
-    if (killerPlayer) killerPlayer.kills++;
+    if (killerPlayer) {
+      killerPlayer.kills++;
+      if (isBoss) killerPlayer.bossKills++;
+    }
 
     for (const p of this.players) {
       if (p.dead) continue;
@@ -996,7 +1007,7 @@ class Game {
     for (const p of this.players) {
       const payload = JSON.stringify({
         id: PID + '-' + p.id, name: this.boardName(p), cls: p.clsId,
-        level: p.level, kills: p.kills, gold: p.gold,
+        level: p.level, kills: p.kills, bosses: p.bossKills, gold: p.gold,
       });
       const url = base + '/api/score';
       try {
@@ -1027,7 +1038,7 @@ class Game {
   }
 
   onLevelUp(p) {
-    UI.toast(t('ui.levelUp', { name: t('class.' + p.clsId) + ' (P' + p.id + ')', lv: p.level }));
+    UI.toast(t('ui.levelUp', { name: p.name, lv: p.level }));
     this.addEffect({ type: 'ring', x: p.x, y: p.y - 12, dur: 0.6, color: '#ffd75e', r: 60 });
     this.sfx('levelup');
     this.save();
@@ -1050,7 +1061,8 @@ class Game {
       v: 1,
       players: this.players.map(p => ({
         id: p.id, clsId: p.clsId, level: p.level, xp: p.xp,
-        statPoints: p.statPoints, gold: p.gold, kills: p.kills, stats: p.stats,
+        statPoints: p.statPoints, gold: p.gold, kills: p.kills,
+        bossKills: p.bossKills, stats: p.stats,
       })),
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -1279,7 +1291,13 @@ window.addEventListener('keydown', e => {
   const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
   // block page scrolling, but let inputs (chat, sliders) use these keys
   if (!typing && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
-  if (!typing) keys.add(e.code);
+  if (!typing) {
+    keys.add(e.code);
+    // a focused HUD button would otherwise swallow Space/Enter as a click —
+    // blur it so game keys reach the hero instead
+    const ae = document.activeElement;
+    if (ae && ae.tagName === 'BUTTON' && Object.values(KEYS).includes(e.code)) ae.blur();
+  }
 
   if (!game || typing) return;
 
@@ -1370,6 +1388,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // hotkey settings
+  // minimap show/hide
+  document.getElementById('btn-minimap').addEventListener('click', () => {
+    document.getElementById('minimap').classList.toggle('hidden');
+    document.getElementById('zone-name').classList.toggle('hidden');
+    document.getElementById('btn-minimap').blur();
+  });
+
   document.getElementById('btn-keys').addEventListener('click', () => UI.openKeysPanel());
   document.getElementById('btn-keys-close').addEventListener('click', () => UI.closeKeysPanel());
   document.getElementById('btn-keys-reset').addEventListener('click', () => {

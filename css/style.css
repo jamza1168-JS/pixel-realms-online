@@ -127,9 +127,10 @@ html, body {
   padding: 8px 10px;
   width: 230px;
 }
-.pf-head { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 11px; }
-.pf-name { color: var(--gold); }
-.pf-level { color: var(--muted); }
+.pf-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; font-size: 11px; }
+.pf-playername { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 130px; }
+.pf-name { color: var(--gold); font-size: 10px; text-align: left; margin-bottom: 6px; }
+.pf-level { color: var(--muted); margin-left: auto; margin-right: 8px; }
 .pf-points { margin-top: 5px; font-size: 9px; color: var(--gold); animation: blink 1s infinite; }
 @keyframes blink { 50% { opacity: .35; } }
 
@@ -149,7 +150,11 @@ html, body {
   position: absolute; top: 12px; right: 12px;
   display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
 }
-#hud-top-right > button { align-self: flex-end; }
+#menu-buttons {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  justify-content: flex-end; max-width: 250px;
+}
+#menu-buttons button { margin: 0; }
 #minimap {
   border: 2px solid var(--panel-border);
   background: #000;
@@ -184,6 +189,7 @@ html, body {
 .skillbar { display: flex; gap: 6px; }
 .skill-slot {
   position: relative;
+  pointer-events: auto;   /* HUD is click-through; re-enable hover on slots */
   width: 52px; height: 52px;
   background: rgba(14,17,30,.85);
   border: 2px solid var(--panel-border);
@@ -202,6 +208,21 @@ html, body {
   pointer-events: none;
 }
 .skill-slot.no-mana { border-color: #7a3040; }
+
+/* skill hover tooltip */
+#skill-tooltip {
+  position: absolute; z-index: 60;
+  max-width: 230px;
+  background: rgba(14,17,30,.96);
+  border: 2px solid var(--panel-border);
+  box-shadow: 4px 4px 0 rgba(0,0,0,.5);
+  padding: 8px 10px;
+  font-size: 10px; line-height: 1.5;
+  color: var(--text); pointer-events: none;
+}
+#skill-tooltip b { color: var(--gold); font-size: 11px; }
+#skill-tooltip .st-desc { margin-top: 4px; }
+#skill-tooltip .st-cost { margin-top: 5px; color: var(--muted); font-size: 9px; }
 
 /* ===== Stat panel ===== */
 .sp-summary { color: var(--muted); margin-bottom: 14px; font-size: 11px; }

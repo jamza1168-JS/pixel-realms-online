@@ -29,6 +29,8 @@ node feature_test.js               # heal circle, leveling, AFK keeps points, st
 node bot_test.js                   # line of sight, unstuck/blacklist, manual override,
                                    #   retreat fight-back, cursor aim, live AFK farm (~1 min)
 node trade_test.js                 # two-client trade flow + accept-reset exploit regression
+node inv_trade_test.js             # inventory filter/tier-sort, stat-panel gear bonus,
+                                   #   equipped-compare tooltip, two-client item trade
 node ui_test.js                    # real-mouse-click stat buttons, sound panel, persistence
 node patch3a_test.js               # HUD name/level+ellipsis, buff chips, AFK focus menu,
                                    #   boss priority/flee, retreat routing, name uniqueness

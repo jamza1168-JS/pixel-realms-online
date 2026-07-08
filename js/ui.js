@@ -141,20 +141,78 @@ const UI = {
   showItemTip(item, ev) {
     const tip = this.$('skill-tooltip');
     if (!tip) return;
-    tip.innerHTML = this.itemTipHtml(item);
+    tip.innerHTML = this.itemTipHtml(item) + this.equipCompareHtml(item);
     tip.classList.remove('hidden');
     this.moveSkillTip(ev);
+  },
+
+  /* Readable label for a compared stat field. */
+  statLabel(k) {
+    if (k === 'dmgMul') return 'DMG';
+    if (k === 'aspdMul') return 'ATK SPD';
+    return t('rstat.' + k);
+  },
+
+  /* When hovering a gear item, show the item currently equipped in the
+   * same slot plus the per-stat delta, so two items compare at a glance. */
+  equipCompareHtml(item) {
+    if (!item || (item.kind !== 'weapon' && item.kind !== 'armor')) return '';
+    const p = this.game && this.game.players[0];
+    if (!p) return '';
+    const eq = p.equip[item.slot];
+    if (!eq || eq === item) return '';
+    let h = `<div class="cmp-head">${escapeHtml(t('cmp.vs'))} · ` +
+      `<span class="cmp-name" style="color:${itemColor(eq)}">${escapeHtml(itemName(eq))}</span></div>`;
+    const a = itemStatMap(item), b = itemStatMap(eq);
+    const keys = [...new Set([...Object.keys(a), ...Object.keys(b)])];
+    for (const k of keys) {
+      const dv = (a[k] || 0) - (b[k] || 0);
+      if (!dv) continue;
+      const suffix = (k === 'dmgMul' || k === 'aspdMul') ? '%' : '';
+      h += `<div class="${dv > 0 ? 'cmp-up' : 'cmp-down'}">${dv > 0 ? '+' : ''}${dv}${suffix} ${escapeHtml(this.statLabel(k))}</div>`;
+    }
+    return h;
   },
 
   /* ---------- Inventory & equipment ---------- */
   invSel: null,
   invTab: 'bag',
+  invFilter: 'all',   // all | potion | head | chest | hands | legs | boots
 
   openInventory() {
     this.invSel = null;
     this.invTab = 'bag';
+    this.invFilter = 'all';
     this.$('inv-panel').classList.remove('hidden');
     this.renderInventory();
+  },
+
+  /* Does an item belong to the active category filter? */
+  _matchFilter(it) {
+    const f = this.invFilter;
+    if (f === 'all') return true;
+    if (f === 'potion') return it.kind === 'potion';
+    return it.slot === f;   // head | chest | hands | legs | boots
+  },
+
+  /* Category chips above the grid; higher tier sorts first in the grid. */
+  renderInvFilter() {
+    const bar = this.$('inv-filter');
+    if (!bar) return;
+    const cats = [['all', t('inv.filterAll')], ['potion', t('inv.filterPotion')],
+      ['head', t('slot.head')], ['chest', t('slot.chest')], ['hands', t('slot.hands')],
+      ['legs', t('slot.legs')], ['boots', t('slot.boots')]];
+    bar.innerHTML = '';
+    for (const [key, label] of cats) {
+      const b = document.createElement('button');
+      b.className = 'pix-btn small filt' + (this.invFilter === key ? ' selected' : '');
+      b.textContent = label;
+      b.addEventListener('click', () => {
+        this.invFilter = key; this.invSel = null;
+        this.renderInventory(); this.game.sfx('point');
+      });
+      bar.appendChild(b);
+    }
   },
 
   closeInventory() {
@@ -210,13 +268,21 @@ const UI = {
     const inStorage = this.invTab === 'storage';
     const list = inStorage ? p.storage : p.inventory;
 
+    // category filter chips
+    this.renderInvFilter();
+
+    // filtered + tier-sorted display copy (does NOT reorder the real list)
+    const shown = list.filter(it => this._matchFilter(it)).sort((a, b) =>
+      tierRank(b) - tierRank(a) || (b.ilvl || 0) - (a.ilvl || 0) ||
+      itemName(a).localeCompare(itemName(b)));
+
     // item grid — click to select
     const grid = this.$('inv-grid');
     grid.innerHTML = '';
-    if (!list.length) {
+    if (!shown.length) {
       grid.innerHTML = `<div class="inv-empty">${escapeHtml(t(inStorage ? 'inv.emptyStore' : 'inv.empty'))}</div>`;
     }
-    for (const it of list) {
+    for (const it of shown) {
       const cell = document.createElement('div');
       cell.className = 'inv-cell' + (this.invSel === it ? ' selected' : '');
       cell.style.borderColor = itemColor(it);
@@ -529,7 +595,8 @@ const UI = {
 
   spSig(p) {
     return currentLang + ':' + p.name + ':' + p.level + ':' + p.statPoints + ':' +
-           STAT_KEYS.map(k => p.stats[k]).join(',');
+           STAT_KEYS.map(k => p.stats[k]).join(',') + ':' +
+           EQUIP_SLOTS.map(s => (p.equip[s] ? p.equip[s].uid : '-')).join(',');
   },
 
   renderStatPanel(p) {
@@ -539,13 +606,16 @@ const UI = {
     this.$('sp-level').textContent = p.level;
     this.$('sp-points').textContent = p.statPoints;
 
+    const agg = p.equipAgg ? p.equipAgg() : {};
     const statsBox = this.$('sp-stats');
     statsBox.innerHTML = '';
     for (const k of STAT_KEYS) {
+      const bonus = agg[k] || 0;
       const row = document.createElement('div');
       row.className = 'sp-row';
       row.innerHTML = `<span class="sr-name">${t('stat.' + k)}</span>` +
-        `<span class="sr-val">${p.stats[k]}</span>` +
+        `<span class="sr-val">${p.stats[k]}` +
+        (bonus ? ` <span class="sr-bonus">+${bonus}</span>` : '') + `</span>` +
         `<span class="sr-desc">${t('statd.' + k)}</span>`;
       const btn = document.createElement('button');
       btn.className = 'sp-plus';
@@ -832,14 +902,37 @@ const UI = {
       box.innerHTML =
         `<div class="trade-status ${tr.theirAccept ? 'ready' : ''}">${t('trade.with', { name: escapeHtml(tr.withName) })}` +
         (tr.theirAccept ? ' — ' + t('trade.ready') : '') + `</div>` +
-        `<div class="trade-offer-box">` +
-        `<div class="trade-offer ${tr.myAccept ? 'accepted' : ''}"><h4>${t('trade.myOffer')} (🪙 ${tr.me.gold})</h4>` +
-        `<input id="tr-my-gold" class="pix-input" type="number" min="0" max="${tr.me.gold}" value="${tr.myGold}" ${tr.myAccept ? 'disabled' : ''}></div>` +
-        `<div class="trade-offer ${tr.theirAccept ? 'accepted' : ''}"><h4>${t('trade.theirOffer')}</h4>` +
-        `<div class="to-gold">🪙 ${tr.theirGold}</div></div>` +
+        `<div class="trade-cols">` +
+        `<div class="trade-side ${tr.myAccept ? 'accepted' : ''}"><h4>${t('trade.myOffer')}</h4>` +
+        `<div class="ts-gold">🪙 <input id="tr-my-gold" class="pix-input" type="number" min="0" max="${tr.me.gold}" value="${tr.myGold}" ${tr.myAccept ? 'disabled' : ''}></div>` +
+        `<div class="trade-grid" id="tr-my-items"></div></div>` +
+        `<div class="trade-side ${tr.theirAccept ? 'accepted' : ''}"><h4>${t('trade.theirOffer')}</h4>` +
+        `<div class="ts-gold">🪙 ${tr.theirGold}</div>` +
+        `<div class="trade-grid" id="tr-their-items"></div></div>` +
         `</div>` +
+        (tr.myAccept ? '' : `<div class="trade-bag-label">${t('trade.yourBag')}</div><div class="trade-grid" id="tr-bag"></div>`) +
         `<button class="pix-btn ${tr.myAccept ? 'selected' : ''}" id="tr-accept">${tr.myAccept ? t('trade.locked') : t('trade.lock')}</button>` +
         `<button class="pix-btn small" id="tr-cancel">${t('ui.cancel')}</button>`;
+
+      const fill = (id, items, onClick) => {
+        const el = box.querySelector('#' + id);
+        if (!el) return;
+        el.innerHTML = '';
+        if (!items.length) { el.innerHTML = `<div class="trade-empty">${escapeHtml(t('trade.offerEmpty'))}</div>`; return; }
+        for (const it of items) {
+          const c = document.createElement('div');
+          c.className = 'trade-cell'; c.style.borderColor = itemColor(it);
+          c.innerHTML = itemIcon(it) +
+            (it.kind === 'potion' && (it.count || 1) > 1 ? `<span class="ic-count">${it.count}</span>` : '');
+          this._invHover(c, it);
+          if (onClick) c.addEventListener('click', () => { this.hideSkillTip(); onClick(it); });
+          el.appendChild(c);
+        }
+      };
+      fill('tr-my-items', tr.myItems, tr.myAccept ? null : it => game.removeTradeItem(it));
+      fill('tr-their-items', tr.theirItems, null);
+      if (!tr.myAccept) fill('tr-bag', tr.me.inventory, it => game.addTradeItem(it));
+
       box.querySelector('#tr-my-gold').addEventListener('change', ev => game.setTradeGold(ev.target.value));
       box.querySelector('#tr-accept').addEventListener('click', () => {
         const input = box.querySelector('#tr-my-gold');

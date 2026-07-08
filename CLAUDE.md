@@ -77,7 +77,13 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
 - `healEntity` must apply sub-1HP ticks (heal circle/auras heal per frame);
   suppress the float text, not the heal.
 - Trade: any `trade_set` resets BOTH accept flags (anti-scam). Trade
-  messages route by `to`/`fromKey` = `clientId:slot`.
+  messages route by `to`/`fromKey` = `clientId:slot`. Offers carry gold
+  **and items**: `trade_set` sends `{gold, items:[itemToSave]}`. Offered
+  items are **escrowed** — pulled out of the bag when added (`addTradeItem`,
+  one potion per click) so they can't be used/duped mid-trade, and returned
+  via `returnTradeEscrow` on any abort (cancel/decline/peer-left/disconnect/
+  unload). Completion (`checkTradeDone`) keeps my escrowed items gone and
+  `addItem`s the partner's `theirItems` + the gold delta.
 - AFK bot (`Game.botInput`): never auto-spends stat points; checks
   `world.hasLineOfSight` before attacking; blacklists unreachable targets
   in `bot.avoid`; yields to any manual key press (see `Game.update`).
@@ -98,7 +104,13 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
   `dmgMul`/`aspdMul`/`spd` too). `computeBase` multiplies by `d.dmgMul`.
   Potions stack; `game.usePotion` heals and/or `addBuff`s. Drops are the
   `'gear'` Pickup kind (carries the item; collect → `addItem`). Save via
-  `itemToSave`/`itemFromSave`. UI reuses `#skill-tooltip` for item tips.
+  `itemToSave`/`itemFromSave`. UI reuses `#skill-tooltip` for item tips —
+  hovering gear also appends an equipped-slot comparison (`equipCompareHtml`
+  via `itemStatMap`). Inventory/storage render a **filtered + tier-sorted
+  copy** (`UI.invFilter`, `tierRank`); the real `inventory`/`storage` arrays
+  are never reordered. Stat panel shows base **+gear bonus** per primary
+  stat (from `equipAgg()`); `UI.spSig` includes equipped-item uids so it
+  re-renders when gear changes.
 - Bag vs stash: `player.inventory` and `player.storage` share `_addTo`/
   `_removeFrom` (potions stack per list); `depositItem`/`withdrawItem`
   move between them. Shop: `buyPotion`/`sellItem` (sell price `sellValue`).

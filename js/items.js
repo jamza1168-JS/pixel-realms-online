@@ -132,6 +132,24 @@ function sellValue(item) {
 
 function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
+/* Sort rank for a gear tier (mystic highest); potions sort last. */
+function tierRank(item) { return item.kind === 'potion' ? -1 : TIER_ORDER.indexOf(item.tier); }
+
+/* A gear item's flat stat contribution, for side-by-side comparison.
+ * Merges rolled rows with the weapon base modifiers (as readable fields). */
+function itemStatMap(item) {
+  const m = {};
+  if (!item || (item.kind !== 'weapon' && item.kind !== 'armor')) return m;
+  for (const r of item.rows) m[r.stat] = (m[r.stat] || 0) + r.val;
+  const base = itemBase(item);
+  if (base && base.base) {
+    if (base.base.dmgMul && base.base.dmgMul !== 1) m.dmgMul = Math.round((base.base.dmgMul - 1) * 100);
+    if (base.base.aspdMul && base.base.aspdMul !== 1) m.aspdMul = Math.round((base.base.aspdMul - 1) * 100);
+    if (base.base.spd) m.spd = (m.spd || 0) + base.base.spd;
+  }
+  return m;
+}
+
 /* Template lookup for any item instance. */
 function itemBase(item) {
   if (item.kind === 'potion') return POTIONS[item.key];

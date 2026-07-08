@@ -51,6 +51,10 @@ const I18N = {
     'buff.pot_regen': 'Regen Potion — 3× HP/MP regen',
 
     'inv.title': '🎒 Inventory',
+    'inv.filterAll': 'All',
+    'inv.filterPotion': 'Potions',
+    'cmp.equipped': 'Equipped now',
+    'cmp.vs': 'vs equipped',
     'inv.bag': 'Bag',
     'inv.equipped': 'Equipped',
     'inv.empty': 'Your bag is empty — hunt monsters to find gear!',
@@ -127,29 +131,10 @@ const I18N = {
     'act.quick1': 'Potion 1', 'act.quick2': 'Potion 2', 'act.quick3': 'Potion 3',
     'act.panel': 'Stat panel', 'act.afk': 'AFK auto-farm',
 
-    'online.title': '🌐 Online Multiplayer',
-    'online.server': 'Server address',
-    'online.room': 'Room',
-    'online.name': 'Your name',
-    'online.connect': 'Connect',
-    'online.disconnect': 'Disconnect',
-    'online.off': 'Offline',
-    'online.connecting': 'Connecting…',
     'online.on': 'Connected',
-    'online.error': 'Connection failed — is the server running?',
     'online.host': 'host',
     'online.players': 'ONLINE · {n} players',
-    'online.hint': 'The server address is filled in for you — just choose a room name and connect to play with everyone else on this server.',
-    'online.hintLocal': 'Start the server with:  python server.py  — friends on your network join with your IP and the same room name.',
-    'online.nameChecking': 'Checking name…',
-    'online.nameFree': '✓ Name available',
     'online.nameTaken': '✗ Name already taken — pick another',
-    'online.joinPublic': '🌍 Join Public World',
-    'online.orPrivate': '— or private room —',
-    'online.password': 'Password',
-    'online.roomPh': 'room name',
-    'online.enterPrivate': '🔒 Enter Private Room',
-    'online.needRoom': 'Enter a room name for a private room.',
     'online.wrongPassword': '🔒 Wrong password for that room.',
     'online.roomFull': 'That room is full (max 20). Try another.',
     'online.worldCh': 'World · Ch {n}',
@@ -200,8 +185,11 @@ const I18N = {
     'trade.request': '{name} wants to trade!',
     'trade.accept': 'Accept',
     'trade.decline': 'Decline',
-    'trade.myOffer': 'Your gold offer',
+    'trade.myOffer': 'Your offer',
     'trade.theirOffer': 'Their offer',
+    'trade.gold': 'Gold',
+    'trade.yourBag': 'Your bag — click an item to add',
+    'trade.offerEmpty': '(no items)',
     'trade.lock': '✔ Confirm trade',
     'trade.locked': '✔ Confirmed — waiting for partner…',
     'trade.ready': 'Partner accepted!',
@@ -292,9 +280,11 @@ const I18N = {
       release the keys. Stat points are saved for YOU to spend —
       use <b>★ Recommended build</b> in the stat window to allocate them all at
       once, or <b>↺ Reset stats</b> to refund everything and rebuild.
-      <h3>🌐 Online multiplayer</h3>
-      Click the 🌐 button to join a server room and play with everyone.
-      Chat with <span class="key">↵</span>, trade with 🤝, compete on the 🏆 leaderboards.
+      <h3>🌍 Online &amp; saving</h3>
+      Log in to join the shared world with everyone and save your hero on the
+      server. Guests can play too, but progress is lost when the browser closes.
+      Chat with <span class="key">↵</span>, trade gold &amp; items with 🤝,
+      compete on the 🏆 leaderboards.
       <h3>⌨ Hotkeys</h3>
       Click the ⌨ button to rebind every key.
       <h3>Goal</h3>
@@ -350,6 +340,10 @@ const I18N = {
     'buff.pot_regen': 'ยาฟื้นฟู — ฟื้นฟู HP/MP 3 เท่า',
 
     'inv.title': '🎒 กระเป๋าไอเทม',
+    'inv.filterAll': 'ทั้งหมด',
+    'inv.filterPotion': 'ยา',
+    'cmp.equipped': 'ที่ใส่อยู่',
+    'cmp.vs': 'เทียบกับที่ใส่',
     'inv.bag': 'กระเป๋า',
     'inv.equipped': 'สวมใส่อยู่',
     'inv.empty': 'กระเป๋าว่างเปล่า — ล่ามอนสเตอร์เพื่อหาอุปกรณ์!',
@@ -426,29 +420,10 @@ const I18N = {
     'act.quick1': 'ยา 1', 'act.quick2': 'ยา 2', 'act.quick3': 'ยา 3',
     'act.panel': 'หน้าต่างสเตตัส', 'act.afk': 'ฟาร์มอัตโนมัติ (AFK)',
 
-    'online.title': '🌐 เล่นออนไลน์หลายคน',
-    'online.server': 'ที่อยู่เซิร์ฟเวอร์',
-    'online.room': 'ห้อง',
-    'online.name': 'ชื่อของคุณ',
-    'online.connect': 'เชื่อมต่อ',
-    'online.disconnect': 'ตัดการเชื่อมต่อ',
-    'online.off': 'ออฟไลน์',
-    'online.connecting': 'กำลังเชื่อมต่อ…',
     'online.on': 'เชื่อมต่อแล้ว',
-    'online.error': 'เชื่อมต่อไม่สำเร็จ — เซิร์ฟเวอร์เปิดอยู่หรือไม่?',
     'online.host': 'โฮสต์',
     'online.players': 'ออนไลน์ · {n} คน',
-    'online.hint': 'ที่อยู่เซิร์ฟเวอร์ถูกกรอกให้แล้ว — แค่ตั้งชื่อห้องแล้วกดเชื่อมต่อเพื่อเล่นกับคนอื่นบนเซิร์ฟเวอร์นี้',
-    'online.hintLocal': 'เริ่มเซิร์ฟเวอร์ด้วยคำสั่ง:  python server.py  — เพื่อนในเครือข่ายเข้าร่วมด้วย IP ของคุณและชื่อห้องเดียวกัน',
-    'online.nameChecking': 'กำลังตรวจสอบชื่อ…',
-    'online.nameFree': '✓ ใช้ชื่อนี้ได้',
     'online.nameTaken': '✗ ชื่อนี้ถูกใช้แล้ว — กรุณาเลือกชื่ออื่น',
-    'online.joinPublic': '🌍 เข้าโลกสาธารณะ',
-    'online.orPrivate': '— หรือห้องส่วนตัว —',
-    'online.password': 'รหัสผ่าน',
-    'online.roomPh': 'ชื่อห้อง',
-    'online.enterPrivate': '🔒 เข้าห้องส่วนตัว',
-    'online.needRoom': 'กรุณาใส่ชื่อห้องสำหรับห้องส่วนตัว',
     'online.wrongPassword': '🔒 รหัสผ่านห้องไม่ถูกต้อง',
     'online.roomFull': 'ห้องเต็มแล้ว (สูงสุด 20 คน) ลองห้องอื่น',
     'online.worldCh': 'โลก · ช่อง {n}',
@@ -499,8 +474,11 @@ const I18N = {
     'trade.request': '{name} ต้องการแลกเปลี่ยน!',
     'trade.accept': 'ตกลง',
     'trade.decline': 'ปฏิเสธ',
-    'trade.myOffer': 'ทองที่คุณเสนอ',
+    'trade.myOffer': 'ข้อเสนอของคุณ',
     'trade.theirOffer': 'ข้อเสนอของอีกฝ่าย',
+    'trade.gold': 'ทอง',
+    'trade.yourBag': 'กระเป๋าของคุณ — คลิกไอเทมเพื่อเพิ่ม',
+    'trade.offerEmpty': '(ไม่มีไอเทม)',
     'trade.lock': '✔ ยืนยันแลกเปลี่ยน',
     'trade.locked': '✔ ยืนยันแล้ว — รออีกฝ่าย…',
     'trade.ready': 'อีกฝ่ายยืนยันแล้ว!',
@@ -591,9 +569,10 @@ const I18N = {
       แต้มสเตตัสจะเก็บไว้ให้คุณอัพเอง —
       กดปุ่ม <b>★ อัพตามสายแนะนำ</b> ในหน้าต่างสเตตัสเพื่ออัพทั้งหมดในคลิกเดียว
       หรือ <b>↺ รีเซ็ตสเตตัส</b> เพื่อคืนแต้มทั้งหมดแล้วอัพใหม่
-      <h3>🌐 เล่นออนไลน์หลายคน</h3>
-      กดปุ่ม 🌐 เข้าห้องเซิร์ฟเวอร์แล้วเล่นกับทุกคน
-      แชทด้วย <span class="key">↵</span> แลกเปลี่ยนด้วย 🤝 แข่งอันดับที่ 🏆
+      <h3>🌍 ออนไลน์ &amp; การบันทึก</h3>
+      เข้าสู่ระบบเพื่อเล่นในโลกที่แชร์ร่วมกับทุกคนและบันทึกฮีโร่ไว้บนเซิร์ฟเวอร์
+      ผู้เยี่ยมชมเล่นได้เช่นกัน แต่ความคืบหน้าจะหายเมื่อปิดเบราว์เซอร์
+      แชทด้วย <span class="key">↵</span> แลกเปลี่ยนทองและไอเทมด้วย 🤝 แข่งอันดับที่ 🏆
       <h3>⌨ ปุ่มลัด</h3>
       กดปุ่ม ⌨ เพื่อเปลี่ยนปุ่มได้ทุกปุ่ม
       <h3>เป้าหมาย</h3>

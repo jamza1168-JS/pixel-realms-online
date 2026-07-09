@@ -47,6 +47,7 @@
         <button id="btn-shop" class="pix-btn small" title="Shop">🛒</button>
         <button id="btn-trade" class="pix-btn small">🤝</button>
         <button id="btn-board" class="pix-btn small">🏆</button>
+        <button id="btn-news" class="pix-btn small" title="Announcements">📢</button>
       </div>
     </div>
 
@@ -90,6 +91,10 @@
         <button id="btn-landing-login" class="pix-btn big" data-i18n="title.loginBtn">🔐 Log in / Register</button>
         <button id="btn-landing-guest" class="pix-btn big" data-i18n="title.guestBtn">▶ Play as Guest</button>
         <p class="hint" id="title-coop-hint" data-i18n="title.coopHint">Guest mode — progress isn't saved. Log in to keep your hero and play online.</p>
+        <div class="title-notices">
+          <p class="notice dev" data-i18n="title.devNote">Early development — progress may reset.</p>
+          <p class="notice" data-i18n="title.pdpa">We use your info only to save progress and improve the game.</p>
+        </div>
       </div>
 
       <!-- STEP 2: choose class -->
@@ -233,6 +238,15 @@
       </div>
       <div id="board-content"></div>
       <button id="btn-board-close" class="pix-btn" data-i18n="ui.close">Close</button>
+    </div>
+  </div>
+
+  <!-- ===== ANNOUNCEMENTS (non-modal: game keeps running behind it) ===== -->
+  <div id="news-panel" class="news-window hidden">
+    <div class="panel">
+      <h2 data-i18n="news.title">📢 Announcements</h2>
+      <div id="news-content"></div>
+      <button id="btn-news-close" class="pix-btn" data-i18n="ui.close">Close</button>
     </div>
   </div>
 

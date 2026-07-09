@@ -1619,6 +1619,7 @@ window.addEventListener('keydown', e => {
     UI.closeTrade();
     document.getElementById('help-panel').classList.add('hidden');
     document.getElementById('board-panel').classList.add('hidden');
+    document.getElementById('news-panel').classList.add('hidden');
     document.getElementById('sound-panel').classList.add('hidden');
     document.getElementById('afk-panel').classList.add('hidden');
     document.getElementById('account-panel').classList.add('hidden');
@@ -1771,6 +1772,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('btn-board-close').addEventListener('click', () =>
     document.getElementById('board-panel').classList.add('hidden'));
+
+  // announcements — toggle so the button both opens and hides the window
+  document.getElementById('btn-news').addEventListener('click', () => {
+    const panel = document.getElementById('news-panel');
+    if (panel.classList.contains('hidden')) UI.openNews();
+    else UI.closeNews();
+    document.getElementById('btn-news').blur();
+  });
+  document.getElementById('btn-news-close').addEventListener('click', () => UI.closeNews());
 
   // trading
   document.getElementById('btn-trade').addEventListener('click', () => UI.openTradePanel());

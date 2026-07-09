@@ -13,6 +13,8 @@ const I18N = {
     'title.loginBtn': '🔐 Log in / Register',
     'title.guestBtn': '▶ Play as Guest',
     'title.back': '← Back',
+    'title.pdpa': '🔒 We use your account info only to save your progress and improve the game. We never sell your data to third parties.',
+    'title.devNote': '⚠️ Early development — the game is still being built, so your progress may be reset at any time.',
     'title.start': 'START ADVENTURE',
     'title.continue': 'CONTINUE',
     'title.coopHint': "Guest mode — progress isn't saved. Log in to keep your hero and play online with everyone.",
@@ -169,6 +171,12 @@ const I18N = {
     'account.userTaken': '✗ Username already taken — pick another',
     'account.userInvalid': '3–16 letters, numbers, or _',
 
+    'news.title': '📢 Announcements',
+    'news.btn': 'Announcements',
+    'news.loading': 'Loading announcements…',
+    'news.empty': 'No announcements yet.',
+    'news.error': 'Could not load announcements — check your connection.',
+
     'chat.placeholder': 'Press Enter to chat…',
     'chat.you': 'You',
 
@@ -309,6 +317,8 @@ const I18N = {
     'title.loginBtn': '🔐 เข้าสู่ระบบ / สมัครสมาชิก',
     'title.guestBtn': '▶ เล่นแบบผู้เยี่ยมชม',
     'title.back': '← ย้อนกลับ',
+    'title.pdpa': '🔒 เราใช้ข้อมูลบัญชีของคุณเพื่อบันทึกความคืบหน้าและพัฒนาเกมเท่านั้น เราจะไม่ขายข้อมูลของคุณให้บุคคลที่สาม',
+    'title.devNote': '⚠️ อยู่ระหว่างพัฒนา — เกมยังสร้างไม่เสร็จ ความคืบหน้าของคุณอาจถูกรีเซ็ตได้ทุกเมื่อ',
     'title.start': 'เริ่มการผจญภัย',
     'title.continue': 'เล่นต่อ',
     'title.coopHint': 'โหมดผู้เยี่ยมชม — ความคืบหน้าจะไม่ถูกบันทึก เข้าสู่ระบบเพื่อเก็บฮีโร่และเล่นออนไลน์กับทุกคน',
@@ -464,6 +474,12 @@ const I18N = {
     'account.userFree': '✓ ใช้ชื่อผู้ใช้นี้ได้',
     'account.userTaken': '✗ ชื่อผู้ใช้นี้ถูกใช้แล้ว — เลือกชื่ออื่น',
     'account.userInvalid': 'ตัวอักษร ตัวเลข หรือ _ ยาว 3–16 ตัว',
+
+    'news.title': '📢 ประกาศ',
+    'news.btn': 'ประกาศ',
+    'news.loading': 'กำลังโหลดประกาศ…',
+    'news.empty': 'ยังไม่มีประกาศ',
+    'news.error': 'โหลดประกาศไม่สำเร็จ — กรุณาตรวจสอบการเชื่อมต่อ',
 
     'chat.placeholder': 'กด Enter เพื่อแชท…',
     'chat.you': 'คุณ',

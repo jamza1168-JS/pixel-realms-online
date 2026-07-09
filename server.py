@@ -387,6 +387,19 @@ def http_json(writer, status: str, obj):
     )
 
 
+# Server-published announcements (patch notes / dev updates). Read from a
+# committed JSON file at request time so they can be edited without a code
+# change; newest first. Each item: {date, en:{title,body}, th:{title,body}}.
+def load_announcements():
+    try:
+        with open(os.path.join(ROOT, "announcements.json"), encoding="utf-8") as f:
+            data = json.load(f)
+        items = data.get("items", []) if isinstance(data, dict) else []
+        return items if isinstance(items, list) else []
+    except Exception:
+        return []
+
+
 def handle_api(writer, method: str, raw_path: str, body: bytes, headers: dict):
     path, _, query = raw_path.partition("?")
     if method == "OPTIONS":
@@ -394,6 +407,9 @@ def handle_api(writer, method: str, raw_path: str, body: bytes, headers: dict):
         return
     if method == "GET" and path == "/api/leaderboard":
         http_json(writer, "200 OK", board_tops())
+        return
+    if method == "GET" and path == "/api/announcements":
+        http_json(writer, "200 OK", {"items": load_announcements()})
         return
     if method == "GET" and path == "/api/name-available":
         params = urllib.parse.parse_qs(query)

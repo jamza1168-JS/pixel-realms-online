@@ -28,6 +28,13 @@ Two-step title screen + account-username checking:
   client shows ✓/✗ under the register field via `UI.checkUsernameAvailable()`
   and blocks an obviously-taken name before submit. (Server already rejected
   dupes at register via the `uname_lc` UNIQUE constraint → `taken`.)
+- **Landing notices:** PDPA privacy line + "early development, progress may
+  reset" warning on the login page (`title.pdpa` / `title.devNote`).
+- **Announcements window:** 📢 HUD button opens a non-modal `#news-panel`
+  (`.news-window`) that the button toggles open/hide without blocking play.
+  Content is server-published: `GET /api/announcements` reads
+  `announcements.json` (repo root) at request time — edit that file + redeploy
+  to post an update. Items are bilingual `{date, en:{...}, th:{...}}`.
 
 ## Run & verify (any machine)
 
@@ -44,6 +51,7 @@ python3 server.py 8900 &                     # from repo root
 cd tests
 # browser tests (Node):
 node landing_test.js        # two-step title, language, username availability
+node news_test.js           # landing notices + announcements window (server-fed, scroll, toggle)
 node session_flow_test.js   # guest = sessionStorage/offline, login auto-joins World
 node account_ui_test.js     # account panel + cloud save/load + Continue
 node inv_trade_test.js      # inventory filter/tier-sort, stat bonus, compare tip, item trade

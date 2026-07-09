@@ -914,6 +914,37 @@ const UI = {
     setTimeout(() => { line.style.opacity = '0.45'; }, 8000);
   },
 
+  /* ---------- Announcements (server-published patch notes) ---------- */
+  async openNews() {
+    this.$('news-panel').classList.remove('hidden');
+    const box = this.$('news-content');
+    box.innerHTML = `<div class="news-status">${escapeHtml(t('news.loading'))}</div>`;
+    const base = this.game ? this.game.apiBase() : (location.protocol.startsWith('http') ? '' : null);
+    if (base === null) { box.innerHTML = `<div class="news-status">${escapeHtml(t('news.error'))}</div>`; return; }
+    try {
+      const res = await fetch(base + '/api/announcements');
+      const data = await res.json();
+      this.renderNews(data.items || []);
+    } catch (e) {
+      box.innerHTML = `<div class="news-status">${escapeHtml(t('news.error'))}</div>`;
+    }
+  },
+
+  renderNews(items) {
+    const box = this.$('news-content');
+    if (!items.length) { box.innerHTML = `<div class="news-status">${escapeHtml(t('news.empty'))}</div>`; return; }
+    box.innerHTML = items.map(it => {
+      const loc = it[currentLang] || it.en || it.th || {};
+      const body = escapeHtml(loc.body || '').replace(/\n/g, '<br>');
+      return `<div class="news-item"><div class="news-head">` +
+        `<span class="news-item-title">${escapeHtml(loc.title || '')}</span>` +
+        `<span class="news-date">${escapeHtml(it.date || '')}</span></div>` +
+        `<div class="news-body">${body}</div></div>`;
+    }).join('');
+  },
+
+  closeNews() { this.$('news-panel').classList.add('hidden'); },
+
   /* ---------- Trade ---------- */
   openTradePanel() {
     this.$('trade-panel').classList.remove('hidden');

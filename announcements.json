@@ -1,0 +1,37 @@
+{
+  "items": [
+    {
+      "date": "2026-07-09",
+      "en": {
+        "title": "Accounts, trading & a fresh title screen",
+        "body": "The title screen now asks you to log in or play as guest before you pick a class, and you can check if a username is free as you type. In-game you can trade items (not just gold), filter and tier-sort your bag, and compare gear against what you have equipped just by hovering. This announcements window is new too — open it any time from the menu."
+      },
+      "th": {
+        "title": "ระบบบัญชี การแลกเปลี่ยน และหน้าเริ่มเกมใหม่",
+        "body": "หน้าเริ่มเกมจะให้เข้าสู่ระบบหรือเล่นแบบผู้เยี่ยมชมก่อนเลือกอาชีพ และตรวจสอบได้ทันทีว่าชื่อผู้ใช้ว่างหรือไม่ ในเกมสามารถแลกเปลี่ยนไอเทม (ไม่ใช่แค่ทอง) กรองและเรียงกระเป๋าตามระดับ และเทียบอุปกรณ์กับที่สวมใส่อยู่ได้แค่เลื่อนเมาส์ไปวาง หน้าต่างประกาศนี้ก็เพิ่งเพิ่มเข้ามา เปิดดูได้ทุกเมื่อจากเมนู"
+      }
+    },
+    {
+      "date": "2026-07-08",
+      "en": {
+        "title": "Log in to play online",
+        "body": "Multiplayer is now automatic: sign in and you join the shared world with everyone. Guests can still play, but as a guest your progress lives only in this browser tab and is cleared when you close it — log in to keep your hero on the server."
+      },
+      "th": {
+        "title": "เข้าสู่ระบบเพื่อเล่นออนไลน์",
+        "body": "ตอนนี้เล่นหลายคนอัตโนมัติ เพียงเข้าสู่ระบบก็เข้าโลกที่แชร์ร่วมกับทุกคน ผู้เยี่ยมชมยังเล่นได้ แต่ความคืบหน้าจะอยู่แค่ในแท็บเบราว์เซอร์นี้และถูกลบเมื่อปิด เข้าสู่ระบบเพื่อเก็บฮีโร่ไว้บนเซิร์ฟเวอร์"
+      }
+    },
+    {
+      "date": "2026-07-01",
+      "en": {
+        "title": "Early development — progress may reset",
+        "body": "Pixel Realms Online is still in active development. We add and change things often, and your progress can be wiped at any time while we build. Thanks for playing early and helping us test!"
+      },
+      "th": {
+        "title": "อยู่ระหว่างพัฒนา — ความคืบหน้าอาจถูกรีเซ็ต",
+        "body": "Pixel Realms Online ยังอยู่ในระหว่างการพัฒนา เรามีการเพิ่มและปรับเปลี่ยนบ่อยครั้ง และความคืบหน้าของคุณอาจถูกลบได้ทุกเมื่อระหว่างการพัฒนา ขอบคุณที่มาเล่นตั้งแต่เนิ่น ๆ และช่วยเราทดสอบ!"
+      }
+    }
+  ]
+}

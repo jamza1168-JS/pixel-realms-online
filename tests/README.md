@@ -23,6 +23,8 @@ python3 shard_test.py              # public world 20-cap sharding + private-room
 node session_flow_test.js          # guest = sessionStorage/offline, login auto-joins World (browser)
 node landing_test.js               # two-step title (login/guest → class), lang on page 1,
                                    #   live account-username availability check (browser)
+node news_test.js                  # landing PDPA + dev-phase notices, server-fed
+                                   #   announcements window (scroll, toggle open/hide) (browser)
 python3 accounts_test.py           # register/login/logout, auth, character save+sanitize
 node account_ui_test.js            # account panel + cloud save/load + Continue (browser)
 python3 hardening_test.py          # anti-tamper: gear caps, stat invariant, gold/level

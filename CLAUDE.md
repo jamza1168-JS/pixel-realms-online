@@ -186,7 +186,12 @@ availability** check: `GET /api/username-available?username=` (checks the
 `accounts` table) + `UI.checkUsernameAvailable()` shows ✓/✗ and blocks a taken
 name before submit (register already rejected dupes via the `uname_lc` UNIQUE
 constraint). Cross-machine resume notes live in `docs/HANDOFF.md`. Covered by
-`tests/landing_test.js`.
+`tests/landing_test.js`. The class step also has a **Hero name** field
+(`#hero-name`): required for a first-time **guest** before START (`heroNameNeeded`
+/ `updateStartBtn` gate the button; name saved to `localStorage
+pixelrealms_name`), hidden for signed-in players (their username is the name)
+and skipped on CONTINUE (the saved character carries its name). The title
+Account button now shows only when signed in.
 
 **Landing notices + announcements (latest):** the login/landing page carries a
 PDPA-style privacy notice (`title.pdpa`) and an "early development — progress

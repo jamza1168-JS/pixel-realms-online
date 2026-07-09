@@ -50,12 +50,20 @@ const USER = 'Land' + Math.floor(1000 + Math.random() * 8999);
   assert(await p.evaluate(() => !document.getElementById('title-landing').classList.contains('hidden')),
     'Back returns to the landing step');
 
-  // 5. guest can pick a class and start a local (offline) game
+  // 5. a first-time guest must name their hero before Start is enabled
   await p.click('#btn-landing-guest');
   await p.click('#class-grid .class-card');
+  assert(await p.evaluate(() => !document.getElementById('hero-name-row').classList.contains('hidden')),
+    'hero-name field is shown for a guest');
+  assert(await p.evaluate(() => document.getElementById('btn-start').disabled),
+    'Start is disabled until the guest names their hero');
+  await p.fill('#hero-name', 'Namer');
+  await p.waitForFunction(() => !document.getElementById('btn-start').disabled, null, { timeout: 3000 });
   await p.click('#btn-start');
   await p.waitForFunction(() => typeof game !== 'undefined' && game.running, null, { timeout: 5000 });
-  assert(await p.evaluate(() => game.running && !game.net.isOnline), 'guest start runs a local game');
+  const g = await p.evaluate(() => ({ running: game.running, online: game.net.isOnline, name: game.players[0].name }));
+  assert(g.running && !g.online, 'guest start runs a local game');
+  assert(g.name === 'Namer', 'guest hero uses the entered name');
 
   // 6. live username check: register a name, then confirm it reads as taken
   await p.reload();

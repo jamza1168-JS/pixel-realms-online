@@ -1492,6 +1492,21 @@ function refreshContinue() {
  * language switch stays available on both. `guestChosen` remembers the
  * guest path so we don't bounce back to the login step. */
 let guestChosen = false;
+
+/* A guest starting a NEW hero must name it first; signed-in players already
+ * have a name (their account username = their online identity). */
+function heroNameNeeded() { return !Account.loggedIn; }
+
+/* START ADVENTURE needs a class and, for a first-time guest, a hero name.
+ * CONTINUE is unaffected — it restores the saved character's name. */
+function updateStartBtn() {
+  const btn = document.getElementById('btn-start');
+  if (!btn) return;
+  const nameEl = document.getElementById('hero-name');
+  const nameOk = !heroNameNeeded() || (nameEl && nameEl.value.trim().length > 0);
+  btn.disabled = !(UI.selectedClass && nameOk);
+}
+
 function showTitleStep() {
   const ready = Account.loggedIn || guestChosen;
   const landing = document.getElementById('title-landing');
@@ -1501,16 +1516,26 @@ function showTitleStep() {
   // Back only makes sense for a guest returning to the login choice
   const back = document.getElementById('btn-title-back');
   if (back) back.classList.toggle('hidden', Account.loggedIn);
+  // hero-name field: shown for guests only, pre-filled with their last name
+  const nameRow = document.getElementById('hero-name-row');
+  const nameEl = document.getElementById('hero-name');
+  if (nameRow) nameRow.classList.toggle('hidden', !heroNameNeeded());
+  if (nameEl && heroNameNeeded() && !nameEl.value) {
+    nameEl.value = localStorage.getItem('pixelrealms_name') || '';
+  }
   UI.refreshAccountStatus();
-  if (ready) refreshContinue();
+  if (ready) { refreshContinue(); updateStartBtn(); }
 }
 
 function initTitle() {
   applyI18n();
   UI.buildClassCards('class-grid', clsId => {
     UI.selectedClass = clsId;
-    document.getElementById('btn-start').disabled = false;
+    updateStartBtn();
   });
+
+  const heroNameEl = document.getElementById('hero-name');
+  if (heroNameEl) heroNameEl.addEventListener('input', updateStartBtn);
 
   refreshContinue();
   showTitleStep();
@@ -1531,6 +1556,11 @@ function initTitle() {
   });
 
   document.getElementById('btn-start').addEventListener('click', () => {
+    if (heroNameNeeded()) {
+      const nm = document.getElementById('hero-name').value.trim();
+      if (!nm) { updateStartBtn(); return; }   // name required for a new guest hero
+      localStorage.setItem('pixelrealms_name', nm);
+    }
     startGame(UI.selectedClass, null);
   });
 
@@ -1805,13 +1835,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!game) {
       UI.buildClassCards('class-grid', clsId => {
         UI.selectedClass = clsId;
-        document.getElementById('btn-start').disabled = false;
+        updateStartBtn();
       });
       if (UI.selectedClass) {
         const card = document.querySelector(`#class-grid .class-card[data-cls="${UI.selectedClass}"]`);
         if (card) card.classList.add('selected');
-        document.getElementById('btn-start').disabled = false;
       }
+      updateStartBtn();
     } else {
       UI.refreshSkillNames();
       if (UI.statPanelPlayer) UI.renderStatPanel(UI.statPanelPlayer);

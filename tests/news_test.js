@@ -55,12 +55,18 @@ function assert(c, m) { if (!c) throw new Error('FAIL: ' + m); console.log('PASS
   assert(await p.evaluate(() => document.getElementById('news-panel').classList.contains('hidden')),
     'Close hides the window');
 
-  // 4. Thai localisation is used when the language is Thai
-  await p.evaluate(() => setLang('th'));
+  // 4. switching language re-renders the OPEN window live (no reopen)
   await p.click('#btn-news');
   await p.waitForFunction(() => document.querySelectorAll('#news-content .news-item').length > 0, null, { timeout: 5000 });
+  const enTitle = await p.evaluate(() => document.querySelector('#news-content .news-item-title').textContent);
+  await p.evaluate(() => setLang('th'));
+  await p.waitForFunction(() => {
+    const el = document.querySelector('#news-content .news-item-title');
+    return el && /[฀-๿]/.test(el.textContent);
+  }, null, { timeout: 3000 });
   const thTitle = await p.evaluate(() => document.querySelector('#news-content .news-item-title').textContent);
-  assert(/[฀-๿]/.test(thTitle), 'announcements localise to Thai: "' + thTitle + '"');
+  assert(!/[฀-๿]/.test(enTitle) && /[฀-๿]/.test(thTitle),
+    'open announcements switch language live ("' + enTitle + '" → "' + thTitle + '")');
 
   assert(errors.length === 0, 'no page errors: ' + errors.join(' | '));
   await b.close();

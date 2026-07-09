@@ -25,6 +25,10 @@ const USER = 'Land' + Math.floor(1000 + Math.random() * 8999);
   }));
   assert(s.landing && s.selectHidden && s.login && s.guest, 'landing (login/guest) shows before class select');
 
+  // Account button is not on the first page (Log in / Register covers it)
+  assert(await p.evaluate(() => document.getElementById('btn-account-title').classList.contains('hidden')),
+    'Account button is hidden on the landing page');
+
   // 2. subtitle no longer says "co-op"
   const sub = await p.evaluate(() => document.querySelector('.subtitle').textContent);
   assert(!/co-?op/i.test(sub), 'subtitle drops co-op: "' + sub + '"');

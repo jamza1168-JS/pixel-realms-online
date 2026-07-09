@@ -16,7 +16,7 @@ const USER = 'Cloud' + Math.floor(1000 + Math.random() * 8999);
   await page.waitForFunction(() => typeof Account !== 'undefined');
 
   // 1. register through the account panel (title screen)
-  await page.click('#btn-account-title');
+  await page.click('#btn-landing-login');
   await page.waitForSelector('#account-panel:not(.hidden)', { timeout: 3000 });
   await page.fill('#acct-user', USER);
   await page.fill('#acct-pass', 'secret123');
@@ -51,7 +51,7 @@ const USER = 'Cloud' + Math.floor(1000 + Math.random() * 8999);
   assert(await page.evaluate(() => !Account.loggedIn), 'logged out persists across reload');
 
   // 4. log back in → Continue should load the CLOUD character (level 22)
-  await page.click('#btn-account-title');
+  await page.click('#btn-landing-login');
   await page.waitForSelector('#account-panel:not(.hidden)', { timeout: 3000 });
   await page.fill('#acct-user', USER);
   await page.fill('#acct-pass', 'secret123');
@@ -70,7 +70,7 @@ const USER = 'Cloud' + Math.floor(1000 + Math.random() * 8999);
   await page.evaluate(() => Account.logout());
   await page.reload();
   await page.waitForFunction(() => typeof Account !== 'undefined');
-  await page.click('#btn-account-title');
+  await page.click('#btn-landing-login');
   await page.waitForSelector('#account-panel:not(.hidden)', { timeout: 3000 });
   await page.fill('#acct-user', USER);
   await page.fill('#acct-pass', 'WRONGpass');

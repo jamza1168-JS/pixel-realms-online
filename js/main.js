@@ -1819,6 +1819,9 @@ document.addEventListener('DOMContentLoaded', () => {
       UI.updateOnlinePanel();
     }
     if (!document.getElementById('help-panel').classList.contains('hidden')) UI.showHelp();
+    // re-render open announcements in the newly-chosen language (content is
+    // bilingual per item; the cached items just need re-picking)
+    if (!document.getElementById('news-panel').classList.contains('hidden')) UI.renderNews(UI._newsItems || []);
   });
 
   applyI18n();

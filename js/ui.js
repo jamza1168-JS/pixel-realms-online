@@ -733,6 +733,10 @@ const UI = {
     // the guest hint only applies while signed out
     const hint = this.$('title-coop-hint');
     if (hint) hint.classList.toggle('hidden', Account.loggedIn);
+    // the title Account button is only for managing/logging out an existing
+    // session — the landing already has Log in / Register, so hide it there
+    const acct = this.$('btn-account-title');
+    if (acct) acct.classList.toggle('hidden', !Account.loggedIn);
   },
 
   renderAccountPanel() {
@@ -924,7 +928,8 @@ const UI = {
     try {
       const res = await fetch(base + '/api/announcements');
       const data = await res.json();
-      this.renderNews(data.items || []);
+      this._newsItems = data.items || [];   // cache so a language switch can re-render
+      this.renderNews(this._newsItems);
     } catch (e) {
       box.innerHTML = `<div class="news-status">${escapeHtml(t('news.error'))}</div>`;
     }
@@ -932,6 +937,7 @@ const UI = {
 
   renderNews(items) {
     const box = this.$('news-content');
+    if (!box) return;
     if (!items.length) { box.innerHTML = `<div class="news-status">${escapeHtml(t('news.empty'))}</div>`; return; }
     box.innerHTML = items.map(it => {
       const loc = it[currentLang] || it.en || it.th || {};

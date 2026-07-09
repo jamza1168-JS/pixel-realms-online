@@ -83,7 +83,7 @@
       <div class="title-lang">
         <button class="pix-btn small lang-choice" data-lang="en">English</button>
         <button class="pix-btn small lang-choice" data-lang="th">ภาษาไทย</button>
-        <button id="btn-account-title" class="pix-btn small">👤 <span data-i18n="account.btn">Account</span></button>
+        <button id="btn-account-title" class="pix-btn small hidden">👤 <span data-i18n="account.btn">Account</span></button>
       </div>
       <div id="account-title-status" class="acct-title-status"></div>
       <!-- STEP 1: log in or play as guest -->
@@ -99,6 +99,10 @@
 
       <!-- STEP 2: choose class -->
       <div id="title-select" class="hidden">
+        <div id="hero-name-row" class="hero-name-row hidden">
+          <label><span data-i18n="title.heroName">Hero name</span>
+            <input id="hero-name" class="pix-input" maxlength="14" autocomplete="off" data-i18n-ph="title.heroNamePh"></label>
+        </div>
         <h2 data-i18n="title.chooseClass">Choose your class</h2>
         <div id="class-grid"></div>
         <div class="title-buttons">

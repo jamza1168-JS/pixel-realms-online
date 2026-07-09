@@ -47,6 +47,7 @@
         <button id="btn-shop" class="pix-btn small" title="Shop">🛒</button>
         <button id="btn-trade" class="pix-btn small">🤝</button>
         <button id="btn-board" class="pix-btn small">🏆</button>
+        <button id="btn-news" class="pix-btn small" title="Announcements">📢</button>
       </div>
     </div>
 
@@ -78,20 +79,34 @@
   <div id="title-screen" class="overlay">
     <div class="title-inner">
       <h1 id="game-title">PIXEL REALMS <span>ONLINE</span></h1>
-      <p class="subtitle" data-i18n="title.subtitle">A co-op pixel MMO adventure</p>
+      <p class="subtitle" data-i18n="title.subtitle">A pixel MMO adventure</p>
       <div class="title-lang">
         <button class="pix-btn small lang-choice" data-lang="en">English</button>
         <button class="pix-btn small lang-choice" data-lang="th">ภาษาไทย</button>
         <button id="btn-account-title" class="pix-btn small">👤 <span data-i18n="account.btn">Account</span></button>
       </div>
       <div id="account-title-status" class="acct-title-status"></div>
-      <h2 data-i18n="title.chooseClass">Choose your class</h2>
-      <div id="class-grid"></div>
-      <div class="title-buttons">
-        <button id="btn-start" class="pix-btn big" disabled data-i18n="title.start">START ADVENTURE</button>
-        <button id="btn-continue" class="pix-btn big hidden" data-i18n="title.continue">CONTINUE</button>
+      <!-- STEP 1: log in or play as guest -->
+      <div id="title-landing">
+        <button id="btn-landing-login" class="pix-btn big" data-i18n="title.loginBtn">🔐 Log in / Register</button>
+        <button id="btn-landing-guest" class="pix-btn big" data-i18n="title.guestBtn">▶ Play as Guest</button>
+        <p class="hint" id="title-coop-hint" data-i18n="title.coopHint">Guest mode — progress isn't saved. Log in to keep your hero and play online.</p>
+        <div class="title-notices">
+          <p class="notice dev" data-i18n="title.devNote">Early development — progress may reset.</p>
+          <p class="notice" data-i18n="title.pdpa">We use your info only to save progress and improve the game.</p>
+        </div>
       </div>
-      <p class="hint" id="title-coop-hint" data-i18n="title.coopHint">Guest mode — progress isn't saved. Log in to keep your hero and play online.</p>
+
+      <!-- STEP 2: choose class -->
+      <div id="title-select" class="hidden">
+        <h2 data-i18n="title.chooseClass">Choose your class</h2>
+        <div id="class-grid"></div>
+        <div class="title-buttons">
+          <button id="btn-start" class="pix-btn big" disabled data-i18n="title.start">START ADVENTURE</button>
+          <button id="btn-continue" class="pix-btn big hidden" data-i18n="title.continue">CONTINUE</button>
+        </div>
+        <button id="btn-title-back" class="pix-btn small" data-i18n="title.back">← Back</button>
+      </div>
     </div>
   </div>
 
@@ -223,6 +238,15 @@
       </div>
       <div id="board-content"></div>
       <button id="btn-board-close" class="pix-btn" data-i18n="ui.close">Close</button>
+    </div>
+  </div>
+
+  <!-- ===== ANNOUNCEMENTS (non-modal: game keeps running behind it) ===== -->
+  <div id="news-panel" class="news-window hidden">
+    <div class="panel">
+      <h2 data-i18n="news.title">📢 Announcements</h2>
+      <div id="news-content"></div>
+      <button id="btn-news-close" class="pix-btn" data-i18n="ui.close">Close</button>
     </div>
   </div>
 

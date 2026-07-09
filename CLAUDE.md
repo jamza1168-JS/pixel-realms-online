@@ -177,6 +177,28 @@ and "Save routing" notes above. Server-side rooms/channels stay intact for
 the relay + `ws_test.py`/`shard_test.py`; the client just no longer exposes
 them.
 
+**Title + accounts UX (latest):** the title screen is now **two steps** —
+step 1 is Log in / Register **or** Play as Guest, step 2 is class select
+(`showTitleStep()` in `main.js` toggles `#title-landing`/`#title-select`;
+`guestChosen` remembers the guest path; language buttons sit in the header so
+they work on both steps). Subtitle dropped "co-op". Live **account-username
+availability** check: `GET /api/username-available?username=` (checks the
+`accounts` table) + `UI.checkUsernameAvailable()` shows ✓/✗ and blocks a taken
+name before submit (register already rejected dupes via the `uname_lc` UNIQUE
+constraint). Cross-machine resume notes live in `docs/HANDOFF.md`. Covered by
+`tests/landing_test.js`.
+
+**Landing notices + announcements (latest):** the login/landing page carries a
+PDPA-style privacy notice (`title.pdpa`) and an "early development — progress
+may reset" warning (`title.devNote`). In-game, a 📢 button opens a **non-modal**
+announcements window (`#news-panel` = `.news-window`, NOT a full-screen
+overlay, so the game keeps running and the button toggles it open/hide);
+content is server-published via `GET /api/announcements` (reads
+`announcements.json` at the repo root at request time — edit + redeploy to post
+an update). Each item is `{date, en:{title,body}, th:{title,body}}`, newest
+first; the client picks the current language (falls back to `en`). Covered by
+`tests/news_test.js`.
+
 **Deferred by the user — remind them when they return:**
 1. Shield / off-hand slot to pair with the one-hand sword.
 2. Balance the new gear and tiers.

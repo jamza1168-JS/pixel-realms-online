@@ -757,6 +757,7 @@ const UI = {
         this.renderAccountPanel();
         this.refreshAccountStatus();
         if (typeof refreshContinue === 'function') refreshContinue();
+        if (typeof showTitleStep === 'function') showTitleStep();   // back to the login/guest step
         if (this.game) this.game.sfx('point');
       });
       box.appendChild(out);
@@ -766,6 +767,7 @@ const UI = {
       `<div class="online-form">` +
       `<label><span>${escapeHtml(t('account.username'))}</span>` +
       `<input id="acct-user" class="pix-input" maxlength="16" autocomplete="off"></label>` +
+      `<div id="acct-user-check" class="name-check"></div>` +
       `<label><span>${escapeHtml(t('account.password'))}</span>` +
       `<input id="acct-pass" class="pix-input" type="password" maxlength="64" autocomplete="off"></label>` +
       `</div>`;
@@ -778,12 +780,53 @@ const UI = {
     row.appendChild(mk(t('account.login'), () => this.submitAccount('login')));
     row.appendChild(mk(t('account.register'), () => this.submitAccount('register')));
     box.appendChild(row);
+    // live username-availability feedback (debounced) so a duplicate is
+    // caught before the player commits to it
+    this._userOk = null;
+    let uT = null;
+    this.$('acct-user').addEventListener('input', () => {
+      clearTimeout(uT);
+      uT = setTimeout(() => this.checkUsernameAvailable(), 350);
+    });
+  },
+
+  /* Ask the server whether an account username is free (and valid). */
+  async checkUsernameAvailable() {
+    const box = this.$('acct-user-check');
+    const input = this.$('acct-user');
+    if (!box || !input) return;
+    const u = (input.value || '').trim();
+    this._userOk = null;
+    if (!u) { box.textContent = ''; box.className = 'name-check'; return; }
+    if (!/^[A-Za-z0-9_]{3,16}$/.test(u)) {
+      this._userOk = false; box.textContent = t('account.userInvalid'); box.className = 'name-check err'; return;
+    }
+    if (Account.base() === null) { box.textContent = ''; box.className = 'name-check'; return; }
+    box.textContent = t('account.userChecking'); box.className = 'name-check checking';
+    const token = (this._userToken = (this._userToken || 0) + 1);
+    try {
+      const res = await fetch(Account.base() + '/api/username-available?username=' + encodeURIComponent(u));
+      const data = await res.json();
+      if (token !== this._userToken) return;   // superseded by a newer check
+      this._userOk = !!data.available;
+      box.textContent = data.available ? t('account.userFree') : t('account.userTaken');
+      box.className = 'name-check ' + (data.available ? 'ok' : 'err');
+    } catch (e) {
+      if (token !== this._userToken) return;
+      this._userOk = null; box.textContent = ''; box.className = 'name-check';   // let the server decide on submit
+    }
   },
 
   async submitAccount(mode) {
     const u = (this.$('acct-user').value || '').trim();
     const p = this.$('acct-pass').value || '';
     if (!u || !p) { this.setAccountMsg(t('account.needFields'), 'err'); return; }
+    // block an obviously-taken/invalid username before hitting register
+    if (mode === 'register' && this._userOk === false) {
+      this.setAccountMsg(t('account.userTaken'), 'err');
+      if (this.game) this.game.sfx('hurt');
+      return;
+    }
     this.setAccountMsg(t('account.working'), '');
     const res = mode === 'register' ? await Account.register(u, p) : await Account.login(u, p);
     if (!res.ok) {
@@ -794,12 +837,16 @@ const UI = {
       if (this.game) this.game.sfx('hurt');
       return;
     }
+    // reflect signed-in state immediately (before the character fetch)
+    this.refreshAccountStatus();
+    if (typeof showTitleStep === 'function') showTitleStep();   // advance to the class step
+    this.setAccountMsg(t(mode === 'register' ? 'account.registered' : 'account.welcome', { name: Account.username }), 'ok');
+    if (this.game) this.game.sfx('levelup');
     await Account.loadCharacter();
     this.renderAccountPanel();
     this.refreshAccountStatus();
     if (typeof refreshContinue === 'function') refreshContinue();
-    this.setAccountMsg(t(mode === 'register' ? 'account.registered' : 'account.welcome', { name: Account.username }), 'ok');
-    if (this.game) this.game.sfx('levelup');
+    if (typeof showTitleStep === 'function') showTitleStep();
     // signing in during a guest session promotes it to online right away
     if (this.game && this.game.running && !this.game.net.isOnline) {
       for (const pl of this.game.players) pl.name = Account.username;
@@ -866,6 +913,37 @@ const UI = {
     while (log.children.length > 8) log.firstChild.remove();
     setTimeout(() => { line.style.opacity = '0.45'; }, 8000);
   },
+
+  /* ---------- Announcements (server-published patch notes) ---------- */
+  async openNews() {
+    this.$('news-panel').classList.remove('hidden');
+    const box = this.$('news-content');
+    box.innerHTML = `<div class="news-status">${escapeHtml(t('news.loading'))}</div>`;
+    const base = this.game ? this.game.apiBase() : (location.protocol.startsWith('http') ? '' : null);
+    if (base === null) { box.innerHTML = `<div class="news-status">${escapeHtml(t('news.error'))}</div>`; return; }
+    try {
+      const res = await fetch(base + '/api/announcements');
+      const data = await res.json();
+      this.renderNews(data.items || []);
+    } catch (e) {
+      box.innerHTML = `<div class="news-status">${escapeHtml(t('news.error'))}</div>`;
+    }
+  },
+
+  renderNews(items) {
+    const box = this.$('news-content');
+    if (!items.length) { box.innerHTML = `<div class="news-status">${escapeHtml(t('news.empty'))}</div>`; return; }
+    box.innerHTML = items.map(it => {
+      const loc = it[currentLang] || it.en || it.th || {};
+      const body = escapeHtml(loc.body || '').replace(/\n/g, '<br>');
+      return `<div class="news-item"><div class="news-head">` +
+        `<span class="news-item-title">${escapeHtml(loc.title || '')}</span>` +
+        `<span class="news-date">${escapeHtml(it.date || '')}</span></div>` +
+        `<div class="news-body">${body}</div></div>`;
+    }).join('');
+  },
+
+  closeNews() { this.$('news-panel').classList.add('hidden'); },
 
   /* ---------- Trade ---------- */
   openTradePanel() {

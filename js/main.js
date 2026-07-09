@@ -1487,6 +1487,24 @@ function refreshContinue() {
   if (btn) btn.classList.toggle('hidden', !continueData());
 }
 
+/* Title screen is two steps: (1) log in / play as guest, then (2) choose a
+ * class. Signing in (or picking Guest) advances to the class step; the
+ * language switch stays available on both. `guestChosen` remembers the
+ * guest path so we don't bounce back to the login step. */
+let guestChosen = false;
+function showTitleStep() {
+  const ready = Account.loggedIn || guestChosen;
+  const landing = document.getElementById('title-landing');
+  const select = document.getElementById('title-select');
+  if (landing) landing.classList.toggle('hidden', ready);
+  if (select) select.classList.toggle('hidden', !ready);
+  // Back only makes sense for a guest returning to the login choice
+  const back = document.getElementById('btn-title-back');
+  if (back) back.classList.toggle('hidden', Account.loggedIn);
+  UI.refreshAccountStatus();
+  if (ready) refreshContinue();
+}
+
 function initTitle() {
   applyI18n();
   UI.buildClassCards('class-grid', clsId => {
@@ -1495,9 +1513,22 @@ function initTitle() {
   });
 
   refreshContinue();
-  UI.refreshAccountStatus();
+  showTitleStep();
   // if already signed in, pull the cloud character and update Continue
-  if (Account.loggedIn) Account.loadCharacter().then(() => { refreshContinue(); UI.refreshAccountStatus(); });
+  if (Account.loggedIn) Account.loadCharacter().then(() => { refreshContinue(); showTitleStep(); });
+
+  document.getElementById('btn-landing-login').addEventListener('click', () => UI.openAccountPanel());
+  document.getElementById('btn-landing-guest').addEventListener('click', () => {
+    guestChosen = true;
+    showTitleStep();
+  });
+  document.getElementById('btn-title-back').addEventListener('click', () => {
+    guestChosen = false;
+    UI.selectedClass = null;
+    document.getElementById('btn-start').disabled = true;
+    document.querySelectorAll('#class-grid .class-card.selected').forEach(c => c.classList.remove('selected'));
+    showTitleStep();
+  });
 
   document.getElementById('btn-start').addEventListener('click', () => {
     startGame(UI.selectedClass, null);
@@ -1588,6 +1619,7 @@ window.addEventListener('keydown', e => {
     UI.closeTrade();
     document.getElementById('help-panel').classList.add('hidden');
     document.getElementById('board-panel').classList.add('hidden');
+    document.getElementById('news-panel').classList.add('hidden');
     document.getElementById('sound-panel').classList.add('hidden');
     document.getElementById('afk-panel').classList.add('hidden');
     document.getElementById('account-panel').classList.add('hidden');
@@ -1740,6 +1772,15 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('btn-board-close').addEventListener('click', () =>
     document.getElementById('board-panel').classList.add('hidden'));
+
+  // announcements — toggle so the button both opens and hides the window
+  document.getElementById('btn-news').addEventListener('click', () => {
+    const panel = document.getElementById('news-panel');
+    if (panel.classList.contains('hidden')) UI.openNews();
+    else UI.closeNews();
+    document.getElementById('btn-news').blur();
+  });
+  document.getElementById('btn-news-close').addEventListener('click', () => UI.closeNews());
 
   // trading
   document.getElementById('btn-trade').addEventListener('click', () => UI.openTradePanel());

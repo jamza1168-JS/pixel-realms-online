@@ -387,6 +387,19 @@ def http_json(writer, status: str, obj):
     )
 
 
+# Server-published announcements (patch notes / dev updates). Read from a
+# committed JSON file at request time so they can be edited without a code
+# change; newest first. Each item: {date, en:{title,body}, th:{title,body}}.
+def load_announcements():
+    try:
+        with open(os.path.join(ROOT, "announcements.json"), encoding="utf-8") as f:
+            data = json.load(f)
+        items = data.get("items", []) if isinstance(data, dict) else []
+        return items if isinstance(items, list) else []
+    except Exception:
+        return []
+
+
 def handle_api(writer, method: str, raw_path: str, body: bytes, headers: dict):
     path, _, query = raw_path.partition("?")
     if method == "OPTIONS":
@@ -395,10 +408,26 @@ def handle_api(writer, method: str, raw_path: str, body: bytes, headers: dict):
     if method == "GET" and path == "/api/leaderboard":
         http_json(writer, "200 OK", board_tops())
         return
+    if method == "GET" and path == "/api/announcements":
+        http_json(writer, "200 OK", {"items": load_announcements()})
+        return
     if method == "GET" and path == "/api/name-available":
         params = urllib.parse.parse_qs(query)
         name = (params.get("name", [""])[0] or "").strip()[:14]
         http_json(writer, "200 OK", {"available": bool(name) and not name_taken(name)})
+        return
+    # account-username availability: valid format AND not already registered
+    if method == "GET" and path == "/api/username-available":
+        params = urllib.parse.parse_qs(query)
+        uname = (params.get("username", [""])[0] or "").strip()
+        valid = bool(USER_RE.match(uname))
+        taken = False
+        if valid:
+            with db() as c:
+                taken = c.execute(
+                    "SELECT 1 FROM accounts WHERE uname_lc=?", (uname.lower(),)
+                ).fetchone() is not None
+        http_json(writer, "200 OK", {"valid": valid, "available": valid and not taken})
         return
     if method == "POST" and path == "/api/score":
         try:

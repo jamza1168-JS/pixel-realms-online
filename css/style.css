@@ -93,6 +93,14 @@ html, body {
 .title-inner h2 { font-size: 13px; margin-bottom: 12px; }
 .title-buttons { margin: 16px 0 8px; }
 .hint { color: var(--muted); font-size: 10px; }
+/* Step 1 landing: log in / play as guest */
+#title-landing { display: flex; flex-direction: column; align-items: center; gap: 12px; margin: 18px 0 6px; }
+#title-landing .pix-btn.big { min-width: 264px; }
+#btn-title-back { margin-top: 6px; }
+.title-notices { max-width: 460px; margin: 6px auto 0; display: flex; flex-direction: column; gap: 6px; }
+.notice { font-size: 9px; line-height: 1.6; color: var(--muted); margin: 0;
+  border: 1px solid var(--panel-border); padding: 6px 9px; background: rgba(0,0,0,.25); }
+.notice.dev { color: #ffcf6a; border-color: #6a5620; background: rgba(80,60,10,.22); }
 
 #class-grid, #class-grid-p2 {
   display: flex; flex-wrap: wrap; justify-content: center; gap: 12px;
@@ -309,6 +317,21 @@ html, body {
   padding: 1px 6px; margin: 0 2px;
   font-size: 10px;
 }
+
+/* ===== Announcements =====
+   Non-modal floating window (no full-screen backdrop) so the player can
+   keep playing and toggle it open/closed with the 📢 button. */
+.news-window { position: absolute; top: 66px; left: 50%; transform: translateX(-50%);
+  z-index: 60; width: min(440px, 76vw); }
+.news-window.hidden { display: none; }
+.news-window .panel { width: 100%; max-width: none; padding: 18px; box-shadow: 6px 6px 0 rgba(0,0,0,.55); }
+#news-content { margin: 0 auto 12px; max-height: 56vh; overflow-y: auto; text-align: left; padding-right: 6px; }
+.news-item { background: #12152a; border: 2px solid var(--panel-border); padding: 10px 12px; margin-bottom: 8px; }
+.news-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 5px; }
+.news-item-title { color: var(--gold); font-size: 11px; }
+.news-date { color: var(--muted); font-size: 9px; white-space: nowrap; }
+.news-body { font-size: 10px; line-height: 1.7; color: var(--text); }
+.news-status { color: var(--muted); font-size: 10px; padding: 20px 8px; text-align: center; }
 
 /* ===== Toasts ===== */
 #toast-area {

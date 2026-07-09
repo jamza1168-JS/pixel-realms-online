@@ -400,6 +400,19 @@ def handle_api(writer, method: str, raw_path: str, body: bytes, headers: dict):
         name = (params.get("name", [""])[0] or "").strip()[:14]
         http_json(writer, "200 OK", {"available": bool(name) and not name_taken(name)})
         return
+    # account-username availability: valid format AND not already registered
+    if method == "GET" and path == "/api/username-available":
+        params = urllib.parse.parse_qs(query)
+        uname = (params.get("username", [""])[0] or "").strip()
+        valid = bool(USER_RE.match(uname))
+        taken = False
+        if valid:
+            with db() as c:
+                taken = c.execute(
+                    "SELECT 1 FROM accounts WHERE uname_lc=?", (uname.lower(),)
+                ).fetchone() is not None
+        http_json(writer, "200 OK", {"valid": valid, "available": valid and not taken})
+        return
     if method == "POST" and path == "/api/score":
         try:
             update_score(json.loads(body.decode("utf-8")))

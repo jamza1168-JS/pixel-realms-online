@@ -19,6 +19,19 @@ local server before pushing — the browser tests catch real regressions
 (`page.click`) when testing DOM buttons: `element.click()` in evaluate
 masked a rebuilt-every-frame bug once already.
 
+## Project skills (`.claude/skills/`)
+
+Auto-discovered Claude Code skills tailored to this repo (adapted from
+mdskills.ai sources — see `.claude/skills/SOURCES.md` for attribution):
+- **pixel-art-animator** — add multi-frame sprite animation to the procedural
+  `makeSprite`/`SPRITES` system in `js/sprites.js` (concepts from
+  `willibrandon/pixel-plugin`, re-mapped off Aseprite onto plain-JS canvases).
+- **balance-check** — tune combat/progression/loot/economy against `js/data.js`,
+  `js/items.js`, and the mirrored `server.py` anti-tamper constants (this is the
+  tool for the deferred "balance the new gear and tiers").
+- **playtest-report** — template/triage play sessions into design/balance/bug/
+  polish findings, saved under `tests/playtests/`.
+
 ## Architecture (load order matters, all globals)
 
 ```

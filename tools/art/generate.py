@@ -92,6 +92,75 @@ def build_hero(cfg, pose):
     # weapon on the right hand (simple, per class)
     return f
 
+# ------------------------------------------------------------------ mobs
+# Each mob: 2 frames (a subtle idle/move cycle). Drawn right-facing.
+def build_slime(f2):
+    f = Frame(32); g=(87,180,95); G=(150,224,150); dk=(46,122,58); o=(26,58,31)
+    if not f2:
+        f.rect(8,15,23,28,g); f.rect(10,12,21,15,g); f.rect(12,10,19,12,g)
+        f.rect(11,14,15,19,G)
+    else:
+        f.rect(6,18,25,29,g); f.rect(9,16,22,18,g); f.rect(11,14,20,16,g)
+        f.rect(9,17,13,21,G)
+    yb = 20 if f2 else 18
+    f.px(13,yb,o); f.px(14,yb,o); f.px(18,yb,o); f.px(19,yb,o)  # eyes
+    f.rect(14,yb+3,17,yb+4,dk)                                   # mouth
+    f.rect(8, 28 if not f2 else 29, 23, 29, dk)                  # base shadow row
+    return f
+
+def build_goblin(f2):
+    f = Frame(32); sk=(111,174,79); dk=(40,70,30); tun=(122,74,36); eye=(224,64,64); wood=(90,58,30)
+    f.rect(11,6,20,13,sk); f.rect(9,8,10,10,sk); f.rect(21,8,22,10,sk)   # head+ears
+    f.rect(11,6,20,6,dk); f.px(14,9,eye); f.px(18,9,eye)
+    f.rect(12,14,19,21,tun); f.rect(10,15,11,19,sk); f.rect(20,15,21,19,sk)  # body+arms
+    f.rect(22,11,23,19,wood)                                              # club
+    l1 = 1 if f2 else 0; l2 = 0 if f2 else 1
+    f.rect(12,22,14,25+l1,sk); f.rect(17,22,19,25+l2,sk)
+    return f
+
+def build_wolf(f2):
+    f = Frame(32); gy=(122,127,136); dk=(86,90,99); eye=(255,208,80)
+    f.rect(6,14,23,20,gy); f.rect(3,12,7,15,gy)                 # body+tail
+    f.rect(20,11,27,18,gy); f.rect(26,14,29,16,gy)             # head+snout
+    f.rect(21,9,22,11,gy); f.rect(24,9,25,11,gy); f.px(25,13,eye); f.px(28,15,(20,20,20))
+    a = 1 if f2 else 0; b = 0 if f2 else 1
+    for x,ph in ((8,a),(12,b),(18,a),(22,b)):
+        f.rect(x,20,x+1,25+ph,dk)
+    return f
+
+def build_bat(f2):
+    f = Frame(32); bd=(58,47,68); wg=(78,63,90); eye=(255,80,80)
+    f.rect(14,14,18,21,bd); f.px(13,11,bd); f.px(18,11,bd)      # body+ears
+    f.px(14,15,eye); f.px(17,15,eye)
+    if not f2:
+        f.rect(6,11,13,15,wg); f.rect(19,11,26,15,wg); f.rect(8,10,11,11,wg); f.rect(21,10,24,11,wg)
+    else:
+        f.rect(6,17,13,21,wg); f.rect(19,17,26,21,wg); f.rect(8,21,11,22,wg); f.rect(21,21,24,22,wg)
+    return f
+
+def build_skeleton(f2):
+    f = Frame(32); bo=(232,232,224); sh=(168,168,160); eye=(30,34,50); bow=(122,90,48)
+    f.rect(12,6,19,12,bo); f.px(14,9,eye); f.px(17,9,eye); f.rect(14,11,17,11,sh)  # skull
+    f.rect(13,14,18,21,bo); f.px(14,16,sh); f.px(17,16,sh); f.px(14,18,sh); f.px(17,18,sh)  # ribs
+    f.rect(10,14,11,19,bo); f.rect(20,14,21,19,bo)             # arms
+    f.rect(22,9,22,21,bow); f.px(21,9,bow); f.px(21,21,bow)    # bow (ranged)
+    s = 1 if f2 else 0
+    f.rect(13,21,14,26-s,bo); f.rect(17,21,18,25+s,bo)
+    return f
+
+def build_demon(f2):
+    f = Frame(32); r=(176,52,47); dk=(122,31,28); horn=(232,224,208); eye=(255,208,0); wg=(90,21,18)
+    f.rect(11,7,20,15,r); f.rect(9,4,10,7,horn); f.rect(21,4,22,7,horn)  # head+horns
+    f.px(13,10,eye); f.px(14,10,eye); f.px(17,10,eye); f.px(18,10,eye)
+    f.rect(13,13,18,14,dk); f.px(13,13,horn); f.px(18,13,horn)           # mouth/fangs
+    f.rect(10,15,21,24,dk); f.rect(12,17,19,21,r)                        # torso
+    f.rect(11,24,14,29,dk); f.rect(17,24,20,29,dk)                       # legs
+    if not f2:
+        f.rect(4,10,9,20,wg); f.rect(22,10,27,20,wg); f.rect(3,9,4,12,wg); f.rect(27,9,28,12,wg)
+    else:
+        f.rect(5,12,10,22,wg); f.rect(21,12,26,22,wg); f.rect(4,11,5,14,wg); f.rect(26,11,27,14,wg)
+    return f
+
 def build_portal(phase):
     f = Frame(32)
     ring = [(168,110,232),(200,150,250),(150,90,220),(190,140,245)][phase]
@@ -115,6 +184,11 @@ def main():
         frames = [build_hero(cfg, 0), build_hero(cfg, -1), build_hero(cfg, +1)]
         export("hero_" + cls, frames, {"idle": [0], "walk": [1, 0, 2, 0]}, 32)
         keys.append("hero_" + cls)
+    MOBS = {"slime": build_slime, "goblin": build_goblin, "wolf": build_wolf,
+            "bat": build_bat, "skeleton": build_skeleton, "demon": build_demon}
+    for name, fn in MOBS.items():
+        export(name, [fn(False), fn(True)], {"idle": [0, 1], "walk": [0, 1]}, 32)
+        keys.append(name)
     export("portal", [build_portal(i) for i in range(4)], {"loop": [0, 1, 2, 3]}, 32)
     keys.append("portal")
     # manifest so the client loader discovers art without any code change

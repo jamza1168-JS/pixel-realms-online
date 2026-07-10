@@ -630,7 +630,6 @@ class Pickup {
       g2d.textBaseline = 'alphabetic';
       return;
     }
-    const sprite = SPRITES[this.kind];
-    g2d.drawImage(sprite, px - 8, py, 16, 16);
+    drawSprite(g2d, this.kind, false, px - 8, py, 16, false, this.t);
   }
 }

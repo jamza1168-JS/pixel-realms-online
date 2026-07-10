@@ -1378,8 +1378,7 @@ class Game {
 
     for (const d of drawables) {
       if (d.obj) {
-        const s = SPRITES[d.obj.type];
-        g.drawImage(s, Math.round(d.obj.tx * TILE - 8 - cam.x), Math.round(d.obj.ty * TILE - 16 - cam.y), 48, 48);
+        drawSprite(g, d.obj.type, false, Math.round(d.obj.tx * TILE - 8 - cam.x), Math.round(d.obj.ty * TILE - 16 - cam.y), 48, false, 0);
       } else if (d.ent) {
         d.ent.draw(g, cam);
       } else if (d.pk) {

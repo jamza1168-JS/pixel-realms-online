@@ -209,6 +209,52 @@ def build_dragon(f2):
         f.rect(6,13,14,19,D); f.rect(18,13,26,19,D); f.rect(5,18,7,20,D); f.rect(25,18,27,20,D)
     return f
 
+# ---- world props (32px, static) & collectibles (16px, animated) ----
+def build_tree():
+    f = Frame(32); g=(29,84,38); G=(84,180,100); t=(90,58,30); T=(122,82,44)
+    f.rect(9,3,22,14,g); f.rect(7,6,24,12,g); f.rect(11,2,20,3,g)
+    for (x,y) in [(12,6),(17,5),(20,8),(11,10),(15,9),(19,11)]: f.rect(x,y,x+1,y+1,G)
+    f.rect(14,14,17,24,t); f.rect(15,15,16,23,T)
+    f.rect(11,24,20,26,(40,96,48))
+    return f
+
+def build_deadTree():
+    f = Frame(32); t=(96,80,64); T=(128,110,90)
+    f.rect(14,6,17,26,t); f.rect(15,6,16,26,T)
+    f.rect(9,10,14,11,t); f.rect(8,7,10,10,t)               # left branch
+    f.rect(17,13,22,14,t); f.rect(21,9,23,13,t)             # right branch
+    f.rect(14,4,17,6,t)
+    return f
+
+def build_rock():
+    f = Frame(32); s=(112,116,124); S=(150,154,162); d=(78,82,90)
+    f.rect(8,14,23,24,s); f.rect(10,11,21,14,s); f.rect(9,24,22,25,d)
+    f.rect(11,13,16,16,S); f.px(13,18,d); f.px(18,20,d)
+    return f
+
+def build_heart(f2):
+    f = Frame(16); r=(232,72,79); R=(255,150,155)
+    e = 1 if f2 else 0                                       # pulse
+    f.rect(3-e,3,6+e,4,r); f.rect(9-e,3,12+e,4,r)
+    f.rect(2-e,4,13+e,7,r); f.rect(3-e,8,12+e,9,r); f.rect(5,10,10,11,r); f.rect(7,12,8,12,r)
+    f.rect(4,4,5,5,R)
+    return f
+
+def build_orb(f2):
+    f = Frame(16); b=(61,139,255); B=(160,204,255); d=(40,90,180)
+    f.rect(5,3,10,3,b); f.rect(3,4,12,11,b); f.rect(5,12,10,12,b); f.rect(4,4,4,10,d); f.rect(11,5,11,11,d)
+    hi = (5,5) if not f2 else (7,4)
+    f.rect(hi[0],hi[1],hi[0]+1,hi[1]+1,B)
+    return f
+
+def build_coin(phase):
+    f = Frame(16); g=(184,134,42); G=(255,215,94)
+    w = [5,3,1,3][phase]                                     # spin: wide→thin
+    cx = 8
+    f.rect(cx-w-1,3,cx+w,12,g); f.rect(cx-w,4,cx+w-1,11,G)
+    if w >= 3: f.rect(cx-1,6,cx,9,g)
+    return f
+
 def build_portal(phase):
     f = Frame(32)
     ring = [(168,110,232),(200,150,250),(150,90,220),(190,140,245)][phase]
@@ -238,6 +284,11 @@ def main():
     for name, fn in MOBS.items():
         export(name, [fn(False), fn(True)], {"idle": [0, 1], "walk": [0, 1]}, 32)
         keys.append(name)
+    for name, fn in {"tree": build_tree, "deadTree": build_deadTree, "rock": build_rock}.items():
+        export(name, [fn()], {"idle": [0]}, 32); keys.append(name)
+    export("heart", [build_heart(False), build_heart(True)], {"loop": [0, 1]}, 16); keys.append("heart")
+    export("orb", [build_orb(False), build_orb(True)], {"loop": [0, 1]}, 16); keys.append("orb")
+    export("coin", [build_coin(i) for i in range(4)], {"loop": [0, 1, 2, 3]}, 16); keys.append("coin")
     export("portal", [build_portal(i) for i in range(4)], {"loop": [0, 1, 2, 3]}, 32)
     keys.append("portal")
     # manifest so the client loader discovers art without any code change

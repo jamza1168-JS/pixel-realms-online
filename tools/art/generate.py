@@ -161,6 +161,54 @@ def build_demon(f2):
         f.rect(5,12,10,22,wg); f.rect(21,12,26,22,wg); f.rect(4,11,5,14,wg); f.rect(26,11,27,14,wg)
     return f
 
+def build_orc(f2):
+    f = Frame(32); sk=(111,174,79); dk=(36,64,31); tusk=(240,240,208); ar=(90,58,36); arL=(138,106,68); eye=(224,64,64)
+    f.rect(11,5,20,13,sk); f.rect(11,5,20,5,dk); f.px(14,9,eye); f.px(17,9,eye)  # head
+    f.px(13,12,tusk); f.px(18,12,tusk)                                            # tusks
+    f.rect(9,14,22,23,ar); f.rect(11,14,20,14,arL); f.rect(13,16,18,19,arL)       # torso armor
+    f.rect(6,15,9,21,sk); f.rect(22,15,25,21,sk)                                  # big arms
+    a = 1 if f2 else 0; b = 0 if f2 else 1
+    f.rect(11,23,15,27+a,ar); f.rect(11,28+a,15,29+a,dk)
+    f.rect(16,23,20,27+b,ar); f.rect(16,28+b,20,29+b,dk)
+    return f
+
+def build_ghost(f2):
+    f = Frame(32); w=(223,239,255); e=(51,56,74); sh=(184,200,221)
+    oy = 0 if f2 else -1
+    f.rect(9,7+oy,22,10+oy,w); f.rect(8,10+oy,23,22+oy,w); f.rect(10,9+oy,21,9+oy,w)
+    f.rect(9,12+oy,12,17+oy,sh)                                   # inner shade
+    f.px(13,13+oy,e); f.px(14,13+oy,e); f.px(18,13+oy,e); f.px(19,13+oy,e)  # eyes
+    # wavy hem alternates
+    if not f2:
+        for i,x in enumerate(range(8,23,3)): f.rect(x,22+oy,x+1,24+oy,w)
+    else:
+        for i,x in enumerate(range(9,24,3)): f.rect(x,22+oy,x+1,24+oy,w)
+    return f
+
+def build_ogre(f2):
+    f = Frame(32); sk=(127,174,79); dk=(36,64,31); tusk=(240,240,208); belt=(74,47,26); belly=(147,194,95); wood=(90,58,30)
+    f.rect(9,4,22,13,sk); f.rect(9,4,22,4,dk); f.px(13,8,(40,40,40)); f.px(18,8,(40,40,40))  # big head
+    f.px(12,12,tusk); f.px(19,12,tusk)
+    bb = 1 if f2 else 0
+    f.rect(7,14,24,25+bb,sk); f.rect(9,16,22,23+bb,belly)          # huge belly (breathes)
+    f.rect(9,14,24,15,belt)
+    f.rect(24,5,26,16,wood); f.rect(23,4,26,5,(60,40,20))          # club
+    f.rect(10,25+bb,14,30,belt); f.rect(17,25+bb,21,30,belt)       # stubby legs
+    return f
+
+def build_dragon(f2):
+    f = Frame(32); r=(176,52,47); R=(224,112,90); D=(122,31,28); horn=(232,224,208); eye=(255,208,0)
+    f.rect(4,18,10,21,r)                                           # tail
+    f.rect(10,14,22,24,r); f.rect(12,17,20,22,R)                  # body + belly
+    f.rect(17,8,26,15,r); f.rect(25,12,28,14,r)                   # head + snout
+    f.rect(18,7,19,8,horn); f.rect(23,7,24,8,horn); f.px(22,11,eye); f.px(23,11,eye)
+    f.rect(11,24,14,29,D); f.rect(18,24,21,29,D)                  # legs
+    if not f2:                                                     # wings up
+        f.rect(6,8,14,13,D); f.rect(18,8,26,13,D); f.rect(5,7,7,9,D); f.rect(25,7,27,9,D)
+    else:                                                          # wings down
+        f.rect(6,13,14,19,D); f.rect(18,13,26,19,D); f.rect(5,18,7,20,D); f.rect(25,18,27,20,D)
+    return f
+
 def build_portal(phase):
     f = Frame(32)
     ring = [(168,110,232),(200,150,250),(150,90,220),(190,140,245)][phase]
@@ -185,7 +233,8 @@ def main():
         export("hero_" + cls, frames, {"idle": [0], "walk": [1, 0, 2, 0]}, 32)
         keys.append("hero_" + cls)
     MOBS = {"slime": build_slime, "goblin": build_goblin, "wolf": build_wolf,
-            "bat": build_bat, "skeleton": build_skeleton, "demon": build_demon}
+            "bat": build_bat, "skeleton": build_skeleton, "demon": build_demon,
+            "orc": build_orc, "ghost": build_ghost, "ogre": build_ogre, "dragon": build_dragon}
     for name, fn in MOBS.items():
         export(name, [fn(False), fn(True)], {"idle": [0, 1], "walk": [0, 1]}, 32)
         keys.append(name)

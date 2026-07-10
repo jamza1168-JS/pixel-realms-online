@@ -4,6 +4,14 @@ Goal: move the game toward the look of the reference images (detailed top-down
 RPG — forest/mountain/volcano/beach/village, framed buildings, animated
 characters) like the two mockups shared.
 
+> **STATUS (pipeline built):** Option A is live. `tools/art/generate.py`
+> (Pillow) produces animated spritesheets → `assets/`; `js/assets.js` loads
+> them via `assets/manifest.json` and `drawSprite()` animates with procedural
+> fallback. Batch 1 = 4 animated heroes + the warp portal. See
+> `tools/art/README.md` to regenerate/extend from any session or PC. Remaining
+> sprites (mobs, bosses, tiles, buildings) are follow-up batches added the same
+> way. Steps 1–2 below are now DONE.
+
 ## The honest constraint (read first)
 
 The current game has **no art files** — every sprite is a small procedural

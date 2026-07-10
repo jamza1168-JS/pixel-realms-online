@@ -263,7 +263,6 @@ class Player {
 
   draw(g2d, cam) {
     if (this.dead) return;
-    const sprite = SPRITES['hero_' + this.clsId + (this.face.x < 0 ? '_f' : '')];
     const scale = 3;
     const bob = this.moving ? Math.round(Math.sin(this.animT) * 1.5) : 0;
     const sx = Math.round(this.x - cam.x - 8 * scale);
@@ -271,7 +270,7 @@ class Player {
     // shadow
     g2d.fillStyle = 'rgba(0,0,0,.3)';
     g2d.fillRect(Math.round(this.x - cam.x - 10), Math.round(this.y - cam.y - 2), 20, 5);
-    g2d.drawImage(sprite, sx, sy, 16 * scale, 16 * scale);
+    drawSprite(g2d, 'hero_' + this.clsId, this.face.x < 0, sx, sy, 16 * scale, this.moving, this.animT);
     // name tag
     g2d.font = '9px monospace';
     g2d.textAlign = 'center';
@@ -329,20 +328,20 @@ class RemotePlayer {
     const k = Math.min(1, dt * 12);
     this.x += (this.tx - this.x) * k;
     this.y += (this.ty - this.y) * k;
-    if (Math.hypot(this.tx - this.x, this.ty - this.y) > 2) this.animT += dt * 10;
+    this.moving = Math.hypot(this.tx - this.x, this.ty - this.y) > 2;
+    if (this.moving) this.animT += dt * 10;
     if (this.bubble && (this.bubble.ttl -= dt) <= 0) this.bubble = null;
   }
 
   draw(g2d, cam) {
     if (this.dead) return;
-    const sprite = SPRITES['hero_' + this.clsId + (this.faceX < 0 ? '_f' : '')];
     const scale = 3;
     const bob = Math.round(Math.sin(this.animT) * 1.5);
     const sx = Math.round(this.x - cam.x - 8 * scale);
     const sy = Math.round(this.y - cam.y - 15 * scale + bob);
     g2d.fillStyle = 'rgba(0,0,0,.3)';
     g2d.fillRect(Math.round(this.x - cam.x - 10), Math.round(this.y - cam.y - 2), 20, 5);
-    g2d.drawImage(sprite, sx, sy, 16 * scale, 16 * scale);
+    drawSprite(g2d, 'hero_' + this.clsId, this.faceX < 0, sx, sy, 16 * scale, this.moving, this.animT);
     g2d.font = '9px monospace';
     g2d.textAlign = 'center';
     g2d.fillStyle = '#9ae2ff';
@@ -508,13 +507,12 @@ class Enemy {
   draw(g2d, cam) {
     if (this.dead) return;
     const scale = this.type.scale;
-    const sprite = SPRITES[this.type.sprite + (this.face < 0 ? '_f' : '')];
     const bob = Math.round(Math.sin(this.animT) * (this.typeId === 'bat' ? 3 : 1));
     const sx = Math.round(this.x - cam.x - 8 * scale);
     const sy = Math.round(this.y - cam.y - 15 * scale + bob);
     g2d.fillStyle = 'rgba(0,0,0,.3)';
     g2d.fillRect(Math.round(this.x - cam.x - 7 * (scale / 3)), Math.round(this.y - cam.y - 2), 14 * (scale / 3), 5);
-    g2d.drawImage(sprite, sx, sy, 16 * scale, 16 * scale);
+    drawSprite(g2d, this.type.sprite, this.face < 0, sx, sy, 16 * scale, this.moving, this.animT);
     // hp bar when hurt
     if (this.hp < this.maxHp) {
       const w = 14 * scale;

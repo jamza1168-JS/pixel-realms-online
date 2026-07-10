@@ -189,6 +189,13 @@ const ENEMY_TYPES = {
   bat:      { sprite: 'bat',      hp: 60,  dmg: 11, speed: 110, xp: 30,  gold: [3, 7],  aggro: 170, scale: 3 },
   skeleton: { sprite: 'skeleton', hp: 90,  dmg: 15, speed: 75,  xp: 50,  gold: [4, 9],  aggro: 230, scale: 3, ranged: true, shootRange: 210, keepDist: 150 },
   demon:    { sprite: 'demon',    hp: 1400, dmg: 34, speed: 95, xp: 900, gold: [80, 150], aggro: 260, scale: 5, ranged: true, shootRange: 240, keepDist: 60, boss: true },
+
+  // ---- Future content (defined but NOT in TIER_ENEMIES yet, so they don't
+  // spawn until a system wires them in; art in js/sprites.js). ----
+  orc:      { sprite: 'orc',      hp: 120,  dmg: 18, speed: 80,  xp: 70,   gold: [5, 12],    aggro: 200, scale: 3 },
+  ghost:    { sprite: 'ghost',    hp: 85,   dmg: 16, speed: 105, xp: 55,   gold: [4, 10],    aggro: 190, scale: 3, ranged: true, shootRange: 200, keepDist: 120 },
+  ogre:     { sprite: 'ogre',     hp: 600,  dmg: 26, speed: 70,  xp: 400,  gold: [40, 80],   aggro: 230, scale: 4, miniboss: true },
+  dragon:   { sprite: 'dragon',   hp: 3200, dmg: 48, speed: 90,  xp: 2200, gold: [200, 400], aggro: 280, scale: 6, ranged: true, shootRange: 300, keepDist: 80, boss: true, worldboss: true },
 };
 
 /* Which enemies appear in each zone tier (0 = safe, no spawns) */

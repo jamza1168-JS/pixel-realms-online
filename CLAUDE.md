@@ -204,6 +204,23 @@ an update). Each item is `{date, en:{title,body}, th:{title,body}}`, newest
 first; the client picks the current language (falls back to `en`). Covered by
 `tests/news_test.js`.
 
+**Art pipeline (built):** `tools/art/generate.py` (Pillow, self-installing)
+renders animated spritesheets → `assets/<key>.png` + `.json` + `manifest.json`;
+`js/assets.js` loads the manifest, slices frames, and `drawSprite(key, faceLeft,
+sx, sy, size, moving, animT)` draws the animated frame with **procedural
+fallback** to `SPRITES[key]` (so missing art never breaks — upgrade sprite by
+sprite). Entity draws (Player/RemotePlayer/Enemy) route through `drawSprite`.
+Batch 1 shipped = 4 animated 32px heroes + 4-frame `portal`. Regenerate/extend
+from any session via `tools/art/README.md`. It's **code-authored** pixel art
+(not AI-mockup fidelity); real PNGs can replace any key by matching the naming.
+Remaining procedural art (`js/sprites.js`) is still the fallback for everything
+not yet in a sheet.
+
+**Art redesign (target/spec):** see `docs/ART_REDESIGN.md` + `docs/ASSETS.md`. New procedural **content assets** added for future systems: `orc`,
+`ghost` (mobs), `ogre` (`miniboss:true`), `dragon` (`boss+worldboss:true`),
+`portal` (warp) — sprites in `js/sprites.js`, stats in `ENEMY_TYPES`, but **not**
+in `TIER_ENEMIES` so they don't spawn yet.
+
 **Deferred by the user — remind them when they return:**
 1. Shield / off-hand slot to pair with the one-hand sword.
 2. Balance the new gear and tiers.

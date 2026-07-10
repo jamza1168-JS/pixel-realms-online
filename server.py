@@ -239,10 +239,27 @@ def init_db():
             username TEXT NOT NULL,
             uname_lc TEXT UNIQUE NOT NULL,
             pw_hash TEXT NOT NULL, pw_salt TEXT NOT NULL,
-            created REAL NOT NULL)""")
+            created REAL NOT NULL,
+            hero_name TEXT, hero_name_lc TEXT)""")
         c.execute("""CREATE TABLE IF NOT EXISTS characters(
             account_id INTEGER PRIMARY KEY,
             data TEXT NOT NULL, updated REAL NOT NULL)""")
+        # hero_name = the public, globally-unique player name (username stays
+        # private). Columns added for legacy DBs; unique index enforces it.
+        for col in ("hero_name TEXT", "hero_name_lc TEXT"):
+            try:
+                c.execute("ALTER TABLE accounts ADD COLUMN " + col)
+            except sqlite3.OperationalError:
+                pass
+        c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_hero_lc "
+                  "ON accounts(hero_name_lc) WHERE hero_name_lc IS NOT NULL")
+
+
+# Public display name: 2–14 chars, no control chars (letters/digits/space/
+# Thai/etc. allowed); uniqueness is case-insensitive.
+def valid_hero_name(name: str) -> bool:
+    name = (name or "").strip()
+    return 2 <= len(name) <= 14 and all(ord(ch) >= 0x20 for ch in name)
 
 
 def hash_pw(pw: str, salt: str = None):
@@ -429,6 +446,19 @@ def handle_api(writer, method: str, raw_path: str, body: bytes, headers: dict):
                 ).fetchone() is not None
         http_json(writer, "200 OK", {"valid": valid, "available": valid and not taken})
         return
+    # public player-name availability (globally unique, separate from username)
+    if method == "GET" and path == "/api/hero-name-available":
+        params = urllib.parse.parse_qs(query)
+        name = (params.get("name", [""])[0] or "").strip()
+        valid = valid_hero_name(name)
+        taken = False
+        if valid:
+            with db() as c:
+                taken = c.execute(
+                    "SELECT 1 FROM accounts WHERE hero_name_lc=?", (name.lower(),)
+                ).fetchone() is not None
+        http_json(writer, "200 OK", {"valid": valid, "available": valid and not taken})
+        return
     if method == "POST" and path == "/api/score":
         try:
             update_score(json.loads(body.decode("utf-8")))
@@ -467,7 +497,7 @@ def handle_api(writer, method: str, raw_path: str, body: bytes, headers: dict):
                 return
             tok = secrets.token_hex(24)
             sessions[tok] = acc_id
-            http_json(writer, "200 OK", {"ok": True, "token": tok, "username": username})
+            http_json(writer, "200 OK", {"ok": True, "token": tok, "username": username, "hero_name": None})
             print(f"[acct] registered '{username}' (#{acc_id})")
             return
         # login — throttle password guessing per username
@@ -489,7 +519,8 @@ def handle_api(writer, method: str, raw_path: str, body: bytes, headers: dict):
         login_attempts.pop(lc, None)   # success clears the counter
         tok = secrets.token_hex(24)
         sessions[tok] = row["id"]
-        http_json(writer, "200 OK", {"ok": True, "token": tok, "username": row["username"]})
+        http_json(writer, "200 OK", {"ok": True, "token": tok, "username": row["username"],
+                                     "hero_name": row["hero_name"]})
         return
 
     if method == "POST" and path == "/api/logout":
@@ -498,6 +529,34 @@ def handle_api(writer, method: str, raw_path: str, body: bytes, headers: dict):
         if tok:
             sessions.pop(tok, None)
         http_json(writer, "200 OK", {"ok": True})
+        return
+
+    # claim the account's public player name (set once at character creation)
+    if method == "POST" and path == "/api/hero-name":
+        acc_id = account_of(headers, query)
+        if not acc_id:
+            http_json(writer, "401 Unauthorized", {"ok": False, "error": "unauthorized"})
+            return
+        try:
+            name = str(json.loads(body.decode("utf-8")).get("name", "")).strip()
+        except Exception:
+            name = ""
+        if not valid_hero_name(name):
+            http_json(writer, "400 Bad Request", {"ok": False, "error": "bad_name"})
+            return
+        with db() as c:
+            row = c.execute("SELECT hero_name FROM accounts WHERE id=?", (acc_id,)).fetchone()
+            if row and row["hero_name"]:
+                # already named — the name is fixed; just echo it back
+                http_json(writer, "200 OK", {"ok": True, "name": row["hero_name"], "already": True})
+                return
+            try:
+                c.execute("UPDATE accounts SET hero_name=?, hero_name_lc=? WHERE id=?",
+                          (name, name.lower(), acc_id))
+            except sqlite3.IntegrityError:
+                http_json(writer, "409 Conflict", {"ok": False, "error": "taken"})
+                return
+        http_json(writer, "200 OK", {"ok": True, "name": name})
         return
 
     # -------- character (auth required) --------
@@ -509,8 +568,10 @@ def handle_api(writer, method: str, raw_path: str, body: bytes, headers: dict):
         if method == "GET":
             with db() as c:
                 row = c.execute("SELECT data FROM characters WHERE account_id=?", (acc_id,)).fetchone()
+                acc = c.execute("SELECT hero_name FROM accounts WHERE id=?", (acc_id,)).fetchone()
             char = json.loads(row["data"]) if row else None
-            http_json(writer, "200 OK", {"ok": True, "character": char})
+            http_json(writer, "200 OK", {"ok": True, "character": char,
+                                         "hero_name": acc["hero_name"] if acc else None})
             return
         if method == "POST":
             now = time.time()

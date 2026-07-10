@@ -53,10 +53,14 @@ async function bootGuest(page, name) {
   await B.waitForFunction(() => typeof Account !== 'undefined');
   await B.evaluate(u => Account.register(u, 'secret123'), USER);
   await B.waitForFunction(() => Account.loggedIn, null, { timeout: 5000 });
+  // claim a public hero name (separate from the private username)
+  const HERO = 'Bob' + Math.floor(1000 + Math.random() * 8999);
+  await B.evaluate(h => Account.claimHeroName(h), HERO);
+  await B.waitForFunction(h => Account.heroName === h, HERO, { timeout: 5000 });
   await B.evaluate(() => startGame('mage', null));
   await B.waitForFunction(() => game && game.net && game.net.isOnline, null, { timeout: 6000 });
-  const auto = await B.evaluate(u => ({ online: game.net.isOnline, name: game.net.name, ch: game.net.channel, using: u }), USER);
-  assert(auto.online && auto.name === auto.using, 'login → auto-connected as the account name');
+  const auto = await B.evaluate(u => ({ online: game.net.isOnline, name: game.net.name, ch: game.net.channel, using: u, hero: Account.heroName }), USER);
+  assert(auto.online && auto.name === auto.hero && auto.name !== auto.using, 'login → auto-connects with the hero name, not the username');
   assert(auto.ch === 1, 'auto-join lands in the same public channel');
 
   // 5. guest and signed-in player share the world and see each other

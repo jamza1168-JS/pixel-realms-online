@@ -178,10 +178,10 @@ class Game {
     this.g.imageSmoothingEnabled = false;
   }
 
-  /* The player's display name. Signed in → the account name (this is
-   * the online identity too); guests fall back to a saved/local name. */
+  /* The player's PUBLIC name shown in-game (never the private username).
+   * Signed in → the account's unique hero name; guests → their local name. */
   heroName() {
-    if (Account.loggedIn && Account.username) return Account.username;
+    if (Account.loggedIn && Account.heroName) return Account.heroName;
     return (this.net && this.net.name) || localStorage.getItem('pixelrealms_name') || 'Hero';
   }
 
@@ -1492,18 +1492,24 @@ function refreshContinue() {
  * guest path so we don't bounce back to the login step. */
 let guestChosen = false;
 
-/* A guest starting a NEW hero must name it first; signed-in players already
- * have a name (their account username = their online identity). */
-function heroNameNeeded() { return !Account.loggedIn; }
+/* Creating a NEW character always needs a player name — a guest names a
+ * local hero, a signed-in player claims a unique name for their account.
+ * (A player with saved progress skips this; they Continue.) */
+function heroNameNeeded() { return !hasSavedCharacter(); }
 
-/* START ADVENTURE needs a class and, for a first-time guest, a hero name.
- * CONTINUE is unaffected — it restores the saved character's name. */
+/* True once the player has a saved character to continue (cloud char when
+ * signed in). Such players skip class selection — Continue only. */
+function hasSavedCharacter() { return !!continueData(); }
+
+/* START ADVENTURE needs a class and, for a guest, a non-empty hero name that
+ * isn't already taken in the database. CONTINUE restores the saved name. */
 function updateStartBtn() {
   const btn = document.getElementById('btn-start');
   if (!btn) return;
   const nameEl = document.getElementById('hero-name');
-  const nameOk = !heroNameNeeded() || (nameEl && nameEl.value.trim().length > 0);
-  btn.disabled = !(UI.selectedClass && nameOk);
+  const nameFilled = !heroNameNeeded() || (nameEl && nameEl.value.trim().length > 0);
+  const nameFree = UI._heroNameOk !== false;   // null/true ok; false = taken
+  btn.disabled = !(UI.selectedClass && nameFilled && nameFree);
 }
 
 function showTitleStep() {
@@ -1512,6 +1518,10 @@ function showTitleStep() {
   const select = document.getElementById('title-select');
   if (landing) landing.classList.toggle('hidden', ready);
   if (select) select.classList.toggle('hidden', !ready);
+  // With a saved character, offer ONLY Continue (no new-character UI)
+  const saved = hasSavedCharacter();
+  const newchar = document.getElementById('title-newchar');
+  if (newchar) newchar.classList.toggle('hidden', saved);
   // Back only makes sense for a guest returning to the login choice
   const back = document.getElementById('btn-title-back');
   if (back) back.classList.toggle('hidden', Account.loggedIn);
@@ -1526,6 +1536,26 @@ function showTitleStep() {
   if (ready) { refreshContinue(); updateStartBtn(); }
 }
 
+/* Leave the running game and go back to the very first title screen (used by
+ * in-game logout so the player can switch accounts). */
+function returnToTitle() {
+  if (game) {
+    game.running = false;
+    if (game.bgTicker) clearInterval(game.bgTicker);
+    if (game.net instanceof WSNet) game.net.disconnect();
+    game = null;
+    UI.game = null;
+  }
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('title-screen').classList.remove('hidden');
+  guestChosen = false;
+  UI.selectedClass = null;
+  document.querySelectorAll('#class-grid .class-card.selected').forEach(c => c.classList.remove('selected'));
+  const sb = document.getElementById('btn-start'); if (sb) sb.disabled = true;
+  refreshContinue();
+  showTitleStep();
+}
+
 function initTitle() {
   applyI18n();
   UI.buildClassCards('class-grid', clsId => {
@@ -1534,7 +1564,13 @@ function initTitle() {
   });
 
   const heroNameEl = document.getElementById('hero-name');
-  if (heroNameEl) heroNameEl.addEventListener('input', updateStartBtn);
+  if (heroNameEl) {
+    let hnT = null;
+    heroNameEl.addEventListener('input', () => {
+      UI._heroNameOk = null; updateStartBtn();
+      clearTimeout(hnT); hnT = setTimeout(() => UI.checkHeroName(), 350);
+    });
+  }
 
   refreshContinue();
   showTitleStep();
@@ -1554,11 +1590,17 @@ function initTitle() {
     showTitleStep();
   });
 
-  document.getElementById('btn-start').addEventListener('click', () => {
+  document.getElementById('btn-start').addEventListener('click', async () => {
     if (heroNameNeeded()) {
       const nm = document.getElementById('hero-name').value.trim();
-      if (!nm) { updateStartBtn(); return; }   // name required for a new guest hero
-      localStorage.setItem('pixelrealms_name', nm);
+      if (!nm || UI._heroNameOk === false) { updateStartBtn(); return; }   // need a free name
+      if (Account.loggedIn) {
+        // reserve the globally-unique player name for this account
+        const r = await Account.claimHeroName(nm);
+        if (!r.ok) { UI._heroNameOk = false; UI.checkHeroName(); UI.toast(t('title.nameTaken'), 'info'); return; }
+      } else {
+        localStorage.setItem('pixelrealms_name', nm);
+      }
     }
     startGame(UI.selectedClass, null);
   });

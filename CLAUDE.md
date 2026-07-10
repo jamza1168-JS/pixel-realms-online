@@ -128,6 +128,16 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
   `GET/POST /api/character` (Bearer token; sessions in-memory, cleared on
   restart). Client `Account` cloud-saves on `game.save()` (throttled; forced
   on unload); `Continue` prefers the cloud character.
+- **Username vs player name (decoupled):** the **username is private** (login
+  only, never shown to others). The **hero name** is the public, **globally
+  unique** in-game name: stored on `accounts.hero_name` (+ `hero_name_lc`
+  UNIQUE index), claimed once at character creation via `POST /api/hero-name`,
+  checked with `GET /api/hero-name-available?name=`. `Account.heroName` drives
+  `game.heroName()` (HUD/head/online identity); guests keep a local name that
+  is also validated against the hero-name registry. New account/guest =
+  name+class+Start; a saved character = Continue-only; in-game Logout
+  (`returnToTitle`) returns to the first title screen to switch accounts.
+  Covered by `tests/account_flow_test.js`.
 - **Save routing (renewed):** login is the gate for persistence. Signed-in
   players are the server's responsibility (cloud character is the source of
   truth). Guests get **no** durable save — `game.save()` writes the blob to

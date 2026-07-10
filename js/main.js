@@ -178,10 +178,10 @@ class Game {
     this.g.imageSmoothingEnabled = false;
   }
 
-  /* The player's display name. Signed in → the account name (this is
-   * the online identity too); guests fall back to a saved/local name. */
+  /* The player's PUBLIC name shown in-game (never the private username).
+   * Signed in → the account's unique hero name; guests → their local name. */
   heroName() {
-    if (Account.loggedIn && Account.username) return Account.username;
+    if (Account.loggedIn && Account.heroName) return Account.heroName;
     return (this.net && this.net.name) || localStorage.getItem('pixelrealms_name') || 'Hero';
   }
 
@@ -1492,9 +1492,10 @@ function refreshContinue() {
  * guest path so we don't bounce back to the login step. */
 let guestChosen = false;
 
-/* A guest starting a NEW hero must name it first; signed-in players already
- * have a name (their account username = their online identity). */
-function heroNameNeeded() { return !Account.loggedIn; }
+/* Creating a NEW character always needs a player name — a guest names a
+ * local hero, a signed-in player claims a unique name for their account.
+ * (A player with saved progress skips this; they Continue.) */
+function heroNameNeeded() { return !hasSavedCharacter(); }
 
 /* True once the player has a saved character to continue (cloud char when
  * signed in). Such players skip class selection — Continue only. */
@@ -1589,11 +1590,17 @@ function initTitle() {
     showTitleStep();
   });
 
-  document.getElementById('btn-start').addEventListener('click', () => {
+  document.getElementById('btn-start').addEventListener('click', async () => {
     if (heroNameNeeded()) {
       const nm = document.getElementById('hero-name').value.trim();
-      if (!nm || UI._heroNameOk === false) { updateStartBtn(); return; }   // need a free hero name
-      localStorage.setItem('pixelrealms_name', nm);
+      if (!nm || UI._heroNameOk === false) { updateStartBtn(); return; }   // need a free name
+      if (Account.loggedIn) {
+        // reserve the globally-unique player name for this account
+        const r = await Account.claimHeroName(nm);
+        if (!r.ok) { UI._heroNameOk = false; UI.checkHeroName(); UI.toast(t('title.nameTaken'), 'info'); return; }
+      } else {
+        localStorage.setItem('pixelrealms_name', nm);
+      }
     }
     startGame(UI.selectedClass, null);
   });

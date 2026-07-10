@@ -835,11 +835,10 @@ const UI = {
     box.textContent = t('title.nameChecking'); box.className = 'name-check checking';
     const token = (this._heroNameToken = (this._heroNameToken || 0) + 1);
     try {
-      const res = await fetch(Account.base() + '/api/username-available?username=' + encodeURIComponent(u));
+      const res = await fetch(Account.base() + '/api/hero-name-available?name=' + encodeURIComponent(u));
       const data = await res.json();
       if (token !== this._heroNameToken) return;
-      // a name only clashes if it matches an existing (valid) username; a
-      // name that isn't a valid username can't be in the registry → free
+      // taken only if it's a valid name already claimed by someone
       this._heroNameOk = data.available || !data.valid;
       const free = this._heroNameOk;
       box.textContent = free ? t('title.nameFree') : t('title.nameTaken');

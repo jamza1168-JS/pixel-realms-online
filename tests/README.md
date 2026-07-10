@@ -27,6 +27,8 @@ node news_test.js                  # landing PDPA + dev-phase notices, server-fe
                                    #   announcements window (scroll, toggle open/hide) (browser)
 python3 accounts_test.py           # register/login/logout, auth, character save+sanitize
 node account_ui_test.js            # account panel + cloud save/load + Continue (browser)
+node account_flow_test.js          # flow: new acct = Start-only, returning = Continue-only,
+                                   #   in-game logout → title, guest name != a username (browser)
 python3 hardening_test.py          # anti-tamper: gear caps, stat invariant, gold/level
                                    #   caps, xp clamp, write + login rate limits
 node feature_test.js               # heal circle, leveling, AFK keeps points, stat buttons

@@ -752,17 +752,17 @@ const UI = {
       out.className = 'pix-btn';
       out.textContent = t('account.logout');
       out.addEventListener('click', async () => {
+        const inGame = !!(this.game && this.game.running);
         await Account.logout();
-        // logging out drops back to a local guest session
-        if (this.game && this.game.running && this.game.net.isOnline) {
-          this.game.goOffline();
-          for (const pl of this.game.players) pl.name = this.game.heroName();
+        this.$('account-panel').classList.add('hidden');
+        if (inGame && typeof returnToTitle === 'function') {
+          returnToTitle();   // back to the very first start screen to switch accounts
+        } else {
+          this.renderAccountPanel();
+          this.refreshAccountStatus();
+          if (typeof refreshContinue === 'function') refreshContinue();
+          if (typeof showTitleStep === 'function') showTitleStep();
         }
-        this.renderAccountPanel();
-        this.refreshAccountStatus();
-        if (typeof refreshContinue === 'function') refreshContinue();
-        if (typeof showTitleStep === 'function') showTitleStep();   // back to the login/guest step
-        if (this.game) this.game.sfx('point');
       });
       box.appendChild(out);
       return;
@@ -821,6 +821,36 @@ const UI = {
     }
   },
 
+  /* A new hero's name must not duplicate a name already in the database
+   * (character names live as account usernames), so validate the guest
+   * name field against the same registry. */
+  async checkHeroName() {
+    const box = this.$('hero-name-check');
+    const input = this.$('hero-name');
+    if (!box || !input) return;
+    const u = (input.value || '').trim();
+    this._heroNameOk = null;
+    if (!u) { box.textContent = ''; box.className = 'name-check'; if (typeof updateStartBtn === 'function') updateStartBtn(); return; }
+    if (Account.base() === null) { box.textContent = ''; box.className = 'name-check'; return; }
+    box.textContent = t('title.nameChecking'); box.className = 'name-check checking';
+    const token = (this._heroNameToken = (this._heroNameToken || 0) + 1);
+    try {
+      const res = await fetch(Account.base() + '/api/username-available?username=' + encodeURIComponent(u));
+      const data = await res.json();
+      if (token !== this._heroNameToken) return;
+      // a name only clashes if it matches an existing (valid) username; a
+      // name that isn't a valid username can't be in the registry → free
+      this._heroNameOk = data.available || !data.valid;
+      const free = this._heroNameOk;
+      box.textContent = free ? t('title.nameFree') : t('title.nameTaken');
+      box.className = 'name-check ' + (free ? 'ok' : 'err');
+    } catch (e) {
+      if (token !== this._heroNameToken) return;
+      this._heroNameOk = null; box.textContent = ''; box.className = 'name-check';
+    }
+    if (typeof updateStartBtn === 'function') updateStartBtn();
+  },
+
   async submitAccount(mode) {
     const u = (this.$('acct-user').value || '').trim();
     const p = this.$('acct-pass').value || '';
@@ -841,13 +871,13 @@ const UI = {
       if (this.game) this.game.sfx('hurt');
       return;
     }
-    // reflect signed-in state immediately (before the character fetch)
+    // success → close the panel and proceed to the class step
+    this.$('account-panel').classList.add('hidden');
     this.refreshAccountStatus();
-    if (typeof showTitleStep === 'function') showTitleStep();   // advance to the class step
-    this.setAccountMsg(t(mode === 'register' ? 'account.registered' : 'account.welcome', { name: Account.username }), 'ok');
+    if (typeof showTitleStep === 'function') showTitleStep();
+    this.toast(t(mode === 'register' ? 'account.registered' : 'account.welcome', { name: Account.username }));
     if (this.game) this.game.sfx('levelup');
     await Account.loadCharacter();
-    this.renderAccountPanel();
     this.refreshAccountStatus();
     if (typeof refreshContinue === 'function') refreshContinue();
     if (typeof showTitleStep === 'function') showTitleStep();

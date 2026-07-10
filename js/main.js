@@ -1496,14 +1496,19 @@ let guestChosen = false;
  * have a name (their account username = their online identity). */
 function heroNameNeeded() { return !Account.loggedIn; }
 
-/* START ADVENTURE needs a class and, for a first-time guest, a hero name.
- * CONTINUE is unaffected — it restores the saved character's name. */
+/* True once the player has a saved character to continue (cloud char when
+ * signed in). Such players skip class selection — Continue only. */
+function hasSavedCharacter() { return !!continueData(); }
+
+/* START ADVENTURE needs a class and, for a guest, a non-empty hero name that
+ * isn't already taken in the database. CONTINUE restores the saved name. */
 function updateStartBtn() {
   const btn = document.getElementById('btn-start');
   if (!btn) return;
   const nameEl = document.getElementById('hero-name');
-  const nameOk = !heroNameNeeded() || (nameEl && nameEl.value.trim().length > 0);
-  btn.disabled = !(UI.selectedClass && nameOk);
+  const nameFilled = !heroNameNeeded() || (nameEl && nameEl.value.trim().length > 0);
+  const nameFree = UI._heroNameOk !== false;   // null/true ok; false = taken
+  btn.disabled = !(UI.selectedClass && nameFilled && nameFree);
 }
 
 function showTitleStep() {
@@ -1512,6 +1517,10 @@ function showTitleStep() {
   const select = document.getElementById('title-select');
   if (landing) landing.classList.toggle('hidden', ready);
   if (select) select.classList.toggle('hidden', !ready);
+  // With a saved character, offer ONLY Continue (no new-character UI)
+  const saved = hasSavedCharacter();
+  const newchar = document.getElementById('title-newchar');
+  if (newchar) newchar.classList.toggle('hidden', saved);
   // Back only makes sense for a guest returning to the login choice
   const back = document.getElementById('btn-title-back');
   if (back) back.classList.toggle('hidden', Account.loggedIn);
@@ -1526,6 +1535,26 @@ function showTitleStep() {
   if (ready) { refreshContinue(); updateStartBtn(); }
 }
 
+/* Leave the running game and go back to the very first title screen (used by
+ * in-game logout so the player can switch accounts). */
+function returnToTitle() {
+  if (game) {
+    game.running = false;
+    if (game.bgTicker) clearInterval(game.bgTicker);
+    if (game.net instanceof WSNet) game.net.disconnect();
+    game = null;
+    UI.game = null;
+  }
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('title-screen').classList.remove('hidden');
+  guestChosen = false;
+  UI.selectedClass = null;
+  document.querySelectorAll('#class-grid .class-card.selected').forEach(c => c.classList.remove('selected'));
+  const sb = document.getElementById('btn-start'); if (sb) sb.disabled = true;
+  refreshContinue();
+  showTitleStep();
+}
+
 function initTitle() {
   applyI18n();
   UI.buildClassCards('class-grid', clsId => {
@@ -1534,7 +1563,13 @@ function initTitle() {
   });
 
   const heroNameEl = document.getElementById('hero-name');
-  if (heroNameEl) heroNameEl.addEventListener('input', updateStartBtn);
+  if (heroNameEl) {
+    let hnT = null;
+    heroNameEl.addEventListener('input', () => {
+      UI._heroNameOk = null; updateStartBtn();
+      clearTimeout(hnT); hnT = setTimeout(() => UI.checkHeroName(), 350);
+    });
+  }
 
   refreshContinue();
   showTitleStep();
@@ -1557,7 +1592,7 @@ function initTitle() {
   document.getElementById('btn-start').addEventListener('click', () => {
     if (heroNameNeeded()) {
       const nm = document.getElementById('hero-name').value.trim();
-      if (!nm) { updateStartBtn(); return; }   // name required for a new guest hero
+      if (!nm || UI._heroNameOk === false) { updateStartBtn(); return; }   // need a free hero name
       localStorage.setItem('pixelrealms_name', nm);
     }
     startGame(UI.selectedClass, null);

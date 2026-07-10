@@ -25,7 +25,6 @@ const USER = 'Cloud' + Math.floor(1000 + Math.random() * 8999);
   assert(await page.evaluate(() => Account.loggedIn && Account.username), 'registered + signed in via the panel');
   const titleStatus = await page.textContent('#account-title-status');
   assert(/Signed in as/.test(titleStatus), 'title screen shows signed-in status');
-  await page.click('#btn-account-close');
 
   // 2. start a game and progress it; cloud save should receive it
   await page.evaluate(() => startGame('mage', null));
@@ -58,7 +57,6 @@ const USER = 'Cloud' + Math.floor(1000 + Math.random() * 8999);
   await page.click('#account-content .pix-btn:has-text("Log in")');
   await page.waitForFunction(() => Account.loggedIn && Account.character, null, { timeout: 5000 });
   assert(await page.evaluate(() => Account.character.players[0].level === 8), 'login pulled the cloud character');
-  await page.click('#btn-account-close');
   await page.waitForFunction(() => !document.getElementById('btn-continue').classList.contains('hidden'), null, { timeout: 3000 });
   assert(true, 'Continue button appears after cloud character loads');
   await page.click('#btn-continue');
@@ -75,7 +73,7 @@ const USER = 'Cloud' + Math.floor(1000 + Math.random() * 8999);
   await page.fill('#acct-user', USER);
   await page.fill('#acct-pass', 'WRONGpass');
   await page.click('#account-content .pix-btn:has-text("Log in")');
-  await page.waitForFunction(() => /Wrong username or password/.test(document.getElementById('account-msg').textContent), null, { timeout: 5000 });
+  await page.waitForFunction(() => /incorrect/.test(document.getElementById('account-msg').textContent), null, { timeout: 5000 });
   assert(!(await page.evaluate(() => Account.loggedIn)), 'wrong password rejected in the UI');
 
   assert(errors.length === 0, 'no console/page errors: ' + errors.join(' | '));

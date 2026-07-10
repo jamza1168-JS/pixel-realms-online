@@ -33,12 +33,21 @@ plain `loop` (e.g. the portal). The entity's rolling `animT` drives playback.
    `orc`, `dragon`, `portal`, …).
 2. Run the generator, eyeball `assets/<key>.png`, commit.
 
-## Current coverage (batch 1)
+## Current coverage (batches 1–4 — all sprites done)
 
-Heroes `hero_warrior|mage|archer|cleric` (idle + 3-frame walk) and `portal`
-(4-frame pulse). Everything else still renders from the procedural sprites —
-add sheets here to upgrade them. Target spec (sizes/frames/palette) is in
-`docs/ART_REDESIGN.md`.
+- **Heroes** `hero_warrior|mage|archer|cleric` — idle + 3-frame walk.
+- **Base mobs** `slime, goblin, wolf, bat, skeleton, demon` — 2-frame idle/move.
+- **Content creatures** `orc, ghost, ogre, dragon` — 2-frame (ready for the
+  warp/miniboss/world-boss systems; not spawned yet).
+- **Props** `tree, deadTree, rock` — static 32px.
+- **Collectibles** `heart, orb, coin` — 16px, animated (pulse / spin).
+- **Warp** `portal` — 4-frame pulse.
+
+**Not yet done (next, larger batch):** map **tiles** (grass/water/sand/path/ash)
+and multi-tile **village buildings** — these need a tilesheet blitter + a
+structures layer in `js/world.js` (today tiles are flat colours baked to a
+canvas), so it's a bigger render change than the sprite batches. Target spec
+in `docs/ART_REDESIGN.md`.
 
 ## Note on fidelity
 

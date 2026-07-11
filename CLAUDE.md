@@ -257,8 +257,12 @@ unique); tougher enemy → higher floor + odds. `lootProfile` now always
 returns a profile (`{chance, rolls, tiers, ilvl, gold}`; `chance:null` =
 tier-scaled default). Explicit `rollItem({tier})` still forces a tier (tests
 rely on it). The 5 tiers and their stat mults are unchanged — only the drop
-distribution moved. Remaining Phase 2 (gold sinks: reforge/refine + ore,
-keys/chests, teleport, food) is still open.
+distribution moved. **Remaining Phase 2 is split into 3 one-session
+sub-phases (see `docs/REBALANCE.md` §9.1), ship in order:** **2a Reforge**
+(gold-only sink, smallest, do first) → **2b Ore + Refine** (mineable
+material + gear upgrade; item save-format change + server clamp) → **2c
+Teleport scrolls + Keys/Chests** (convenience + active-play loot the bot
+ignores). Food/fishing stays in P5.
 
 **Deferred by the user — remind them when they return:**
 1. Shield / off-hand slot to pair with the one-hand sword.

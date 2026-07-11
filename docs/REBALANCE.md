@@ -237,8 +237,14 @@ art from `docs/ART_REDESIGN.md` lands.
    in `js/main.js` — raise as the population grows.
 2. **P2 — Loot & sinks:** ✅ **drop-tier rework SHIPPED** (§6.5: legend =
    boss-only, mystic = worldboss-only, bosses floored at unique, per-
-   archetype tier weights). **Remaining P2:** reforge + refine (+ore drops
-   from rocks), keys/chests, teleport scrolls, food. (= R2 gold sinks.)
+   archetype tier weights). The remaining sinks are split into three small,
+   independently-shippable sub-phases (§9.1) so each fits one focused
+   coding session:
+   - **2a — Reforge** (gold-only sink; smallest, no new item kinds).
+   - **2b — Ore + Refine** (mineable material + gear upgrade; the core
+     progression sink; touches the item save format + server anti-tamper).
+   - **2c — Teleport scrolls + Keys/Chests** (convenience consumable +
+     active-play loot the AFK bot ignores).
 3. **P3 — Maps 2–4 + portals:** map-per-room plumbing, level bands,
    gloves slot, teleport routing; migrate Map-1 high tiers out.
 4. **P4 — Equipment lines:** offhand slot (shield/book/quiver), new
@@ -251,3 +257,80 @@ Server-side `CLASS_BASE`/`TIER_MULT`/`row_cap`/`MAX_ILVL` constants must
 be updated in the same PR as any client formula change (CLAUDE.md
 invariant), and every phase re-runs `tests/` plus a save-migration check
 (old saves must load with zero data loss).
+
+## 9.1 Phase 2 sub-phase specs (small, one-session each)
+
+Ordered by dependency and risk (2a is smallest). Each ships alone, is
+save-compatible with the phase before it, and adds its own test. **Ship in
+order** — 2b's ore feeds nothing in 2a, but 2c's chests reuse 2b's ore.
+
+### Phase 2a — Reforge (gold sink) — smallest, do first
+*Goal: give endgame gold a purpose without any new item type or save-format
+risk.*
+- **Mechanic:** on a gear item, reroll ONE chosen affix row's value (same
+  stat, new roll). Cost `200 × tierMult × 2^reforgeN` gold; `reforceN` is a
+  per-item counter that increments each reforge. New value uses the existing
+  `rollItem` row math (tier mult × ilvl scale) so it stays within the
+  server's `row_cap` automatically — no new clamp needed.
+- **Files:** `items.js` (`reforgeCost(item)`, `reforgeRow(item, rowIdx)` +
+  a tiny `rr` counter on the item; `itemToSave`/`itemFromSave` carry `rr`),
+  `main.js` (`Game.reforge(item, rowIdx)` — checks/spends gold, calls the
+  item fn, re-derives stats if equipped), `ui.js` (a ⚒ Reforge control per
+  row in the item tooltip/inventory; shows the cost), `i18n.js` (EN/TH),
+  `server.py` (`sanitize_character` must accept + clamp the new `rr` int,
+  e.g. 0..99 — gear rows are already clamped, so no exploit).
+- **Test:** `tests/reforge_test.js` — reroll changes one row, spends the
+  right gold, cost doubles, rows stay within cap, save round-trips `rr`.
+- **No new item kind, no world changes** → lowest-risk, self-contained.
+
+### Phase 2b — Ore + Refine (material + upgrade sink) — the core progression
+*Goal: a deep, fair gold+material sink that makes gear feel owned.*
+- **Ore item:** a new **stackable material** kind (`kind:'material'`, like
+  potions stack via `_addTo`). Drops from **rock props** (make rocks
+  mineable: click/attack a rock → ore + ~60s respawn) and from Maps-4+ mobs
+  (~8%). Tradable (already works — trade escrows any `itemToSave`).
+- **Refine +0→+9:** per gear piece, stored as `refine` (0..9) on the item.
+  Weapon +4% dmg/step; armor +3% to its rolled rows/step — apply in
+  `equipAgg()`/`deriveStats` so `UI.spSig` must include `refine` to
+  re-render. Cost/attempt `150 × tierMult × (refine+1)²` gold **+
+  (refine+1) ore**; success 100% to +4 then 80/70/60/50/40%; failure = −1
+  step, **never breaks** (no dark pattern).
+- **Files:** `items.js` (material kind + stack, `refine` field + save,
+  refine cost/odds/apply helpers, `equipAgg` includes refine), `data.js`
+  (rock-drop / mob-ore rates), `world.js` (rock props become mineable
+  nodes with respawn), `main.js` (`Game.mineRock`, `Game.refine`),
+  `ui.js` (refine control in blacksmith/inventory; ore in bag; `spSig`),
+  `i18n.js`, `server.py` (`sanitize_character` clamps `refine` 0..9 and
+  the refine stat contribution; add `MAX_REFINE=9`).
+- **Test:** `tests/refine_test.js` — ore stacks, mining yields ore, refine
+  raises stats, failure drops a step not the item, gold+ore spent, server
+  clamps a tampered `refine:99` back to 9.
+- **Save-format change** (`refine`, material items) → include the migration
+  check; old saves (no `refine`) must default to +0.
+
+### Phase 2c — Teleport scrolls + Keys / Treasure chests — convenience & active loot
+*Goal: a QoL consumable + an active-play loot beat the AFK bot won't touch.*
+- **Teleport scroll:** consumable (`kind:'consumable'` or reuse potion
+  plumbing with a non-heal effect); `use` → warp the player to the village
+  heal circle. Sold in the shop (80g). Simple, no world changes.
+- **Keys:** stackable material dropped by **elites** (~15%, in the elite
+  loot branch of `handleEnemyDead`).
+- **Treasure chests:** deterministic chest spawn points in the world (seed-
+  placed like enemy spawns so all clients agree), rendered as a prop;
+  walking onto one with a key in the bag consumes the key and drops a
+  reward (gold + a potion + one gear roll at the local tier's profile).
+  **The AFK bot ignores chests** (don't add them to `botInput` targets) so
+  chests reward active play (ties to MONETIZATION.md R1 "active > AFK").
+- **Files:** `items.js` (scroll + key items), `world.js` (chest spawn
+  points + prop), `data.js` (key drop rate in elite loot), `main.js`
+  (`usePotion`/`useQuickItem` handles the scroll warp; chest pickup/open;
+  key drop), `ui.js` (chest prop draw, key/scroll in bag), `i18n.js`,
+  `server.py` (accept the new stackable items in `sanitize_character`).
+- **Test:** `tests/chest_test.js` — scroll warps to village; elite drops a
+  key; walking onto a chest with a key consumes it and yields loot; the
+  bot walks past a chest (doesn't path to it).
+
+> **Food / fishing** stays in **P5** (life skills), not Phase 2 — fishing is
+> a whole idle sub-game and food's buff layer is low-priority next to the
+> sinks above. A plain shop "bread" (+regen buff, separate tag) can pigg-back
+> on 2c if trivial, else defer.

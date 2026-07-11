@@ -10,6 +10,14 @@ const KEYS_KEY = 'pixelrealms_keys';
 const HEAL_RADIUS = 110;
 const HEAL_RATE = 0.10;
 
+/* World-boss (dragon) cadence, host-driven. A fixed clock so the whole
+ * channel converges on one fight — the strongest "log in at prime time"
+ * hook (docs/MONETIZATION.md R1). Kept short for a small player base;
+ * raise WORLDBOSS_INTERVAL as the population grows. */
+const WORLDBOSS_INTERVAL = 20 * 60;   // seconds between spawns (after a kill / at start)
+const WORLDBOSS_WARN     = 5 * 60;    // announce this long before it appears
+const MINIBOSS_RESPAWN   = 10 * 60;   // ogre miniboss respawn delay
+
 /* Stable anonymous id for the leaderboard */
 let PID = localStorage.getItem('pixelrealms_pid');
 if (!PID) {
@@ -167,6 +175,9 @@ class Game {
     this.saveT = 0;
     this.running = false;
     this.lastT = 0;
+    // world-boss timer (host-owned; counts down only while no dragon is alive)
+    this.worldBossT = WORLDBOSS_INTERVAL;
+    this.worldBossWarned = false;
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -305,10 +316,12 @@ class Game {
 
     if (this.net.isHost) {
       // authoritative enemy simulation (offline or online-host)
+      this.updateWorldBoss(dt);
       for (const sp of this.world.spawnPoints) {
+        if (sp.worldboss) continue;    // driven by updateWorldBoss, not here
         if (sp.enemy && sp.enemy.dead) {
           sp.enemy = null;
-          sp.respawnT = sp.boss ? 120 : 12;
+          sp.respawnT = sp.miniboss ? MINIBOSS_RESPAWN : (sp.boss ? 120 : 12);
         }
         if (!sp.enemy) {
           sp.respawnT -= dt;
@@ -801,6 +814,47 @@ class Game {
     UI.toast('★ ' + t('online.host'), 'info');
   }
 
+  /* Host-only: drive the dragon world boss on a fixed clock. The timer
+   * counts down only while no dragon is alive; it announces a warning to the
+   * whole channel, then spawns the boss at its lair for everyone to converge
+   * on. On death the cycle resets (see handleEnemyDead → resetWorldBoss). */
+  updateWorldBoss(dt) {
+    const sp = this.world.worldBossSpawn;
+    if (!sp) return;
+    if (sp.enemy) {
+      if (!sp.enemy.dead) return;          // fight in progress — pause clock
+      this.resetWorldBoss();               // safety net if death path missed it
+      return;
+    }
+    this.worldBossT -= dt;
+    if (!this.worldBossWarned && this.worldBossT <= WORLDBOSS_WARN) {
+      this.worldBossWarned = true;
+      this.announceWorldBoss('warn');
+    }
+    if (this.worldBossT <= 0) {
+      sp.enemy = new Enemy(sp, this);
+      this.enemies.push(sp.enemy);
+      this.announceWorldBoss('spawn');
+    }
+  }
+
+  resetWorldBoss() {
+    const sp = this.world.worldBossSpawn;
+    if (sp) sp.enemy = null;
+    this.worldBossT = WORLDBOSS_INTERVAL;
+    this.worldBossWarned = false;
+  }
+
+  /* Broadcast a world-boss notice to the whole channel (host authors it;
+   * clients receive it as a system chat line). */
+  announceWorldBoss(kind) {
+    const text = t(kind === 'warn' ? 'ui.worldBossWarn' : 'ui.worldBossHere');
+    UI.addChat('★', text);
+    UI.toast(text, 'gold');
+    this.sfx(kind === 'spawn' ? 'legendary' : 'levelup');
+    if (this.net.isOnline && this.net.isHost) this.net.send({ t: 'chat', text, sys: 1 });
+  }
+
   applyRemoteState(from, states) {
     if (!from || from === this.net.id) return;
     let list = this.remotePlayers.get(from);
@@ -860,6 +914,13 @@ class Game {
   }
 
   onChat(m) {
+    if (m.sys) {   // system broadcast (e.g. world-boss notice) — no player bubble
+      const text = String(m.text).slice(0, 120);
+      UI.addChat('★', text);
+      UI.toast(text, 'gold');
+      this.sfx('point');
+      return;
+    }
     const peer = this.net.peers.get(m.from);
     const name = peer ? peer.name : '?';
     UI.addChat(name, String(m.text).slice(0, 80));
@@ -1112,22 +1173,29 @@ class Game {
     this.addFloatText(x, y - 52, '+' + xp + ' XP', '#b45eff');
     this.sfx('die');
 
-    // drops are local: everyone gets their own loot
+    // drops are local: everyone gets their own loot. Elite/miniboss/boss/
+    // worldboss follow the archetype loot profile (guaranteed, more rolls,
+    // stronger rarity bias, extra gold); normal mobs use the tier default.
     if (this.playerNearLocal(x, y, 650)) {
       const roll = Math.random();
       if (roll < 0.3) this.pickups.push(new Pickup('heart', x - 10, y, 0.25));
       else if (roll < 0.5) this.pickups.push(new Pickup('orb', x - 10, y, 0.35));
       const sp = this.world.spawnPoints[idx];
       const type = ENEMY_TYPES[sp ? sp.type : 'slime'];
-      const [gMin, gMax] = type.gold;
-      this.pickups.push(new Pickup('coin', x + 10, y, gMin + Math.floor(Math.random() * (gMax - gMin + 1))));
-
-      // equipment / weapon drops — higher tiers drop more & better;
-      // the boss always drops with a strong rarity bias
       const tier = sp ? sp.tier : 1;
-      const dropChance = isBoss ? 1 : 0.05 + tier * 0.02;
-      if (Math.random() < dropChance) {
-        const item = rollItem({ ilvl: (tier * 4) + (isBoss ? 12 : 0), bias: isBoss ? 3 : tier - 1 });
+      const prof = lootProfile(type, sp && sp.elite);
+
+      const [gMin, gMax] = type.gold;
+      const gold = Math.round((gMin + Math.floor(Math.random() * (gMax - gMin + 1))) * prof.gold);
+      this.pickups.push(new Pickup('coin', x + 10, y, gold));
+
+      // tier is constrained per archetype (legend = boss-only, mystic =
+      // worldboss-only, bosses never drop common/rare) via prof.tiers.
+      const dropChance = prof.chance != null ? prof.chance : 0.05 + tier * 0.02;
+      const ilvl = tier * 4 + prof.ilvl;
+      for (let r = 0; r < prof.rolls; r++) {
+        if (Math.random() >= dropChance) continue;
+        const item = rollItem({ ilvl, tierWeights: prof.tiers });
         this.pickups.push(new Pickup('gear', x + (Math.random() * 30 - 15), y + 6, item));
         // fanfare + a callout toast when something truly rare drops
         if (item.tier === 'legend' || item.tier === 'mystic') {
@@ -1139,7 +1207,16 @@ class Game {
     }
 
     if (isBoss) {
-      UI.toast(t('ui.bossDown'));
+      const sp = this.world.spawnPoints[idx];
+      const type = ENEMY_TYPES[sp ? sp.type : 'demon'];
+      if (type.worldboss) {
+        this.resetWorldBoss();
+        UI.toast(t('ui.worldBossDown'), 'gold');
+        UI.addChat('★', t('ui.worldBossDown'));
+        if (this.net.isOnline && this.net.isHost) this.net.send({ t: 'chat', text: t('ui.worldBossDown'), sys: 1 });
+      } else {
+        UI.toast(t('ui.bossDown'));
+      }
       this.sfx('levelup');
       this.submitScores();
     }

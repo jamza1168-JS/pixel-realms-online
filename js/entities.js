@@ -366,11 +366,16 @@ class Enemy {
     this.type = ENEMY_TYPES[spawn.type];
     this.typeId = spawn.type;
     this.tier = spawn.tier;
+    // Elite is a deterministic spawn-point flag (set from the world seed in
+    // world.js) so every client reconstructs the same enemy from its idx.
+    this.elite = !!spawn.elite;
+    this.archetype = enemyArchetype(this.type, this.elite);
     const m = tierScale(this.tier);
-    this.maxHp = Math.round(this.type.hp * m.hp);
+    const a = this.elite ? ELITE_MULT : null;   // only elites re-scale
+    this.maxHp = Math.round(this.type.hp * m.hp * (a ? a.hp : 1));
     this.hp = this.maxHp;
-    this.dmg = this.type.dmg * m.dmg;
-    this.xp = Math.round(this.type.xp * m.xp);
+    this.dmg = this.type.dmg * m.dmg * (a ? a.dmg : 1);
+    this.xp = Math.round(this.type.xp * m.xp * (a ? a.xp : 1));
     this.x = spawn.x;
     this.y = spawn.y;
     this.face = 1;
@@ -506,19 +511,29 @@ class Enemy {
 
   draw(g2d, cam) {
     if (this.dead) return;
-    const scale = this.type.scale;
+    // elites render one size larger to read as a threat at a glance
+    const scale = this.type.scale * (this.elite ? 1.25 : 1);
     const bob = Math.round(Math.sin(this.animT) * (this.typeId === 'bat' ? 3 : 1));
     const sx = Math.round(this.x - cam.x - 8 * scale);
     const sy = Math.round(this.y - cam.y - 15 * scale + bob);
     g2d.fillStyle = 'rgba(0,0,0,.3)';
     g2d.fillRect(Math.round(this.x - cam.x - 7 * (scale / 3)), Math.round(this.y - cam.y - 2), 14 * (scale / 3), 5);
+    // elite aura: a pulsing golden ring under the sprite
+    if (this.elite) {
+      const pulse = 0.5 + 0.5 * Math.sin(this.animT * 2);
+      g2d.strokeStyle = 'rgba(255,196,64,' + (0.4 + pulse * 0.4) + ')';
+      g2d.lineWidth = 2;
+      g2d.beginPath();
+      g2d.ellipse(this.x - cam.x, this.y - cam.y, 9 * scale / 3 + 3, 5 * scale / 3 + 2, 0, 0, Math.PI * 2);
+      g2d.stroke();
+    }
     drawSprite(g2d, this.type.sprite, this.face < 0, sx, sy, 16 * scale, this.moving, this.animT);
-    // hp bar when hurt
+    // hp bar when hurt (elites/bosses always show a coloured bar)
     if (this.hp < this.maxHp) {
       const w = 14 * scale;
       g2d.fillStyle = '#111';
       g2d.fillRect(Math.round(this.x - cam.x - w / 2), sy - 6, w, 4);
-      g2d.fillStyle = this.type.boss ? '#ff3050' : '#e8484f';
+      g2d.fillStyle = this.type.boss ? '#ff3050' : (this.elite ? '#ffc440' : '#e8484f');
       g2d.fillRect(Math.round(this.x - cam.x - w / 2), sy - 6, Math.max(0, w * this.hp / this.maxHp), 4);
     }
     // slow tint

@@ -190,23 +190,90 @@ const ENEMY_TYPES = {
   skeleton: { sprite: 'skeleton', hp: 90,  dmg: 15, speed: 75,  xp: 50,  gold: [4, 9],  aggro: 230, scale: 3, ranged: true, shootRange: 210, keepDist: 150 },
   demon:    { sprite: 'demon',    hp: 1400, dmg: 34, speed: 95, xp: 900, gold: [80, 150], aggro: 260, scale: 5, ranged: true, shootRange: 240, keepDist: 60, boss: true },
 
-  // ---- Future content (defined but NOT in TIER_ENEMIES yet, so they don't
-  // spawn until a system wires them in; art in js/sprites.js). ----
+  // ---- Live content (Phase 1, docs/REBALANCE.md). orc/ghost spawn via
+  // TIER_ENEMIES; ogre (miniboss) and dragon (worldboss) have dedicated
+  // lairs in world.js — the dragon is gated by the Game's world-boss timer. ----
   orc:      { sprite: 'orc',      hp: 120,  dmg: 18, speed: 80,  xp: 70,   gold: [5, 12],    aggro: 200, scale: 3 },
   ghost:    { sprite: 'ghost',    hp: 85,   dmg: 16, speed: 105, xp: 55,   gold: [4, 10],    aggro: 190, scale: 3, ranged: true, shootRange: 200, keepDist: 120 },
   ogre:     { sprite: 'ogre',     hp: 600,  dmg: 26, speed: 70,  xp: 400,  gold: [40, 80],   aggro: 230, scale: 4, miniboss: true },
   dragon:   { sprite: 'dragon',   hp: 3200, dmg: 48, speed: 90,  xp: 2200, gold: [200, 400], aggro: 280, scale: 6, ranged: true, shootRange: 300, keepDist: 80, boss: true, worldboss: true },
 };
 
-/* Which enemies appear in each zone tier (0 = safe, no spawns) */
+/* Which enemies appear in each zone tier (0 = safe, no spawns).
+ * orc (tanky) and ghost (ranged) fill the mid/high bands — see
+ * docs/REBALANCE.md for the world/level-band plan. */
 const TIER_ENEMIES = {
   1: ['slime', 'slime', 'goblin'],
   2: ['goblin', 'wolf', 'bat', 'slime'],
-  3: ['wolf', 'bat', 'skeleton'],
-  4: ['skeleton', 'bat', 'wolf'],
+  3: ['wolf', 'bat', 'skeleton', 'ghost'],
+  4: ['skeleton', 'orc', 'ghost', 'wolf'],
 };
 
 /* Multipliers per tier */
 function tierScale(tier) {
   return { hp: 1 + (tier - 1) * 0.8, dmg: 1 + (tier - 1) * 0.55, xp: 1 + (tier - 1) * 0.7 };
+}
+
+/* ---------- Archetypes (docs/REBALANCE.md §3) ----------
+ * Normal mobs can be promoted to ELITE at spawn: same sprite, tinted and
+ * larger, much tougher, and guaranteed better loot. Boss/miniboss/worldboss
+ * enemies already bake their toughness into their authored ENEMY_TYPES stats
+ * (so they are NOT multiplied again) — the archetype only drives their LOOT
+ * profile here. `enemyArchetype` derives the key from a spawn's flags.
+ */
+const ELITE_MULT = { hp: 3.0, dmg: 1.4, xp: 3.0, gold: 3.0 };
+const ELITE_CHANCE = 1 / 9;   // ~11% of normal spawn points roll elite
+
+function enemyArchetype(type, elite) {
+  if (type.worldboss) return 'worldboss';
+  if (type.boss)      return 'boss';
+  if (type.miniboss)  return 'miniboss';
+  if (elite)          return 'elite';
+  return 'normal';
+}
+
+/* ---------- Loot tier tables by archetype (docs/REBALANCE.md §6.5) ----------
+ * Which item tiers each archetype can drop, and their relative weights.
+ * Design rules (owner's spec):
+ *   - LEGEND is exclusive to bosses + world bosses.
+ *   - MYSTIC is exclusive to the world boss.
+ *   - Bosses / world bosses never drop the two lowest tiers (common/rare):
+ *     their floor is UNIQUE.
+ *   - The tougher the enemy, the higher the floor and the better the odds.
+ * A tier not listed here can never drop from that archetype. */
+const TIER_DROP = {
+  normal:    { common: 68, rare: 27, unique: 5 },
+  elite:     { common: 30, rare: 45, unique: 25 },
+  miniboss:  { rare: 50, unique: 50 },
+  boss:      { unique: 75, legend: 25 },
+  worldboss: { unique: 50, legend: 35, mystic: 15 },
+};
+
+/* Loot profile per archetype. `chance` = drop probability (1 = guaranteed;
+ * null = use the caller's tier-scaled default), `rolls` = number of gear
+ * rolls, `tiers` = the tier weight table above, `ilvl` = flat item-level
+ * bonus, `gold` = coin multiplier. Always returns a profile so callers
+ * (main.js drops) can stay uniform. */
+function lootProfile(type, elite) {
+  switch (enemyArchetype(type, elite)) {
+    case 'worldboss': return { chance: 1,    rolls: 3, tiers: TIER_DROP.worldboss, ilvl: 16, gold: 12 };
+    case 'boss':      return { chance: 1,    rolls: 2, tiers: TIER_DROP.boss,      ilvl: 12, gold: 8 };
+    case 'miniboss':  return { chance: 1,    rolls: 1, tiers: TIER_DROP.miniboss,  ilvl: 8,  gold: 5 };
+    case 'elite':     return { chance: 1,    rolls: 1, tiers: TIER_DROP.elite,     ilvl: 4,  gold: 3 };
+    default:          return { chance: null, rolls: 1, tiers: TIER_DROP.normal,    ilvl: 0,  gold: 1 };
+  }
+}
+
+/* Reference growth curves fitted to the current mobs (docs/REBALANCE.md §3).
+ * Not used to override live mobs (their authored values stand); this is the
+ * canonical helper for tuning NEW content so it lands on the same curve. */
+function mobBaseStats(level) {
+  const L = level;
+  const late = 1 + 0.03 * Math.max(0, L - 10);
+  return {
+    hp:   Math.round((25 + 10.5 * L) * late),
+    dmg:  (3.5 + 1.7 * L) * (1 + 0.02 * Math.max(0, L - 10)),
+    xp:   Math.round(10 + 2 * L + 0.55 * L * L),
+    gold: [Math.round(0.5 * L + 0.5), Math.round(1.1 * L + 1.5)],
+  };
 }

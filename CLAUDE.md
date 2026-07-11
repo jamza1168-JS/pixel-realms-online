@@ -226,10 +226,39 @@ from any session via `tools/art/README.md`. It's **code-authored** pixel art
 Remaining procedural art (`js/sprites.js`) is still the fallback for everything
 not yet in a sheet.
 
-**Art redesign (target/spec):** see `docs/ART_REDESIGN.md` + `docs/ASSETS.md`. New procedural **content assets** added for future systems: `orc`,
-`ghost` (mobs), `ogre` (`miniboss:true`), `dragon` (`boss+worldboss:true`),
-`portal` (warp) — sprites in `js/sprites.js`, stats in `ENEMY_TYPES`, but **not**
-in `TIER_ENEMIES` so they don't spawn yet.
+**Art redesign (target/spec):** see `docs/ART_REDESIGN.md` + `docs/ASSETS.md`. New procedural **content assets**: `orc`, `ghost` (mobs), `ogre`
+(`miniboss:true`), `dragon` (`boss+worldboss:true`), `portal` (warp) —
+sprites in `js/sprites.js`, stats in `ENEMY_TYPES`. **All now live** (see
+Phase 1 below); `portal` is still only art (no warp system yet).
+
+**Rebalance Phase 1 (shipped, see `docs/REBALANCE.md` §9):** enemy
+**archetypes** — normal mobs roll **elite** (`ELITE_CHANCE ≈ 1/9`,
+deterministic from the world seed so all clients agree; `ELITE_MULT` = ×3
+HP / ×1.4 dmg / ×3 XP; tinted, larger, pulsing aura; guaranteed better
+loot). `enemyArchetype`/`lootProfile` (in `data.js`) unify elite/miniboss/
+boss/worldboss **loot** (more rolls, rarity bias, gold mult); bosses keep
+their authored stats (NOT re-multiplied — only elites re-scale). orc/ghost
+added to `TIER_ENEMIES` (tiers 3–4). `world.js` adds an **ogre** miniboss
+lair (10-min respawn) + a **dragon world-boss** lair (`worldBossSpawn`,
+skipped by the normal respawn loop). `Game.updateWorldBoss` (host-only)
+drives the dragon on `WORLDBOSS_INTERVAL` (20 min) with a `WORLDBOSS_WARN`
+(5 min) channel-wide notice via **system chat** (`{t:'chat', sys:1}` →
+`onChat` shows it with a ★, no player bubble) + toast; `resetWorldBoss` on
+kill. Minimap marks ogre + (live) dragon. `mobBaseStats` is the fitted
+curve reference for tuning new content. Interval/respawn constants live in
+`js/main.js`.
+
+**Rebalance Phase 2 — loot-tier rework (shipped, `docs/REBALANCE.md` §6.5):**
+drops are now **tier-constrained per archetype** via `TIER_DROP` +
+`lootProfile` (`data.js`), enforced by `rollItem({tierWeights})` /
+`rollTier({weights})` (`items.js`). Rules: **legend = boss-only, mystic =
+worldboss-only**; bosses & world bosses **never drop common/rare** (floor =
+unique); tougher enemy → higher floor + odds. `lootProfile` now always
+returns a profile (`{chance, rolls, tiers, ilvl, gold}`; `chance:null` =
+tier-scaled default). Explicit `rollItem({tier})` still forces a tier (tests
+rely on it). The 5 tiers and their stat mults are unchanged — only the drop
+distribution moved. Remaining Phase 2 (gold sinks: reforge/refine + ore,
+keys/chests, teleport, food) is still open.
 
 **Deferred by the user — remind them when they return:**
 1. Shield / off-hand slot to pair with the one-hand sword.
@@ -250,6 +279,21 @@ public World so it never depends on a player's device. Two paths discussed —
 (reuses code, recommended), or (B) port the monster sim to Python
 (server-authoritative, bigger rewrite). Needs confirmation that the Render
 environment can run Node alongside Python before starting.
+
+**Rebalance & content expansion spec (agreed direction):** `docs/REBALANCE.md`
+— turns the owner's design doc ("PIXEL MMORPG ONLINE WEBSITE BASE.docx":
+100+ enemies, 10 level-banded biome maps, gloves/accessory/off-hand slots,
+reforge/refine, 4th-roll Awakening Stone, keys/chests, food/fishing,
+costume coloring) into enemy stat curves fitted to today's mobs, archetype
+multipliers (elite/miniboss/boss/worldboss), map/level-band tables, and a
+6-phase save-compatible rollout. Future balance changes should follow it.
+
+**Retention & monetization plan (proposed):** `docs/MONETIZATION.md` — fair,
+no-P2W money model (cosmetics / convenience / supporter packs only, never
+power), sequenced behind retention work first (enable orc/ghost/ogre/dragon
+spawns, world-boss timer, gold sinks, dailies, leaderboard seasons) and
+hard-gated on persistent storage before anything with entitlements is sold.
+Read it before touching prices, drops, or any shop/payment work.
 
 **Bigger backlog:** raise the 20-players/channel cap for a true massive
 shared world — requires server-authoritative simulation + area-of-interest

@@ -77,26 +77,40 @@ const ROWS_PER_ITEM = 3;
 let _uidN = 0;
 function itemUid() { return 'it' + (Date.now().toString(36)) + (_uidN++).toString(36); }
 
-/* Weighted tier roll. `bias` shifts luck toward better tiers
- * (0 = normal, higher = rarer tiers more likely — used by bosses). */
-function rollTier(bias = 0) {
-  const weights = TIER_ORDER.map((k, i) => {
-    const w = ITEM_TIERS[k].weight;
-    return w * Math.pow(1 + bias * 0.5, i);   // upweight higher indices
-  });
-  let total = weights.reduce((a, b) => a + b, 0);
-  let r = Math.random() * total;
-  for (let i = 0; i < TIER_ORDER.length; i++) {
-    if ((r -= weights[i]) <= 0) return TIER_ORDER[i];
+/* Weighted tier roll. Accepts either:
+ *   - a number (legacy `bias`): shifts luck toward rarer tiers, or
+ *   - an options object:
+ *       { weights: {tierKey: w, ...} } — roll ONLY among the listed tiers
+ *         (this is how monster archetypes floor/cap their drops, e.g. a
+ *         boss rolls only unique/legend — see data.js TIER_DROP), or
+ *       { bias } — the legacy behaviour above.
+ * A tier absent from `weights` (or with weight 0) can never roll. */
+function rollTier(opts = 0) {
+  if (typeof opts === 'number') opts = { bias: opts };
+  let entries;
+  if (opts.weights) {
+    entries = TIER_ORDER.filter(k => (opts.weights[k] || 0) > 0)
+                        .map(k => [k, opts.weights[k]]);
+    if (!entries.length) entries = [['common', 1]];   // never empty
+  } else {
+    const bias = opts.bias || 0;
+    entries = TIER_ORDER.map((k, i) => [k, ITEM_TIERS[k].weight * Math.pow(1 + bias * 0.5, i)]);
   }
-  return 'common';
+  const total = entries.reduce((a, e) => a + e[1], 0);
+  let r = Math.random() * total;
+  for (const [k, w] of entries) { if ((r -= w) <= 0) return k; }
+  return entries[0][0];
 }
 
 /* Roll one gear item.
- * opts: { kind:'weapon'|'armor', key?, tier?, ilvl?, bias? } */
+ * opts: { kind:'weapon'|'armor', key?, tier?, ilvl?, bias?, tierWeights? }
+ *   tier        — force an exact tier (tests, guaranteed rewards)
+ *   tierWeights — {tierKey: w} map constraining which tiers may roll
+ *   bias        — legacy rarer-tier nudge (fallback if neither above given) */
 function rollItem(opts = {}) {
   const kind = opts.kind || (Math.random() < 0.4 ? 'weapon' : 'armor');
-  const tierKey = opts.tier || rollTier(opts.bias || 0);
+  const tierKey = opts.tier
+    || rollTier(opts.tierWeights ? { weights: opts.tierWeights } : { bias: opts.bias || 0 });
   const tier = ITEM_TIERS[tierKey];
   const ilvl = Math.max(1, opts.ilvl || 1);
   const table = kind === 'weapon' ? WEAPONS : ARMOR;

@@ -566,6 +566,17 @@ const UI = {
       g.fillStyle = '#ff3050';
       g.fillRect(game.world.bossPos.x * sx - 2, game.world.bossPos.y * sy - 2, 4, 4);
     }
+    // ogre miniboss
+    if (game.world.ogrePos) {
+      g.fillStyle = '#c97a3a';
+      g.fillRect(game.world.ogrePos.x * sx - 2, game.world.ogrePos.y * sy - 2, 4, 4);
+    }
+    // dragon world boss — only marked while it is actually up
+    const wbs = game.world.worldBossSpawn;
+    if (wbs && ((wbs.enemy && !wbs.enemy.dead) || game.ghosts.has(wbs.idx))) {
+      g.fillStyle = '#ffc440';
+      g.fillRect(wbs.x * sx - 3, wbs.y * sy - 3, 6, 6);
+    }
     // remote players
     for (const [, arr] of game.remotePlayers) {
       for (const rp of arr) {

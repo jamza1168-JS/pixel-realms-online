@@ -30,6 +30,7 @@ const URL = 'http://127.0.0.1:8900';
   console.log('PASS hasLineOfSight blocked by solid tile');
 
   // --- bot refuses to shoot a mob it cannot see; walks instead ---
+  await P.waitForFunction(() => game.enemies.some(e => !e.dead), null, { timeout: 5000 });
   const shootTest = await P.evaluate(() => {
     const p = game.players[0];
     // find a solid tile in tier-1 range and put a fake enemy behind it

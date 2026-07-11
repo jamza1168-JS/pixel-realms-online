@@ -245,8 +245,13 @@ art from `docs/ART_REDESIGN.md` lands.
    - **2c — Teleport scrolls + Keys/Chests** ✅ **SHIPPED** (warp consumable;
      keys from elites/bosses; seed-placed treasure chests opened by manual
      play only). **Phase 2 complete.**
-3. **P3 — Maps 2–4 + portals:** map-per-room plumbing, level bands,
-   gloves slot, teleport routing; migrate Map-1 high tiers out.
+3. **P3 — Maps + portals** (split into small sub-phases, §9.2):
+   - **3a — Map framework + warp portals + first biome (Forest)** ✅ SHIPPED
+     (solo/offline; online players gated).
+   - **3b — Online zone instancing** (make biome zones work for signed-in
+     players without a shared-world regression).
+   - **3c — More biomes (Desert/Snow) + level bands + gloves slot;**
+     migrate Map-1 high tiers out.
 4. **P4 — Equipment lines:** offhand slot (shield/book/quiver), new
    weapons, class tags, accessories with Map 6.
 5. **P5 — Maps 5–9, Awakening Stone, fishing/cooking.**
@@ -334,3 +339,50 @@ risk.*
 > a whole idle sub-game and food's buff layer is low-priority next to the
 > sinks above. A plain shop "bread" (+regen buff, separate tag) can pigg-back
 > on 2c if trivial, else defer.
+
+## 9.2 Phase 3 sub-phase specs (maps + portals)
+
+The multiplayer model assumes ONE deterministic shared world synced by
+spawn-index. Multiple maps therefore need either per-map channels or
+instancing — that netcode is the whole risk, so P3 is split to isolate it.
+
+### Phase 3a — Map framework + warp portals + Forest — ✅ SHIPPED
+*Goal: a second place to explore, with zero risk to the live shared world.*
+- **`World(mapId)`** (world.js): `MAPS` table (`hub`, `forest`; each a
+  `seedXor`, `biome`, `band`, mob `pool`). `generate()` dispatches; the hub
+  path is the **unchanged** `generateHub()` (renamed, byte-for-byte — the
+  portal is added with no `rng()` calls so hub layout/seed stays identical).
+  `generateForest()` is a denser, boss-free biome with an entry clearing and
+  a return portal.
+- **Portals** (`world.portals`): hub→forest near the village, forest→hub at
+  its entry. `Game.updatePortals` warps on contact (manual only — AFK bot &
+  `_warpCd` anti-bounce); `Game.warpTo` rebuilds the world, resets sim state,
+  drops the player at `entryX/Y`. Rendered in the y-sorted draw loop
+  (`portal` sprite); minimap marks them.
+- **Solo/offline for now:** biome maps are LOCAL instances. **Signed-in
+  (online) players are gated** with a "coming soon" toast (`map.soon`) so the
+  shared-world netcode is untouched. Guests get the full experience.
+- **Test:** `tests/map_test.js` — hub determinism unchanged, forest is a
+  distinct boss-free biome, warp round-trip, bot-skips-portal, online gate.
+
+### Phase 3b — Online zone instancing (the netcode)
+*Goal: let signed-in players enter biome zones too.*
+- Approach: on warp to a biome, cleanly drop the WS (become a LocalNet
+  instance); on return to hub, `goOnline` rejoins the shared World. The
+  **hard part is the re-join**: the hero name must be freed server-side
+  before the rejoin or it hits `name_taken` and falls back offline (seen in
+  3a testing). Fix options: (a) server frees the name immediately on socket
+  close + client retries `goOnline` on `name_taken` after a short backoff;
+  (b) a dedicated "leave to instance / resume" protocol that parks the slot.
+- Alternative: per-map channels (`@map-<id>-N`) via the existing private-room
+  plumbing, so biome zones are actually multiplayer. Bigger, but the doc's
+  real target. Decide (a)+(b) vs channels before coding.
+- **Test:** two-client + a solo round-trip that asserts the player is back
+  online in the hub (not stranded on LocalNet).
+
+### Phase 3c — More biomes + level bands + gloves slot
+- Add Desert/Snow maps (§2 table) with their pools and a second portal hub.
+- **Gloves slot:** extend `EQUIP_SLOTS`/`ARMOR` + `ALLOWED_SLOTS` + `spSig`
+  + the stat panel + save format; introduce alongside the harder maps so the
+  extra affix rows are absorbed by tougher content (§4).
+- Migrate Map-1 high-tier spawns out to their band-appropriate biomes.

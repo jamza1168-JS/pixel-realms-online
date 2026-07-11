@@ -53,6 +53,8 @@ node chest_test.js                 # Phase 2c: teleport scroll warp, seed-placed
                                    #   key-gated open + loot, AFK bot skips chests
 node support_test.js               # M0 tip jar: /api/support, cost meter %, https-only
                                    #   link guard, title-landing support slot render
+node map_test.js                   # P3a maps/portals: hub determinism unchanged, Forest
+                                   #   biome, warp round-trip, bot skips portal, online gate
 ```
 
 If Playwright can't find a browser, point `PW_CHROMIUM` at a Chromium binary:

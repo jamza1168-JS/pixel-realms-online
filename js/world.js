@@ -20,17 +20,36 @@ function mulberry32(seed) {
   };
 }
 
+/* ---------- Maps (P3): the shared hub + solo biome zones ----------
+ * The hub (Map 1) is the existing multiplayer world, unchanged. Biome maps
+ * are separate seeded worlds reached through warp portals; for now they are
+ * SOLO instances (see docs/REBALANCE.md §9.2). `seedXor` gives each its own
+ * deterministic layout; `band` is its intended level range. */
+const MAPS = {
+  hub:    { id: 'hub',    biome: 'grass',  seedXor: 0,          band: [1, 6],  pool: null },
+  forest: { id: 'forest', biome: 'forest', seedXor: 0x1a2b3c4d, band: [5, 10], pool: ['wolf', 'bat', 'ghost', 'goblin'] },
+};
+
 class World {
-  constructor() {
+  constructor(mapId = 'hub') {
+    this.mapId = MAPS[mapId] ? mapId : 'hub';
+    this.map = MAPS[this.mapId];
     this.tiles = new Uint8Array(MAP_W * MAP_H);
     this.objects = new Map();          // "x,y" -> {type, x, y} solid decorations
     this.solid = new Uint8Array(MAP_W * MAP_H);
     this.spawnPoints = [];             // enemy spawn definitions
-    this.spawnX = (MAP_W / 2) * TILE;  // village center (pixels)
+    this.spawnX = (MAP_W / 2) * TILE;  // village / entry center (pixels)
     this.spawnY = (MAP_H / 2) * TILE;
     this.bossPos = null;
+    this.chests = [];
+    this.portals = [];                 // warp portals (P3)
     this.generate();
     this.bake();
+  }
+
+  generate() {
+    if (this.map.biome === 'forest') return this.generateForest();
+    return this.generateHub();
   }
 
   tileAt(tx, ty) {
@@ -53,7 +72,7 @@ class World {
     return 4;
   }
 
-  generate() {
+  generateHub() {
     const rng = mulberry32(WORLD_SEED);
     const cx = MAP_W / 2, cy = MAP_H / 2;
 
@@ -194,6 +213,86 @@ class World {
       this.chests.push({ tx, ty, x: px, y: py, openT: 0, hintT: 0 });
       cPlaced++;
     }
+
+    // Warp portal to the Forest biome (P3), just east of the village plaza.
+    const ptx = (MAP_W / 2 + 6) | 0, pty = (MAP_H / 2) | 0;
+    for (let y = pty - 1; y <= pty + 1; y++) for (let x = ptx - 1; x <= ptx + 1; x++) {
+      const i = y * MAP_W + x;
+      if (this.tiles[i] === T_WATER) this.tiles[i] = T_GRASS;
+      this.solid[i] = 0;
+      this.objects.delete(x + ',' + y);
+    }
+    this.portals.push({ tx: ptx, ty: pty, x: ptx * TILE + TILE / 2, y: pty * TILE + TILE / 2, to: 'forest' });
+    this.entryX = this.spawnX; this.entryY = this.spawnY;
+  }
+
+  /* Forest biome (P3): a denser, boss-free solo zone reached from the hub. */
+  generateForest() {
+    const rng = mulberry32(WORLD_SEED ^ this.map.seedXor);
+    const cx = (MAP_W / 2) | 0, cy = (MAP_H / 2) | 0;
+
+    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
+      let tile = T_GRASS;
+      if (x < 2 || y < 2 || x >= MAP_W - 2 || y >= MAP_H - 2) tile = T_WATER;
+      this.tiles[y * MAP_W + x] = tile;
+    }
+    // scattered ponds
+    for (let i = 0; i < 8; i++) {
+      const lx = 8 + Math.floor(rng() * (MAP_W - 16)), ly = 8 + Math.floor(rng() * (MAP_H - 16));
+      if (Math.hypot(lx - cx, ly - cy) < 12) continue;
+      const r = 2 + rng() * 4;
+      for (let y = -r - 1; y <= r + 1; y++) for (let x = -r - 1; x <= r + 1; x++) {
+        const tx = Math.round(lx + x), ty = Math.round(ly + y);
+        if (tx < 1 || ty < 1 || tx >= MAP_W - 1 || ty >= MAP_H - 1) continue;
+        if (Math.hypot(x, y) < r) this.tiles[ty * MAP_W + tx] = T_WATER;
+      }
+    }
+    for (let i = 0; i < this.tiles.length; i++) if (this.tiles[i] === T_WATER) this.solid[i] = 1;
+
+    // dense trees + occasional rocks
+    for (let i = 0; i < 2600; i++) {
+      const tx = 3 + Math.floor(rng() * (MAP_W - 6)), ty = 3 + Math.floor(rng() * (MAP_H - 6));
+      const idx = ty * MAP_W + tx;
+      if (this.solid[idx]) continue;
+      if (Math.hypot(tx - cx, ty - cy) < 6) continue;   // keep the entry clearing open
+      const roll = rng();
+      const type = roll < 0.78 ? 'tree' : (roll < 0.9 ? 'rock' : null);
+      if (type) { this.objects.set(tx + ',' + ty, { type, tx, ty }); this.solid[idx] = 1; }
+    }
+
+    // entry clearing + return portal
+    for (let y = cy - 2; y <= cy + 2; y++) for (let x = cx - 2; x <= cx + 2; x++) {
+      const i = y * MAP_W + x; this.tiles[i] = T_PATH; this.solid[i] = 0; this.objects.delete(x + ',' + y);
+    }
+    this.spawnX = cx * TILE + TILE / 2; this.spawnY = cy * TILE + TILE / 2;
+    this.entryX = this.spawnX; this.entryY = this.spawnY;
+    const rpx = cx + 3, rpy = cy;
+    this.solid[rpy * MAP_W + rpx] = 0; this.objects.delete(rpx + ',' + rpy);
+    this.portals.push({ tx: rpx, ty: rpy, x: rpx * TILE + TILE / 2, y: rpy * TILE + TILE / 2, to: 'hub' });
+
+    // enemy spawns across the forest (deeper = tougher); elites deterministic
+    const pool = this.map.pool;
+    let placed = 0, guard = 0;
+    while (placed < 90 && guard++ < 6000) {
+      const tx = 3 + Math.floor(rng() * (MAP_W - 6)), ty = 3 + Math.floor(rng() * (MAP_H - 6));
+      if (this.isSolid(tx, ty)) continue;
+      if (Math.hypot(tx - cx, ty - cy) < 8) continue;
+      const type = pool[Math.floor(rng() * pool.length)];
+      const tier = Math.hypot(tx - cx, ty - cy) > 40 ? 3 : 2;
+      const elite = rng() < ELITE_CHANCE;
+      this.spawnPoints.push({ x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, type, tier, elite, enemy: null, respawnT: 0 });
+      placed++;
+    }
+    this.spawnPoints.forEach((sp, i) => { sp.idx = i; });
+
+    // a few forest chests
+    let cp = 0, cg = 0;
+    while (cp < 8 && cg++ < 2000) {
+      const tx = 3 + Math.floor(rng() * (MAP_W - 6)), ty = 3 + Math.floor(rng() * (MAP_H - 6));
+      if (this.isSolid(tx, ty) || Math.hypot(tx - cx, ty - cy) < 10) continue;
+      this.chests.push({ tx, ty, x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, openT: 0, hintT: 0 });
+      cp++;
+    }
   }
 
   /* Pre-render the whole ground layer once into a big canvas */
@@ -234,11 +333,13 @@ class World {
         }
       }
     }
-    // village marker: simple hut
-    const hx = this.spawnX - 40, hy = this.spawnY - 80;
-    g.fillStyle = '#6a4a2a'; g.fillRect(hx, hy + 24, 80, 44);
-    g.fillStyle = '#8a3030'; g.fillRect(hx - 8, hy, 96, 28);
-    g.fillStyle = '#3a2a1a'; g.fillRect(hx + 30, hy + 40, 20, 28);
+    // village marker: simple hut (hub only)
+    if (this.mapId === 'hub') {
+      const hx = this.spawnX - 40, hy = this.spawnY - 80;
+      g.fillStyle = '#6a4a2a'; g.fillRect(hx, hy + 24, 80, 44);
+      g.fillStyle = '#8a3030'; g.fillRect(hx - 8, hy, 96, 28);
+      g.fillStyle = '#3a2a1a'; g.fillRect(hx + 30, hy + 40, 20, 28);
+    }
     this.baked = c;
 
     // minimap image

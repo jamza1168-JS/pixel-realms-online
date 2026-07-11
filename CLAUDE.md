@@ -321,6 +321,20 @@ reward). `chest` sprite added to `sprites.js`; chests render in the y-sorted
 draw loop (hidden while opened). `server.py` allows `tele`/`key`. Covered by
 `tests/chest_test.js`.
 
+**Phase 3a — Map framework + warp portals + Forest (shipped, `docs/REBALANCE.md`
+§9.2):** `World(mapId)` + `MAPS` table (`hub`, `forest`); `generate()`
+dispatches to `generateHub()` (the **unchanged** original — the hub portal
+adds no `rng()` so hub layout/seed stay identical) or `generateForest()` (a
+denser, boss-free biome). `world.portals` render in the y-sorted draw loop
+(`portal` sprite) + minimap; `Game.updatePortals` warps on contact (manual
+only — AFK bot skipped, `_warpCd` anti-bounce), `Game.warpTo` rebuilds the
+world and drops the player at `entryX/Y`. **Biome maps are SOLO/local
+instances**; signed-in (online) players are **gated** with a `map.soon` toast
+so the shared-world netcode is untouched — robust online zone instancing is
+**P3b** (the WS re-join hits `name_taken` on rapid round-trips; needs
+server-side name-free-on-close + client retry, or per-map channels). Covered
+by `tests/map_test.js`.
+
 **Deferred by the user — remind them when they return:**
 1. Shield / off-hand slot to pair with the one-hand sword.
 2. Balance the new gear and tiers.

@@ -112,8 +112,9 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
   stat (from `equipAgg()`); `UI.spSig` includes equipped-item uids so it
   re-renders when gear changes.
 - Bag vs stash: `player.inventory` and `player.storage` share `_addTo`/
-  `_removeFrom` (potions stack per list); `depositItem`/`withdrawItem`
-  move between them. Shop: `buyPotion`/`sellItem` (sell price `sellValue`).
+  `_removeFrom` (`isStackable` items — potions AND materials — stack per
+  list by kind+key); `depositItem`/`withdrawItem` move between them. Shop:
+  `buyPotion`/`sellItem` (sell price `sellValue`).
   Hotkey potions: `player.quickItems` holds potion KEYS (not objects);
   `useQuickItem(i)` is edge-triggered from keydown (`quick1/2/3`, default
   4/5/6); the HUD quick bar re-renders off a count signature.
@@ -258,9 +259,8 @@ returns a profile (`{chance, rolls, tiers, ilvl, gold}`; `chance:null` =
 tier-scaled default). Explicit `rollItem({tier})` still forces a tier (tests
 rely on it). The 5 tiers and their stat mults are unchanged — only the drop
 distribution moved. Phase 2 is split into 3 one-session sub-phases (see
-`docs/REBALANCE.md` §9.1): **2a Reforge ✅ shipped** → **2b Ore + Refine**
-(next; mineable material + gear upgrade; item save-format change + server
-clamp) → **2c Teleport scrolls + Keys/Chests**. Food/fishing stays in P5.
+`docs/REBALANCE.md` §9.1): **2a Reforge ✅** → **2b Ore + Refine ✅** →
+**2c Teleport scrolls + Keys/Chests** (next). Food/fishing stays in P5.
 
 **Phase 2a — Reforge (shipped):** reroll ONE chosen affix row's value on a
 BAG gear item for gold. `reforgeCost` = `200 × tierMult × 2^rr` (per-item
@@ -272,6 +272,25 @@ clamps it 0..99 (rows already capped, so no stat exploit). `Game.reforge`
 row-picker (`UI.reforgeSel`; stays open for repeat rerolls) → **Cancel**.
 Tooltip shows `⚒ ×rr`. Covered by `tests/reforge_test.js` (+ rr clamp in
 `hardening_test.py`).
+
+**Phase 2b — Ore + Refine (shipped):** new stackable **material** item kind
+(`MATERIALS`, `makeMaterial`, `isStackable`) — `ore`. `_addTo`/`_removeFrom`/
+`depositItem`/`withdrawItem` now stack any `isStackable` (potion OR material)
+by kind+key. **Refine** upgrades gear `+0→+9` (`item.refine`): weapon
+`refineWeaponMul` = +4% dmg/step, armor `refineArmorMul` = +3% to rolled
+rows/step, applied in `equipAgg`; `UI.spSig` includes `refine`. `refineCost`
+= `150 × tierMult × (refine+1)²` gold **+ (refine+1) ore**; `refineChance` =
+100% to +4 then 80/70/60/50/40%; a failed attempt drops one step (never
+breaks). `Game.refine` (bag-only, spends gold+ore via `matCount`/
+`spendMaterial`). **Ore sources:** archetype loot (`lootProfile.ore`:
+elite 1 / miniboss 2 / boss 3 / worldboss 6; tier-4 normals ~10%) dropped as
+a `'gear'` Pickup carrying the material (quiet collect); and **rock mining** —
+`Game.tryMineNear` fires from the basic-attack when beside a rock with no
+enemy in melee range, per-rock **60s local cooldown** (`obj.mineT`, no world
+mutation → no desync), mined rocks render dimmed. `itemName` shows `+R`.
+`server.py`: `ALLOWED_MATERIALS`, `clean_item` accepts `material`, clamps
+`refine` 0..`MAX_REFINE`(9). Covered by `tests/refine_test.js` (+ refine/
+material clamps in `hardening_test.py`).
 
 **Deferred by the user — remind them when they return:**
 1. Shield / off-hand slot to pair with the one-hand sword.

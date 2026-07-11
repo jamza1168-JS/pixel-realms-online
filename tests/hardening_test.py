@@ -79,6 +79,22 @@ st, r = save(token, player(inventory=[{
     "rows": [{"stat": "hp", "val": 20}], "rr": 5}]))
 ok(r["character"]["players"][0]["inventory"][0]["rr"] == 5, "a legit reforge counter is preserved")
 
+# 1d. refine level (Phase 2b) clamped 0..9; ore material accepted + count-clamped
+time.sleep(2.2)
+st, r = save(token, player(inventory=[
+    {"uid": "g5", "key": "chest", "kind": "armor", "slot": "chest", "tier": "unique", "ilvl": 10,
+     "rows": [{"stat": "hp", "val": 30}], "refine": 999},
+    {"key": "ore", "kind": "material", "count": 5}]))
+inv = r["character"]["players"][0]["inventory"]
+gear = next(i for i in inv if i.get("kind") == "armor")
+ore = next((i for i in inv if i.get("kind") == "material"), None)
+ok(gear["refine"] == 9, "tampered refine level clamped to 9 (got " + str(gear["refine"]) + ")")
+ok(ore is not None and ore["key"] == "ore" and ore["count"] == 5, "ore material persisted with its count")
+# a bogus material key is dropped
+time.sleep(2.2)
+st, r = save(token, player(inventory=[{"key": "unobtanium", "kind": "material", "count": 3}]))
+ok(len(r["character"]["players"][0]["inventory"]) == 0, "unknown material key is rejected")
+
 # 2. base-stat point invariant: over-allocated stats are neutralised
 time.sleep(2.2)
 st, r = save(token, player(level=5, stats={"str": 500, "agi": 500, "int": 500, "vit": 500, "luk": 500}))

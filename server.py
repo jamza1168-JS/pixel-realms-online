@@ -171,6 +171,7 @@ sessions: dict = {}   # token -> account_id (in-memory; cleared on restart)
 ALLOWED_CLS = {"warrior", "mage", "archer", "cleric"}
 ALLOWED_TIERS = {"common", "rare", "unique", "legend", "mystic"}
 ALLOWED_POTIONS = {"hp", "mp", "spd", "atk", "aspd", "regen"}
+ALLOWED_MATERIALS = {"ore"}
 ALLOWED_ARMOR = {"head", "chest", "legs", "boots"}
 ALLOWED_WEAPONS = {"sword1h", "sword2h", "staff", "bow"}
 ALLOWED_SLOTS = {"head", "chest", "hands", "legs", "boots"}
@@ -189,6 +190,7 @@ TIER_MULT = {"common": 1.0, "rare": 1.5, "unique": 2.1, "legend": 3.0, "mystic":
 AFFIX_MAX = {"str": 5, "agi": 5, "int": 5, "vit": 5, "luk": 5, "hp": 45, "mp": 22,
              "atk": 9, "matk": 9, "crit": 6, "spd": 9}
 MAX_ILVL = 28   # highest item level a real drop reaches (tier-4 boss: 4*4 + 12)
+MAX_REFINE = 9  # highest gear refine level (Phase 2b)
 # per-save injection caps (legit play never approaches these between ~8-15s saves)
 GOLD_GAIN_PER_SAVE = 100_000
 LEVEL_GAIN_PER_SAVE = 10
@@ -284,6 +286,10 @@ def clean_item(o):
         if o.get("key") not in ALLOWED_POTIONS:
             return None
         return {"key": o["key"], "kind": "potion", "count": clampi(o.get("count", 1), 1, 9999)}
+    if kind == "material":
+        if o.get("key") not in ALLOWED_MATERIALS:
+            return None
+        return {"key": o["key"], "kind": "material", "count": clampi(o.get("count", 1), 1, 9999)}
     if kind in ("weapon", "armor"):
         table = ALLOWED_WEAPONS if kind == "weapon" else ALLOWED_ARMOR
         if o.get("key") not in table or o.get("slot") not in ALLOWED_SLOTS:
@@ -298,9 +304,13 @@ def clean_item(o):
         # rr = per-item reforge counter (Phase 2a). Rows above are already
         # clamped to row_cap, so a reforge can't inflate stats; rr only needs
         # to persist (it escalates the gold cost) and stay in a sane range.
+        # refine = gear upgrade level (Phase 2b); the client applies its stat
+        # bonus at equip time, so clamping the stored level 0..MAX_REFINE
+        # bounds it (rows themselves are already capped above).
         return {"uid": str(o.get("uid", ""))[:32], "key": o["key"], "kind": kind,
                 "slot": o["slot"], "tier": tier, "ilvl": ilvl, "rows": rows,
-                "rr": clampi(o.get("rr", 0), 0, 99)}
+                "rr": clampi(o.get("rr", 0), 0, 99),
+                "refine": clampi(o.get("refine", 0), 0, MAX_REFINE)}
     return None
 
 

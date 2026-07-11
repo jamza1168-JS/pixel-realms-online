@@ -123,6 +123,11 @@ const UI = {
       if ((item.count || 1) > 1) h += `<div class="it-sub">×${item.count}</div>`;
       return h;
     }
+    if (item.kind === 'material') {
+      h += `<div class="it-desc">${escapeHtml(t('matd.' + item.key))}</div>`;
+      if ((item.count || 1) > 1) h += `<div class="it-sub">×${item.count}</div>`;
+      return h;
+    }
     h += `<div class="it-sub">${escapeHtml(t('slot.' + item.slot))} · ${escapeHtml(t('tier.' + item.tier))}</div>`;
     for (const r of item.rows) h += `<div class="it-row">+${r.val} ${escapeHtml(t('rstat.' + r.stat))}</div>`;
     const base = itemBase(item);
@@ -195,6 +200,7 @@ const UI = {
     const f = this.invFilter;
     if (f === 'all') return true;
     if (f === 'potion') return it.kind === 'potion';
+    if (f === 'material') return it.kind === 'material';
     return it.slot === f;   // head | chest | hands | legs | boots
   },
 
@@ -203,6 +209,7 @@ const UI = {
     const bar = this.$('inv-filter');
     if (!bar) return;
     const cats = [['all', t('inv.filterAll')], ['potion', t('inv.filterPotion')],
+      ['material', t('inv.filterMaterial')],
       ['head', t('slot.head')], ['chest', t('slot.chest')], ['hands', t('slot.hands')],
       ['legs', t('slot.legs')], ['boots', t('slot.boots')]];
     bar.innerHTML = '';
@@ -291,7 +298,7 @@ const UI = {
       cell.className = 'inv-cell' + (this.invSel === it ? ' selected' : '');
       cell.style.borderColor = itemColor(it);
       cell.innerHTML = itemIcon(it) +
-        (it.kind === 'potion' && (it.count || 1) > 1 ? `<span class="ic-count">${it.count}</span>` : '');
+        (isStackable(it) && (it.count || 1) > 1 ? `<span class="ic-count">${it.count}</span>` : '');
       this._invHover(cell, it);
       cell.addEventListener('click', () => {
         this.invSel = (this.invSel === it ? null : it);
@@ -340,6 +347,23 @@ const UI = {
         act.appendChild(this.invBtn(t('inv.reforgeCost', { n: reforgeCost(sel) }), () => {
           this.reforgeSel = sel; re(); this.game.sfx('point');
         }));
+        // Refine: gold + ore, attempt once per click (odds shown past +4)
+        if ((sel.refine || 0) >= MAX_REFINE) {
+          const maxed = document.createElement('span');
+          maxed.className = 'ia-hint'; maxed.textContent = '⚒ +' + MAX_REFINE + ' ' + t('inv.refineMaxTag');
+          act.appendChild(maxed);
+        } else {
+          const rc = refineCost(sel), pct = Math.round(refineChance(sel) * 100);
+          const haveOre = this.game.matCount(p, 'ore');
+          const label = t('inv.refineBtn', { r: (sel.refine || 0) + 1, g: rc.gold, o: rc.ore }) +
+            (pct < 100 ? ' ' + pct + '%' : '');
+          const btn = this.invBtn(label, () => {
+            const res = this.game.refine(p, sel);
+            if (res) re();
+          });
+          if (p.gold < rc.gold || haveOre < rc.ore) btn.classList.add('disabled');
+          act.appendChild(btn);
+        }
       }
       if (sel.kind === 'potion') {
         act.appendChild(this.invBtn(t('inv.use'), () => {
@@ -631,7 +655,7 @@ const UI = {
   spSig(p) {
     return currentLang + ':' + p.name + ':' + p.level + ':' + p.statPoints + ':' +
            STAT_KEYS.map(k => p.stats[k]).join(',') + ':' +
-           EQUIP_SLOTS.map(s => (p.equip[s] ? p.equip[s].uid : '-')).join(',');
+           EQUIP_SLOTS.map(s => (p.equip[s] ? p.equip[s].uid + '+' + (p.equip[s].refine || 0) : '-')).join(',');
   },
 
   renderStatPanel(p) {

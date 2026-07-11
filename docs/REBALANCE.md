@@ -242,9 +242,9 @@ art from `docs/ART_REDESIGN.md` lands.
    coding session:
    - **2a — Reforge** ✅ **SHIPPED** (gold-only sink; reroll one affix row,
      escalating per-item cost).
-   - **2b — Ore + Refine** (mineable material + gear upgrade; the core
-     progression sink; touches the item save format + server anti-tamper).
-   - **2c — Teleport scrolls + Keys/Chests** (convenience consumable +
+   - **2b — Ore + Refine** ✅ **SHIPPED** (mineable ore material + gear
+     refine +0→+9; gold + ore cost, fail past +4 drops a step, never breaks).
+   - **2c — Teleport scrolls + Keys/Chests** (next; convenience consumable +
      active-play loot the AFK bot ignores).
 3. **P3 — Maps 2–4 + portals:** map-per-room plumbing, level bands,
    gloves slot, teleport routing; migrate Map-1 high tiers out.
@@ -284,7 +284,7 @@ risk.*
   right gold, cost doubles, rows stay within cap, save round-trips `rr`.
 - **No new item kind, no world changes** → lowest-risk, self-contained.
 
-### Phase 2b — Ore + Refine (material + upgrade sink) — the core progression
+### Phase 2b — Ore + Refine (material + upgrade sink) — ✅ SHIPPED
 *Goal: a deep, fair gold+material sink that makes gear feel owned.*
 - **Ore item:** a new **stackable material** kind (`kind:'material'`, like
   potions stack via `_addTo`). Drops from **rock props** (make rocks

@@ -220,11 +220,14 @@ first; the client picks the current language (falls back to `en`). Covered by
 the **announcements panel** (`#news-support`) — the free-forever message
 (`support.free`), a funded progress **meter**, the cost line (`support.cost`),
 and an optional support **button**. Server-published via `GET /api/support`
-(reads **`support.json`** at repo root: `link`, `linkLabel`, `month`,
+(reads **`support.json`** at repo root: `link`, `linkLabel`, `qr`, `month`,
 `billUsd`, `raisedUsd` — edit without a code change). `UI.supportHtml/
 renderSupport/loadSupport`; loaded on title init + `openNews`, re-rendered on
-`langchange`. **Only `https://…` links render a button** (js:/empty refused).
-No P2W — cosmetics/support only. Covered by `tests/support_test.js`.
+`langchange`. The button opens a **QR popup** (`#qr-modal`, `UI.openQrModal`)
+showing `support.json.qr` (owner's **PromptPay** QR to scan-and-transfer) when
+set, else it's an outbound `link`; both are **`https://…`-only** (js:/http/
+empty refused), and a failed QR image falls back to a link. No P2W —
+cosmetics/support only. Covered by `tests/support_test.js`.
 
 **Art pipeline (built):** `tools/art/generate.py` (Pillow, self-installing)
 renders animated spritesheets → `assets/<key>.png` + `.json` + `manifest.json`;

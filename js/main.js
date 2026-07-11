@@ -2100,6 +2100,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('btn-news-close').addEventListener('click', () => UI.closeNews());
 
+  // donation QR popup — close via button or clicking the backdrop
+  document.getElementById('btn-qr-close').addEventListener('click', () => UI.closeQrModal());
+  document.getElementById('qr-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'qr-modal') UI.closeQrModal();
+  });
+
   // trading
   document.getElementById('btn-trade').addEventListener('click', () => UI.openTradePanel());
   document.getElementById('btn-trade-close').addEventListener('click', () => {

@@ -134,13 +134,19 @@ the whole plan.
   EN/TH via `t()` (`support.free/cost/btn`).
 - **Server-published, no redeploy to update:** `GET /api/support` reads
   **`support.json`** at the repo root (like `announcements.json`). Fields:
-  `link`, `linkLabel`, `month`, `billUsd`, `raisedUsd`. Edit that file (and
-  redeploy the *file*, not code) monthly to update the numbers.
-- **Owner action to finish M0:** put your **Ko-fi / Buy Me a Coffee / GitHub
-  Sponsors URL** in `support.json` `link` (must be `https://…` — anything
-  else is refused and shows no button, so nothing misleading can appear).
-  Until a link is set, players just see the honest "game is free, here's the
-  monthly server cost" message + meter — no ask button.
+  `link`, `linkLabel`, `qr`, `month`, `billUsd`, `raisedUsd`. Edit that file
+  (and redeploy the *file*, not code) monthly to update the numbers.
+- **PromptPay QR popup (owner's payment method):** `support.json.qr` holds a
+  `https://` image URL of the owner's PromptPay QR. When set, the support
+  button opens a **modal** (`#qr-modal`, `UI.openQrModal`) showing the QR to
+  scan-and-transfer directly to the owner's bank — no gateway/fees. If the
+  external image fails to load, the modal falls back to a clickable link.
+  `qr` takes priority over `link`; both are `https`-only (js:/http refused).
+  ⚠️ **Reliability:** the QR is loaded from wherever `qr` points. For a free
+  image host that can break hotlinking, commit the image into `assets/` and
+  point `qr` at that local path so donations never silently break.
+- Until a link/qr is set, players just see the honest "game is free, here's
+  the monthly server cost" message + meter — no ask button.
 - **The meter is the emotional core:** "July server bill: $14 · 64% covered
   by supporters 💚". Transparent, community-owned, the opposite of a cash-shop
   vibe. For a small Thai+EN community this honesty IS the marketing.

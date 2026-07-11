@@ -1054,9 +1054,13 @@ const UI = {
       h += `<div class="support-meter"><div class="support-fill" style="width:${pct}%"></div></div>`;
       h += `<div class="support-cost">${escapeHtml(t('support.cost', { month: d.month || '', bill: bill, pct: pct }))}</div>`;
     }
-    const link = String(d.link || '');
-    if (/^https?:\/\//i.test(link)) {   // only real http(s) links become a button
-      const label = escapeHtml(d.linkLabel || t('support.btn'));
+    const label = escapeHtml(d.linkLabel || t('support.btn'));
+    const qr = String(d.qr || ''), link = String(d.link || '');
+    if (/^https:\/\//i.test(qr)) {
+      // QR takes priority: a button that pops up the scan-to-donate image
+      h += `<button class="pix-btn small support-qr-btn">${label}</button>`;
+    } else if (/^https?:\/\//i.test(link)) {
+      // otherwise a plain outbound support link
       h += `<a class="pix-btn small support-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
     }
     return h + `</div>`;
@@ -1066,9 +1070,33 @@ const UI = {
     const html = this.supportHtml(this._support);
     for (const id of ['title-support', 'news-support']) {
       const el = this.$(id);
-      if (el) el.innerHTML = html;
+      if (!el) continue;
+      el.innerHTML = html;
+      const btn = el.querySelector('.support-qr-btn');
+      if (btn) btn.addEventListener('click', () => this.openQrModal());
     }
   },
+
+  /* Pop up the donation QR (e.g. PromptPay) to scan-and-transfer. */
+  openQrModal() {
+    const d = this._support || {};
+    const qr = String(d.qr || '');
+    if (!/^https:\/\//i.test(qr)) return;
+    const modal = this.$('qr-modal'), img = this.$('qr-img'), fb = this.$('qr-fallback');
+    if (!modal || !img) return;
+    fb.classList.add('hidden'); fb.innerHTML = '';
+    img.classList.remove('hidden');
+    img.onerror = () => {   // external image failed — show a copyable link instead
+      img.classList.add('hidden');
+      fb.classList.remove('hidden');
+      fb.innerHTML = `${escapeHtml(t('support.qrErr'))}<br><a href="${escapeHtml(qr)}" target="_blank" rel="noopener noreferrer">${escapeHtml(qr)}</a>`;
+    };
+    img.src = qr;
+    modal.classList.remove('hidden');
+    this.game && this.game.sfx && this.game.sfx('point');
+  },
+
+  closeQrModal() { const m = this.$('qr-modal'); if (m) m.classList.add('hidden'); },
 
   loadSupport() {
     const base = this.game ? this.game.apiBase() : (location.protocol.startsWith('http') ? '' : null);

@@ -258,6 +258,17 @@
     </div>
   </div>
 
+  <!-- ===== SUPPORT QR (PromptPay donate popup) ===== -->
+  <div id="qr-modal" class="overlay hidden">
+    <div class="panel qr-panel">
+      <h2 data-i18n="support.qrTitle">💚 Support Pixel Realms</h2>
+      <p class="qr-hint" data-i18n="support.qrHint">Scan with your banking app to donate via PromptPay.</p>
+      <div class="qr-frame"><img id="qr-img" class="qr-img" alt="Donation QR code"></div>
+      <div id="qr-fallback" class="qr-fallback hidden"></div>
+      <button id="btn-qr-close" class="pix-btn" data-i18n="ui.close">Close</button>
+    </div>
+  </div>
+
   <!-- ===== TRADE ===== -->
   <div id="trade-panel" class="overlay hidden">
     <div class="panel">

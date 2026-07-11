@@ -436,7 +436,7 @@ def load_announcements():
 # the monthly cost/raised numbers without a code change. Fields:
 #   link, linkLabel (str), month (str), billUsd, raisedUsd (numbers).
 def load_support():
-    default = {"link": "", "linkLabel": "", "month": "", "billUsd": 0, "raisedUsd": 0}
+    default = {"link": "", "linkLabel": "", "qr": "", "month": "", "billUsd": 0, "raisedUsd": 0}
     try:
         with open(os.path.join(ROOT, "support.json"), encoding="utf-8") as f:
             data = json.load(f)
@@ -445,6 +445,7 @@ def load_support():
         return {
             "link": str(data.get("link", ""))[:300],
             "linkLabel": str(data.get("linkLabel", ""))[:60],
+            "qr": str(data.get("qr", ""))[:300],   # QR image URL (e.g. PromptPay)
             "month": str(data.get("month", ""))[:40],
             "billUsd": max(0, float(data.get("billUsd", 0) or 0)),
             "raisedUsd": max(0, float(data.get("raisedUsd", 0) or 0)),

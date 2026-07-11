@@ -28,13 +28,17 @@ function assert(c, m) { if (!c) throw new Error('FAIL: ' + m); console.log('PASS
     const withLink = UI.supportHtml({ link: 'https://ko-fi.com/example', linkLabel: 'Tip', month: 'July 2026', billUsd: 20, raisedUsd: 5 });
     const noLink   = UI.supportHtml({ link: '', month: 'July 2026', billUsd: 20, raisedUsd: 5 });
     const evil     = UI.supportHtml({ link: 'javascript:alert(1)', billUsd: 0, raisedUsd: 0 });
-    return { withLink, noLink, evil };
+    const withQr   = UI.supportHtml({ qr: 'https://img2.pic.in.th/Promptpay.jpg', month: 'July 2026', billUsd: 20, raisedUsd: 5 });
+    const evilQr   = UI.supportHtml({ qr: 'javascript:alert(1)', billUsd: 10, raisedUsd: 0 });
+    return { withLink, noLink, evil, withQr, evilQr };
   });
   assert(/support-msg/.test(render.withLink) && /support-fill/.test(render.withLink), 'renders the free message + cost meter');
   assert(/25%/.test(render.withLink) || /width:25%/.test(render.withLink), 'meter reflects covered % (5/20 = 25%)');
   assert(/href="https:\/\/ko-fi\.com\/example"/.test(render.withLink) && /rel="noopener/.test(render.withLink), 'a real https link becomes a safe support button');
   assert(!/<a /.test(render.noLink), 'no button when the link is empty (just the transparent message + meter)');
   assert(!/javascript:/.test(render.evil) && !/<a /.test(render.evil), 'a non-http link is refused (no button, no js: URL)');
+  assert(/support-qr-btn/.test(render.withQr) && !/<a /.test(render.withQr), 'a QR url renders a popup button (not an outbound link)');
+  assert(!/support-qr-btn/.test(render.evilQr) && !/javascript:/.test(render.evilQr), 'a non-https QR is refused (no button)');
 
   // 3. the title landing has a support slot that gets populated
   const onTitle = await page.evaluate(() => {
@@ -44,6 +48,26 @@ function assert(c, m) { if (!c) throw new Error('FAIL: ' + m); console.log('PASS
     return { present: !!el, filled: el && /support-box/.test(el.innerHTML) };
   });
   assert(onTitle.present && onTitle.filled, 'the title landing shows the support block');
+
+  // 4. clicking the QR support button pops up the modal with the QR image
+  const modal = await page.evaluate(() => {
+    UI._support = { qr: 'https://img2.pic.in.th/Promptpay.jpg', month: 'July 2026', billUsd: 14, raisedUsd: 3 };
+    UI.renderSupport();
+    const btn = document.querySelector('#title-support .support-qr-btn');
+    btn.click();
+    const m = document.getElementById('qr-modal');
+    const img = document.getElementById('qr-img');
+    return { hasBtn: !!btn, open: !m.classList.contains('hidden'), src: img.getAttribute('src') };
+  });
+  assert(modal.hasBtn && modal.open, 'clicking the support button opens the QR popup');
+  assert(modal.src === 'https://img2.pic.in.th/Promptpay.jpg', 'the popup shows the configured QR image');
+
+  // 5. closing the modal hides it
+  const closed = await page.evaluate(() => {
+    document.getElementById('btn-qr-close').click();
+    return document.getElementById('qr-modal').classList.contains('hidden');
+  });
+  assert(closed, 'the QR popup closes on Close');
 
   assert(errors.length === 0, 'no console/page errors: ' + errors.join(' | '));
   await browser.close();

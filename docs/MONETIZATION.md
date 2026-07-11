@@ -127,16 +127,31 @@ the whole plan.
 
 ## 4. Phase M — monetization ladder (each step is optional & honest)
 
-### M0 — Tip jar (can ship this week, zero code risk)
-- Ko-fi / Buy Me a Coffee / GitHub Sponsors link on the title screen and
-  the 📢 announcements panel: *"Pixel Realms is free and always will be.
-  Server costs ~$X/month — if you enjoy it, you can help keep the lights
-  on."* (EN/TH, via `t()` keys like everything else.)
-- **The server-cost meter** is the emotional core of the whole plan: a
-  small public bar — "July server bill: $14 · covered 60% by supporters 💚"
-  (manually updated in `announcements.json` at first). Transparent,
-  community-owned, the opposite of a cash-shop vibe. For a small game
-  with a Thai+EN community this honesty IS the marketing.
+### M0 — Tip jar + server-cost meter — ✅ SHIPPED (link/numbers owner-configured)
+- **How it's built:** a `support-box` on the **title landing** and atop the
+  **📢 announcements panel** — the free-forever message, a funded progress
+  **meter**, the transparent cost line, and an optional support **button**.
+  EN/TH via `t()` (`support.free/cost/btn`).
+- **Server-published, no redeploy to update:** `GET /api/support` reads
+  **`support.json`** at the repo root (like `announcements.json`). Fields:
+  `link`, `linkLabel`, `qr`, `month`, `billUsd`, `raisedUsd`. Edit that file
+  (and redeploy the *file*, not code) monthly to update the numbers.
+- **PromptPay QR popup (owner's payment method):** `support.json.qr` holds a
+  `https://` image URL of the owner's PromptPay QR. When set, the support
+  button opens a **modal** (`#qr-modal`, `UI.openQrModal`) showing the QR to
+  scan-and-transfer directly to the owner's bank — no gateway/fees. If the
+  external image fails to load, the modal falls back to a clickable link.
+  `qr` takes priority over `link`; both are `https`-only (js:/http refused).
+  ⚠️ **Reliability:** the QR is loaded from wherever `qr` points. For a free
+  image host that can break hotlinking, commit the image into `assets/` and
+  point `qr` at that local path so donations never silently break.
+- Until a link/qr is set, players just see the honest "game is free, here's
+  the monthly server cost" message + meter — no ask button.
+- **The meter is the emotional core:** "July server bill: $14 · 64% covered
+  by supporters 💚". Transparent, community-owned, the opposite of a cash-shop
+  vibe. For a small Thai+EN community this honesty IS the marketing.
+- Covered by `tests/support_test.js` (endpoint, meter %, https-only link
+  guard, title-slot render).
 
 ### M1 — Founder / Supporter pack (one-time, after persistent DB)
 - One-time pack (~$5 / ฿179): **Founder badge** next to the hero name,
@@ -213,7 +228,9 @@ transparent server-meter framing works: the goal is visibly achievable.
 2. ☐ R2: gold sinks (affix reroll server-validated, storage tabs, gold
    dyes) → daily quests → login streak → monthly leaderboard seasons with
    cosmetic badges → achievements.
-3. ☐ M0: tip-jar link + server-cost meter on title/announcements (EN/TH).
+3. ☑ M0: tip-jar link + server-cost meter on title/announcements (EN/TH).
+   **SHIPPED** — set your real donation URL + monthly numbers in
+   `support.json` (no redeploy of code needed).
 4. ☐ **Gate:** persistent DB / paid tier (SCALING.md Stage 1 infra) —
    nothing with entitlements before this.
 5. ☐ M1: founder pack (account flag + badge render + manual fulfillment).

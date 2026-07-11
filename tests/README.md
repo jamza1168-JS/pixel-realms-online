@@ -51,6 +51,8 @@ node refine_test.js                # Phase 2b ore+refine: ore stacking, refine c
                                    #   rock mining + cooldown, real-click Refine
 node chest_test.js                 # Phase 2c: teleport scroll warp, seed-placed chests,
                                    #   key-gated open + loot, AFK bot skips chests
+node support_test.js               # M0 tip jar: /api/support, cost meter %, https-only
+                                   #   link guard, title-landing support slot render
 ```
 
 If Playwright can't find a browser, point `PW_CHROMIUM` at a Chromium binary:

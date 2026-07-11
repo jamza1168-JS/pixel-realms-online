@@ -95,6 +95,7 @@
           <p class="notice dev" data-i18n="title.devNote">Early development — progress may reset.</p>
           <p class="notice" data-i18n="title.pdpa">We use your info only to save progress and improve the game.</p>
         </div>
+        <div id="title-support" class="support-slot"></div>
       </div>
 
       <!-- STEP 2: choose class -->
@@ -251,8 +252,20 @@
   <div id="news-panel" class="news-window hidden">
     <div class="panel">
       <h2 data-i18n="news.title">📢 Announcements</h2>
+      <div id="news-support" class="support-slot"></div>
       <div id="news-content"></div>
       <button id="btn-news-close" class="pix-btn" data-i18n="ui.close">Close</button>
+    </div>
+  </div>
+
+  <!-- ===== SUPPORT QR (PromptPay donate popup) ===== -->
+  <div id="qr-modal" class="overlay hidden">
+    <div class="panel qr-panel">
+      <h2 data-i18n="support.qrTitle">💚 Support Pixel Realms</h2>
+      <p class="qr-hint" data-i18n="support.qrHint">Scan with your banking app to donate via PromptPay.</p>
+      <div class="qr-frame"><img id="qr-img" class="qr-img" alt="Donation QR code"></div>
+      <div id="qr-fallback" class="qr-fallback hidden"></div>
+      <button id="btn-qr-close" class="pix-btn" data-i18n="ui.close">Close</button>
     </div>
   </div>
 

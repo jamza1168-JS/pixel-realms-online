@@ -215,6 +215,20 @@ an update). Each item is `{date, en:{title,body}, th:{title,body}}`, newest
 first; the client picks the current language (falls back to `en`). Covered by
 `tests/news_test.js`.
 
+**Monetization M0 — tip jar + server-cost meter (shipped, `docs/MONETIZATION.md`
+§M0):** a `support-box` on the **title landing** (`#title-support`) and atop
+the **announcements panel** (`#news-support`) — the free-forever message
+(`support.free`), a funded progress **meter**, the cost line (`support.cost`),
+and an optional support **button**. Server-published via `GET /api/support`
+(reads **`support.json`** at repo root: `link`, `linkLabel`, `qr`, `month`,
+`billUsd`, `raisedUsd` — edit without a code change). `UI.supportHtml/
+renderSupport/loadSupport`; loaded on title init + `openNews`, re-rendered on
+`langchange`. The button opens a **QR popup** (`#qr-modal`, `UI.openQrModal`)
+showing `support.json.qr` (owner's **PromptPay** QR to scan-and-transfer) when
+set, else it's an outbound `link`; both are **`https://…`-only** (js:/http/
+empty refused), and a failed QR image falls back to a link. No P2W —
+cosmetics/support only. Covered by `tests/support_test.js`.
+
 **Art pipeline (built):** `tools/art/generate.py` (Pillow, self-installing)
 renders animated spritesheets → `assets/<key>.png` + `.json` + `manifest.json`;
 `js/assets.js` loads the manifest, slices frames, and `drawSprite(key, faceLeft,

@@ -1820,6 +1820,7 @@ function initTitle() {
 
   refreshContinue();
   showTitleStep();
+  UI.loadSupport();   // tip-jar + server-cost meter on the landing (M0)
   // if already signed in, pull the cloud character and update Continue
   if (Account.loggedIn) Account.loadCharacter().then(() => { refreshContinue(); showTitleStep(); });
 
@@ -2099,6 +2100,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('btn-news-close').addEventListener('click', () => UI.closeNews());
 
+  // donation QR popup — close via button or clicking the backdrop
+  document.getElementById('btn-qr-close').addEventListener('click', () => UI.closeQrModal());
+  document.getElementById('qr-modal').addEventListener('click', (e) => {
+    if (e.target.id === 'qr-modal') UI.closeQrModal();
+  });
+
   // trading
   document.getElementById('btn-trade').addEventListener('click', () => UI.openTradePanel());
   document.getElementById('btn-trade-close').addEventListener('click', () => {
@@ -2139,6 +2146,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // re-render open announcements in the newly-chosen language (content is
     // bilingual per item; the cached items just need re-picking)
     if (!document.getElementById('news-panel').classList.contains('hidden')) UI.renderNews(UI._newsItems || []);
+    UI.renderSupport();   // support block carries i18n strings too
   });
 
   applyI18n();

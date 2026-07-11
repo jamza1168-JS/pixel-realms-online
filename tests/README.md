@@ -44,6 +44,8 @@ node items_test.js                 # roll/tiers, equip stat changes, weapon dmgM
                                    #   drops, pickup->bag, inventory UI equip, save/load
 node shop_test.js                  # merchant buy/sell, storage deposit/withdraw+merge,
                                    #   hotkey potion assign/use/key, save/load
+node reforge_test.js               # Phase 2a reforge: cost escalation, row reroll
+                                   #   within cap, gold spend, rr save round-trip, UI click
 ```
 
 If Playwright can't find a browser, point `PW_CHROMIUM` at a Chromium binary:

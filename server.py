@@ -295,8 +295,12 @@ def clean_item(o):
             if isinstance(r, dict) and r.get("stat") in ALLOWED_ROWSTATS:
                 # clamp to the strongest a legit drop of this tier/ilvl could roll
                 rows.append({"stat": r["stat"], "val": clampi(r.get("val", 0), 0, row_cap(r["stat"], tier, ilvl))})
+        # rr = per-item reforge counter (Phase 2a). Rows above are already
+        # clamped to row_cap, so a reforge can't inflate stats; rr only needs
+        # to persist (it escalates the gold cost) and stay in a sane range.
         return {"uid": str(o.get("uid", ""))[:32], "key": o["key"], "kind": kind,
-                "slot": o["slot"], "tier": tier, "ilvl": ilvl, "rows": rows}
+                "slot": o["slot"], "tier": tier, "ilvl": ilvl, "rows": rows,
+                "rr": clampi(o.get("rr", 0), 0, 99)}
     return None
 
 

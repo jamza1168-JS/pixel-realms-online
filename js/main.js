@@ -1325,6 +1325,28 @@ class Game {
     return true;
   }
 
+  /* Reforge (reroll) one affix row on a BAG gear item, spending gold.
+   * Cost escalates per item via reforgeCost; rows stay within the server
+   * row cap because reforgeRow reuses the drop math. */
+  reforge(p, item, rowIdx) {
+    if (!item || (item.kind !== 'weapon' && item.kind !== 'armor')) return false;
+    if (!p.inventory.includes(item)) return false;   // bag only (unequip first)
+    const row = item.rows && item.rows[rowIdx];
+    if (!row) return false;
+    const cost = reforgeCost(item);
+    if (p.gold < cost) { UI.toast(t('shop.poor'), 'info'); this.sfx('point'); return false; }
+    const before = row.val;
+    const nv = reforgeRow(item, rowIdx);
+    if (nv == null) return false;
+    p.gold -= cost;
+    this.sfx('buff');
+    const arrow = nv > before ? '▲' : (nv < before ? '▼' : '=');
+    this.addFloatText(p.x, p.y - 40, '⚒ ' + t('rstat.' + row.stat) + ' ' + before + '→' + nv + arrow,
+      nv >= before ? '#7ee98a' : '#e8a0a0');
+    this.save();
+    return true;
+  }
+
   /* ---------- Hotkey potion slots ---------- */
   /* Use the potion assigned to quick slot `i` (0-2), if any in the bag. */
   useQuickItem(p, i) {

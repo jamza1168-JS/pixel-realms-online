@@ -257,12 +257,21 @@ unique); tougher enemy → higher floor + odds. `lootProfile` now always
 returns a profile (`{chance, rolls, tiers, ilvl, gold}`; `chance:null` =
 tier-scaled default). Explicit `rollItem({tier})` still forces a tier (tests
 rely on it). The 5 tiers and their stat mults are unchanged — only the drop
-distribution moved. **Remaining Phase 2 is split into 3 one-session
-sub-phases (see `docs/REBALANCE.md` §9.1), ship in order:** **2a Reforge**
-(gold-only sink, smallest, do first) → **2b Ore + Refine** (mineable
-material + gear upgrade; item save-format change + server clamp) → **2c
-Teleport scrolls + Keys/Chests** (convenience + active-play loot the bot
-ignores). Food/fishing stays in P5.
+distribution moved. Phase 2 is split into 3 one-session sub-phases (see
+`docs/REBALANCE.md` §9.1): **2a Reforge ✅ shipped** → **2b Ore + Refine**
+(next; mineable material + gear upgrade; item save-format change + server
+clamp) → **2c Teleport scrolls + Keys/Chests**. Food/fishing stays in P5.
+
+**Phase 2a — Reforge (shipped):** reroll ONE chosen affix row's value on a
+BAG gear item for gold. `reforgeCost` = `200 × tierMult × 2^rr` (per-item
+counter `rr`); `reforgeRow` rerolls in place using the SAME row math as
+`rollItem` so it can never exceed the server `row_cap` — no new clamp
+needed. `rr` rides in `itemToSave`/`itemFromSave`; `server.py clean_item`
+clamps it 0..99 (rows already capped, so no stat exploit). `Game.reforge`
+(bag-only, spends gold). UI: select bag gear → **⚒ Reforge (cost)** →
+row-picker (`UI.reforgeSel`; stays open for repeat rerolls) → **Cancel**.
+Tooltip shows `⚒ ×rr`. Covered by `tests/reforge_test.js` (+ rr clamp in
+`hardening_test.py`).
 
 **Deferred by the user — remind them when they return:**
 1. Shield / off-hand slot to pair with the one-hand sword.

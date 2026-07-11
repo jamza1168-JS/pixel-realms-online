@@ -84,6 +84,10 @@ const I18N = {
     'inv.emptyStore': 'Storage is empty — deposit items here to keep them safe.',
     'inv.deposit': 'Deposit',
     'inv.withdraw': 'Withdraw',
+    'inv.reforge': 'Reforge',
+    'inv.reforgePick': 'Pick a stat to reroll',
+    'inv.reforgeCost': '⚒ Reforge ({n}🪙)',
+    'inv.cancel': 'Cancel',
     'inv.toSlot': '⌨ {k}',
 
     'shop.title': '🛒 Merchant',
@@ -396,6 +400,10 @@ const I18N = {
     'inv.emptyStore': 'คลังว่างเปล่า — ฝากไอเทมไว้ที่นี่เพื่อเก็บรักษา',
     'inv.deposit': 'ฝาก',
     'inv.withdraw': 'ถอน',
+    'inv.reforge': 'ตีบวกใหม่',
+    'inv.reforgePick': 'เลือกสเตตัสที่จะสุ่มใหม่',
+    'inv.reforgeCost': '⚒ ตีใหม่ ({n}🪙)',
+    'inv.cancel': 'ยกเลิก',
     'inv.toSlot': '⌨ {k}',
 
     'shop.title': '🛒 พ่อค้า',

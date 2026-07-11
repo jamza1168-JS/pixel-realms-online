@@ -66,6 +66,19 @@ mystic_atk = r["character"]["players"][0]["inventory"][0]["rows"][0]["val"]
 ok(100 <= mystic_atk <= 200, "mystic/high-ilvl item keeps a large but bounded roll: atk=" + str(mystic_atk))
 ok(r["character"]["players"][0]["inventory"][0]["ilvl"] <= 28, "item level clamped to the real drop max (28)")
 
+# 1c. reforge counter (rr) persists but is clamped to a sane range
+time.sleep(2.2)
+st, r = save(token, player(inventory=[{
+    "uid": "g3", "key": "boots", "kind": "armor", "slot": "boots", "tier": "rare", "ilvl": 6,
+    "rows": [{"stat": "hp", "val": 20}], "rr": 999999}]))
+rr_clamped = r["character"]["players"][0]["inventory"][0]["rr"]
+ok(rr_clamped == 99, "tampered reforge counter clamped to 99 (got " + str(rr_clamped) + ")")
+time.sleep(2.2)
+st, r = save(token, player(inventory=[{
+    "uid": "g4", "key": "boots", "kind": "armor", "slot": "boots", "tier": "rare", "ilvl": 6,
+    "rows": [{"stat": "hp", "val": 20}], "rr": 5}]))
+ok(r["character"]["players"][0]["inventory"][0]["rr"] == 5, "a legit reforge counter is preserved")
+
 # 2. base-stat point invariant: over-allocated stats are neutralised
 time.sleep(2.2)
 st, r = save(token, player(level=5, stats={"str": 500, "agi": 500, "int": 500, "vit": 500, "luk": 500}))

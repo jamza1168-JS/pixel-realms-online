@@ -135,6 +135,7 @@ const UI = {
       if (mods.length) h += `<div class="it-sub">${mods.join(' · ')}</div>`;
       if (base.two) h += `<div class="it-sub">${escapeHtml(t('inv.twoHanded'))}</div>`;
     }
+    if (item.rr) h += `<div class="it-sub">⚒ ×${item.rr}</div>`;
     return h;
   },
 
@@ -178,9 +179,11 @@ const UI = {
   invSel: null,
   invTab: 'bag',
   invFilter: 'all',   // all | potion | head | chest | hands | legs | boots
+  reforgeSel: null,   // gear item currently in reforge (row-pick) mode
 
   openInventory() {
     this.invSel = null;
+    this.reforgeSel = null;
     this.invTab = 'bag';
     this.invFilter = 'all';
     this.$('inv-panel').classList.remove('hidden');
@@ -217,6 +220,7 @@ const UI = {
 
   closeInventory() {
     this.invSel = null;
+    this.reforgeSel = null;
     this.hideSkillTip();
     this.$('inv-panel').classList.add('hidden');
   },
@@ -300,12 +304,29 @@ const UI = {
     const act = this.$('inv-actions');
     act.innerHTML = '';
     const sel = this.invSel;
-    if (!sel || !list.includes(sel)) { this.invSel = null; return; }
+    if (!sel || !list.includes(sel)) { this.invSel = null; this.reforgeSel = null; return; }
+    if (this.reforgeSel && this.reforgeSel !== sel) this.reforgeSel = null;
     const re = () => this.renderInventory();
     const nm = document.createElement('span');
     nm.className = 'ia-name'; nm.style.color = itemColor(sel);
     nm.textContent = itemName(sel);
     act.appendChild(nm);
+
+    // Reforge row-picker mode (bag gear only): pick which stat to reroll.
+    if (!inStorage && this.reforgeSel === sel && (sel.kind === 'weapon' || sel.kind === 'armor')) {
+      const cost = reforgeCost(sel);
+      const hint = document.createElement('span');
+      hint.className = 'ia-hint';
+      hint.textContent = t('inv.reforgePick') + ' · ' + cost + '🪙';
+      act.appendChild(hint);
+      sel.rows.forEach((r, i) => {
+        act.appendChild(this.invBtn('↻ +' + r.val + ' ' + t('rstat.' + r.stat), () => {
+          if (this.game.reforge(p, sel, i)) re();   // stays in reforge mode for repeat rerolls
+        }));
+      });
+      act.appendChild(this.invBtn(t('inv.cancel'), () => { this.reforgeSel = null; re(); }));
+      return;
+    }
 
     if (inStorage) {
       act.appendChild(this.invBtn(t('inv.withdraw'), () => {
@@ -315,6 +336,9 @@ const UI = {
       if (sel.kind === 'weapon' || sel.kind === 'armor') {
         act.appendChild(this.invBtn(t('inv.equip'), () => {
           p.equipItem(sel); this.invSel = null; this.game.save(); re(); this.game.sfx('buff');
+        }));
+        act.appendChild(this.invBtn(t('inv.reforgeCost', { n: reforgeCost(sel) }), () => {
+          this.reforgeSel = sel; re(); this.game.sfx('point');
         }));
       }
       if (sel.kind === 'potion') {

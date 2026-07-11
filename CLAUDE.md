@@ -258,9 +258,9 @@ unique); tougher enemy → higher floor + odds. `lootProfile` now always
 returns a profile (`{chance, rolls, tiers, ilvl, gold}`; `chance:null` =
 tier-scaled default). Explicit `rollItem({tier})` still forces a tier (tests
 rely on it). The 5 tiers and their stat mults are unchanged — only the drop
-distribution moved. Phase 2 is split into 3 one-session sub-phases (see
-`docs/REBALANCE.md` §9.1): **2a Reforge ✅** → **2b Ore + Refine ✅** →
-**2c Teleport scrolls + Keys/Chests** (next). Food/fishing stays in P5.
+distribution moved. Phase 2 is **complete** (see `docs/REBALANCE.md` §9.1): **2a Reforge ✅**,
+**2b Ore + Refine ✅**, **2c Teleport scrolls + Keys/Chests ✅**.
+Food/fishing stays in P5; next major work is P3 (maps/portals).
 
 **Phase 2a — Reforge (shipped):** reroll ONE chosen affix row's value on a
 BAG gear item for gold. `reforgeCost` = `200 × tierMult × 2^rr` (per-item
@@ -291,6 +291,21 @@ mutation → no desync), mined rocks render dimmed. `itemName` shows `+R`.
 `server.py`: `ALLOWED_MATERIALS`, `clean_item` accepts `material`, clamps
 `refine` 0..`MAX_REFINE`(9). Covered by `tests/refine_test.js` (+ refine/
 material clamps in `hardening_test.py`).
+
+**Phase 2c — Teleport scrolls + Keys + Chests (shipped):** **Teleport
+scroll** = a `POTIONS.tele` consumable (`warp:'village'`) handled in
+`usePotion` (warps to `world.spawnX/Y`); shop-buyable (the buy tab lists all
+POTIONS). **Key** = a `MATERIALS.key` stackable; drops in `handleEnemyDead`
+(guaranteed from miniboss/boss/worldboss, ~15% from elites) via a `'gear'`
+Pickup carrying the material. **Treasure chests** = `world.chests` seed-
+placed points (deterministic, outside the safe village), opened **locally**:
+`Game.updateChests` opens one when a **non-AFK** player walks onto it (radius
+26) carrying a key — spends the key, grants gold + a potion + one gear roll
+(`TIER_DROP.elite`, so no legend/mystic), 5-min local `openT` respawn (no
+world mutation → no desync); the **AFK bot never opens chests** (active-play
+reward). `chest` sprite added to `sprites.js`; chests render in the y-sorted
+draw loop (hidden while opened). `server.py` allows `tele`/`key`. Covered by
+`tests/chest_test.js`.
 
 **Deferred by the user — remind them when they return:**
 1. Shield / off-hand slot to pair with the one-hand sword.

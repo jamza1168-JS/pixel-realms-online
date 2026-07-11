@@ -179,6 +179,21 @@ class World {
 
     // stable ids so networked clients can reference enemies by spawn index
     this.spawnPoints.forEach((sp, i) => { sp.idx = i; });
+
+    // Treasure chests (Phase 2c): seed-placed so every client agrees, but
+    // opened LOCALLY (walk onto one carrying a key). `openT` = local time
+    // until which it stays opened/hidden before respawning.
+    this.chests = [];
+    let cPlaced = 0, cGuard = 0;
+    while (cPlaced < 16 && cGuard++ < 3000) {
+      const tx = 3 + Math.floor(rng() * (MAP_W - 6));
+      const ty = 3 + Math.floor(rng() * (MAP_H - 6));
+      if (this.isSolid(tx, ty)) continue;
+      const px = tx * TILE + TILE / 2, py = ty * TILE + TILE / 2;
+      if (this.tierAt(px, py) < 1) continue;   // never in the safe village
+      this.chests.push({ tx, ty, x: px, y: py, openT: 0, hintT: 0 });
+      cPlaced++;
+    }
   }
 
   /* Pre-render the whole ground layer once into a big canvas */

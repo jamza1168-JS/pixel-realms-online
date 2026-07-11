@@ -200,6 +200,9 @@ const I18N = {
     'news.loading': 'Loading announcements…',
     'news.empty': 'No announcements yet.',
     'news.error': 'Could not load announcements — check your connection.',
+    'support.free': 'Pixel Realms is free — and always will be. 💚',
+    'support.cost': '{month} server bill: ${bill} · {pct}% covered by supporters',
+    'support.btn': '☕ Help keep the servers on',
 
     'chat.placeholder': 'Press Enter to chat…',
     'chat.you': 'You',
@@ -528,6 +531,9 @@ const I18N = {
     'news.loading': 'กำลังโหลดประกาศ…',
     'news.empty': 'ยังไม่มีประกาศ',
     'news.error': 'โหลดประกาศไม่สำเร็จ — กรุณาตรวจสอบการเชื่อมต่อ',
+    'support.free': 'Pixel Realms เล่นฟรี — และจะฟรีตลอดไป 💚',
+    'support.cost': 'ค่าเซิร์ฟเวอร์เดือน {month}: ${bill} · ผู้สนับสนุนช่วยแล้ว {pct}%',
+    'support.btn': '☕ ช่วยค่าเซิร์ฟเวอร์',
 
     'chat.placeholder': 'กด Enter เพื่อแชท…',
     'chat.you': 'คุณ',

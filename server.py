@@ -431,6 +431,28 @@ def load_announcements():
         return []
 
 
+# Server-published support info (M0 tip jar + transparent server-cost meter).
+# Read from support.json at request time so the owner can update the link and
+# the monthly cost/raised numbers without a code change. Fields:
+#   link, linkLabel (str), month (str), billUsd, raisedUsd (numbers).
+def load_support():
+    default = {"link": "", "linkLabel": "", "month": "", "billUsd": 0, "raisedUsd": 0}
+    try:
+        with open(os.path.join(ROOT, "support.json"), encoding="utf-8") as f:
+            data = json.load(f)
+        if not isinstance(data, dict):
+            return default
+        return {
+            "link": str(data.get("link", ""))[:300],
+            "linkLabel": str(data.get("linkLabel", ""))[:60],
+            "month": str(data.get("month", ""))[:40],
+            "billUsd": max(0, float(data.get("billUsd", 0) or 0)),
+            "raisedUsd": max(0, float(data.get("raisedUsd", 0) or 0)),
+        }
+    except Exception:
+        return default
+
+
 def handle_api(writer, method: str, raw_path: str, body: bytes, headers: dict):
     path, _, query = raw_path.partition("?")
     if method == "OPTIONS":
@@ -441,6 +463,9 @@ def handle_api(writer, method: str, raw_path: str, body: bytes, headers: dict):
         return
     if method == "GET" and path == "/api/announcements":
         http_json(writer, "200 OK", {"items": load_announcements()})
+        return
+    if method == "GET" and path == "/api/support":
+        http_json(writer, "200 OK", load_support())
         return
     if method == "GET" and path == "/api/name-available":
         params = urllib.parse.parse_qs(query)

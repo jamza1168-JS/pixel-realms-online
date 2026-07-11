@@ -1009,6 +1009,7 @@ const UI = {
   /* ---------- Announcements (server-published patch notes) ---------- */
   async openNews() {
     this.$('news-panel').classList.remove('hidden');
+    this.loadSupport();   // show the tip-jar + cost meter atop the panel
     const box = this.$('news-content');
     box.innerHTML = `<div class="news-status">${escapeHtml(t('news.loading'))}</div>`;
     const base = this.game ? this.game.apiBase() : (location.protocol.startsWith('http') ? '' : null);
@@ -1038,6 +1039,45 @@ const UI = {
   },
 
   closeNews() { this.$('news-panel').classList.add('hidden'); },
+
+  /* ---------- Support / tip jar (M0, docs/MONETIZATION.md) ----------
+   * A transparent "the game is free, here's the server cost" block + an
+   * optional support link — server-published via /api/support so the owner
+   * updates the link and monthly numbers without a redeploy. */
+  supportHtml(d) {
+    if (!d) return '';
+    const bill = Math.max(0, Number(d.billUsd) || 0);
+    const raised = Math.max(0, Number(d.raisedUsd) || 0);
+    const pct = bill > 0 ? Math.min(100, Math.round(raised / bill * 100)) : 0;
+    let h = `<div class="support-box"><div class="support-msg">${escapeHtml(t('support.free'))}</div>`;
+    if (bill > 0) {
+      h += `<div class="support-meter"><div class="support-fill" style="width:${pct}%"></div></div>`;
+      h += `<div class="support-cost">${escapeHtml(t('support.cost', { month: d.month || '', bill: bill, pct: pct }))}</div>`;
+    }
+    const link = String(d.link || '');
+    if (/^https?:\/\//i.test(link)) {   // only real http(s) links become a button
+      const label = escapeHtml(d.linkLabel || t('support.btn'));
+      h += `<a class="pix-btn small support-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+    }
+    return h + `</div>`;
+  },
+
+  renderSupport() {
+    const html = this.supportHtml(this._support);
+    for (const id of ['title-support', 'news-support']) {
+      const el = this.$(id);
+      if (el) el.innerHTML = html;
+    }
+  },
+
+  loadSupport() {
+    const base = this.game ? this.game.apiBase() : (location.protocol.startsWith('http') ? '' : null);
+    if (base === null) return;   // offline (file://) — nothing to fetch
+    fetch(base + '/api/support')
+      .then(r => r.json())
+      .then(d => { this._support = d; this.renderSupport(); })
+      .catch(() => {});
+  },
 
   /* ---------- Trade ---------- */
   openTradePanel() {

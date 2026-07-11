@@ -1820,6 +1820,7 @@ function initTitle() {
 
   refreshContinue();
   showTitleStep();
+  UI.loadSupport();   // tip-jar + server-cost meter on the landing (M0)
   // if already signed in, pull the cloud character and update Continue
   if (Account.loggedIn) Account.loadCharacter().then(() => { refreshContinue(); showTitleStep(); });
 
@@ -2139,6 +2140,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // re-render open announcements in the newly-chosen language (content is
     // bilingual per item; the cached items just need re-picking)
     if (!document.getElementById('news-panel').classList.contains('hidden')) UI.renderNews(UI._newsItems || []);
+    UI.renderSupport();   // support block carries i18n strings too
   });
 
   applyI18n();

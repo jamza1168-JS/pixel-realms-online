@@ -248,6 +248,18 @@ kill. Minimap marks ogre + (live) dragon. `mobBaseStats` is the fitted
 curve reference for tuning new content. Interval/respawn constants live in
 `js/main.js`.
 
+**Rebalance Phase 2 — loot-tier rework (shipped, `docs/REBALANCE.md` §6.5):**
+drops are now **tier-constrained per archetype** via `TIER_DROP` +
+`lootProfile` (`data.js`), enforced by `rollItem({tierWeights})` /
+`rollTier({weights})` (`items.js`). Rules: **legend = boss-only, mystic =
+worldboss-only**; bosses & world bosses **never drop common/rare** (floor =
+unique); tougher enemy → higher floor + odds. `lootProfile` now always
+returns a profile (`{chance, rolls, tiers, ilvl, gold}`; `chance:null` =
+tier-scaled default). Explicit `rollItem({tier})` still forces a tier (tests
+rely on it). The 5 tiers and their stat mults are unchanged — only the drop
+distribution moved. Remaining Phase 2 (gold sinks: reforge/refine + ore,
+keys/chests, teleport, food) is still open.
+
 **Deferred by the user — remind them when they return:**
 1. Shield / off-hand slot to pair with the one-hand sword.
 2. Balance the new gear and tiers.

@@ -170,9 +170,33 @@ dragon≈L22 come out at today's 1400/3200 hp, 900/2200 xp):
   Tradable, **never sold for money**. Server: `sanitize_character` must
   accept `rows.length == 4` only on `awakened: true` items.
 - **Keys & treasure chests** (doc): locked chests spawn per map; keys
-  drop from **elites** (~15%). Chest = gold + potions + gear roll at
-  `bias +0.5`. Purpose: an active-play loot beat the AFK bot doesn't
-  chase (bot ignores chests) — reinforces "active play out-earns AFK."
+  drop from **elites** (~15%). Chest = gold + potions + gear roll.
+  Purpose: an active-play loot beat the AFK bot doesn't chase (bot ignores
+  chests) — reinforces "active play out-earns AFK."
+
+### 6.5 Drop-tier rules (owner's loot spec) — ✅ SHIPPED
+
+The tier that can drop is **constrained per archetype** so rarity means
+something and bosses are worth fighting (`TIER_DROP` + `lootProfile` in
+`data.js`, enforced by `rollItem({tierWeights})` in `items.js`):
+
+| Archetype | common | rare | unique | legend | mystic | rolls |
+|---|---|---|---|---|---|---|
+| normal    | 68 | 27 | 5  | — | — | 1 (tier-scaled chance) |
+| elite     | 30 | 45 | 25 | — | — | 1 (guaranteed) |
+| miniboss  | —  | 50 | 50 | — | — | 1 (guaranteed) |
+| **boss**  | —  | —  | 75 | 25 | — | 2 (guaranteed) |
+| **worldboss** | — | — | 50 | 35 | 15 | 3 (guaranteed) |
+
+Rules encoded (owner's requirements):
+- **Legend is boss-exclusive**; **Mystic is world-boss-exclusive** — no
+  normal/elite/miniboss can ever roll them.
+- **Bosses & world bosses never drop common/rare** (floor = unique).
+- Tougher enemy → higher floor + better odds; the legend/mystic drop
+  fanfare is now a genuine boss-kill moment.
+- A tier absent from an archetype's row simply can't roll there.
+- The 5 tiers themselves (common/rare/unique/legend/mystic) and their
+  stat multipliers are unchanged — only the *drop distribution* moved.
 
 ## 7. Consumables & life-skill hooks (doc's item list)
 
@@ -211,8 +235,10 @@ art from `docs/ART_REDESIGN.md` lands.
    fitted curve reproduces current mobs within ~10%, so there's no rush.
    Interval constants (`WORLDBOSS_INTERVAL`/`WARN`, `MINIBOSS_RESPAWN`) are
    in `js/main.js` — raise as the population grows.
-2. **P2 — Sinks:** reforge + refine (+ore drops from rocks), keys/chests,
-   teleport scrolls, food. (= R2 gold sinks, expanded.)
+2. **P2 — Loot & sinks:** ✅ **drop-tier rework SHIPPED** (§6.5: legend =
+   boss-only, mystic = worldboss-only, bosses floored at unique, per-
+   archetype tier weights). **Remaining P2:** reforge + refine (+ore drops
+   from rocks), keys/chests, teleport scrolls, food. (= R2 gold sinks.)
 3. **P3 — Maps 2–4 + portals:** map-per-room plumbing, level bands,
    gloves slot, teleport routing; migrate Map-1 high tiers out.
 4. **P4 — Equipment lines:** offhand slot (shield/book/quiver), new

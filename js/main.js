@@ -1186,17 +1186,16 @@ class Game {
       const prof = lootProfile(type, sp && sp.elite);
 
       const [gMin, gMax] = type.gold;
-      const goldMul = prof ? prof.gold : 1;
-      const gold = Math.round((gMin + Math.floor(Math.random() * (gMax - gMin + 1))) * goldMul);
+      const gold = Math.round((gMin + Math.floor(Math.random() * (gMax - gMin + 1))) * prof.gold);
       this.pickups.push(new Pickup('coin', x + 10, y, gold));
 
-      const dropChance = prof ? prof.chance : 0.05 + tier * 0.02;
-      const rolls = prof ? prof.rolls : 1;
-      const bias = (prof ? prof.bias : 0) + (tier - 1);
-      const ilvl = tier * 4 + (prof ? prof.ilvl : 0);
-      for (let r = 0; r < rolls; r++) {
+      // tier is constrained per archetype (legend = boss-only, mystic =
+      // worldboss-only, bosses never drop common/rare) via prof.tiers.
+      const dropChance = prof.chance != null ? prof.chance : 0.05 + tier * 0.02;
+      const ilvl = tier * 4 + prof.ilvl;
+      for (let r = 0; r < prof.rolls; r++) {
         if (Math.random() >= dropChance) continue;
-        const item = rollItem({ ilvl, bias });
+        const item = rollItem({ ilvl, tierWeights: prof.tiers });
         this.pickups.push(new Pickup('gear', x + (Math.random() * 30 - 15), y + 6, item));
         // fanfare + a callout toast when something truly rare drops
         if (item.tier === 'legend' || item.tier === 'mystic') {

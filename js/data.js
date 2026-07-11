@@ -232,17 +232,35 @@ function enemyArchetype(type, elite) {
   return 'normal';
 }
 
-/* Loot profile per archetype. `chance` = drop probability (1 = guaranteed),
- * `rolls` = number of gear rolls, `bias` = rarity bias added to the tier
- * bias, `ilvl` = flat item-level bonus, `gold` = coin multiplier.
- * `normal` returns null → the tier-based default applies. */
+/* ---------- Loot tier tables by archetype (docs/REBALANCE.md §6.5) ----------
+ * Which item tiers each archetype can drop, and their relative weights.
+ * Design rules (owner's spec):
+ *   - LEGEND is exclusive to bosses + world bosses.
+ *   - MYSTIC is exclusive to the world boss.
+ *   - Bosses / world bosses never drop the two lowest tiers (common/rare):
+ *     their floor is UNIQUE.
+ *   - The tougher the enemy, the higher the floor and the better the odds.
+ * A tier not listed here can never drop from that archetype. */
+const TIER_DROP = {
+  normal:    { common: 68, rare: 27, unique: 5 },
+  elite:     { common: 30, rare: 45, unique: 25 },
+  miniboss:  { rare: 50, unique: 50 },
+  boss:      { unique: 75, legend: 25 },
+  worldboss: { unique: 50, legend: 35, mystic: 15 },
+};
+
+/* Loot profile per archetype. `chance` = drop probability (1 = guaranteed;
+ * null = use the caller's tier-scaled default), `rolls` = number of gear
+ * rolls, `tiers` = the tier weight table above, `ilvl` = flat item-level
+ * bonus, `gold` = coin multiplier. Always returns a profile so callers
+ * (main.js drops) can stay uniform. */
 function lootProfile(type, elite) {
   switch (enemyArchetype(type, elite)) {
-    case 'worldboss': return { chance: 1, rolls: 3, bias: 2.5, ilvl: 16, gold: 12 };
-    case 'boss':      return { chance: 1, rolls: 2, bias: 2.0, ilvl: 12, gold: 8 };
-    case 'miniboss':  return { chance: 1, rolls: 1, bias: 1.0, ilvl: 8,  gold: 5 };
-    case 'elite':     return { chance: 1, rolls: 1, bias: 0.5, ilvl: 4,  gold: 3 };
-    default:          return null;
+    case 'worldboss': return { chance: 1,    rolls: 3, tiers: TIER_DROP.worldboss, ilvl: 16, gold: 12 };
+    case 'boss':      return { chance: 1,    rolls: 2, tiers: TIER_DROP.boss,      ilvl: 12, gold: 8 };
+    case 'miniboss':  return { chance: 1,    rolls: 1, tiers: TIER_DROP.miniboss,  ilvl: 8,  gold: 5 };
+    case 'elite':     return { chance: 1,    rolls: 1, tiers: TIER_DROP.elite,     ilvl: 4,  gold: 3 };
+    default:          return { chance: null, rolls: 1, tiers: TIER_DROP.normal,    ilvl: 0,  gold: 1 };
   }
 }
 

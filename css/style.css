@@ -73,6 +73,7 @@ html, body {
 .pix-btn:hover:not(:disabled) { background: #39406b; }
 .pix-btn:active:not(:disabled) { transform: translateY(3px); box-shadow: none; }
 .pix-btn:disabled { opacity: .4; cursor: default; }
+.pix-btn.disabled { opacity: .45; }   /* affordable-hint only; click still guarded */
 .pix-btn.big { font-size: 14px; padding: 14px 28px; background: #4a3a7a; }
 .pix-btn.big:hover:not(:disabled) { background: #5d4a99; }
 .pix-btn.small { font-size: 10px; padding: 6px 10px; }

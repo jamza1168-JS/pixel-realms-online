@@ -54,6 +54,13 @@ const POTIONS = {
   regen: { key: 'regen', kind: 'potion', icon: '💚', color: '#7ee98a', price: 60,  buff: { tag: 'pot_regen', kind: 'regenMul', v: 3.0,  t: 30, icon: '💚', name: 'buff.pot_regen' } },
 };
 
+/* ---------- Materials (Phase 2b) ----------
+ * Stackable crafting resources. `ore` fuels gear refining. Materials have
+ * no rolls and stack by key like potions. */
+const MATERIALS = {
+  ore: { key: 'ore', kind: 'material', icon: '🪨', color: '#b79b6e', price: 12 },
+};
+
 /* ---------- Rollable stats (affixes) ---------- */
 /* stat keys map onto the character sheet:
  *   str/agi/int/vit/luk add to base stats; hp/mp/atk/matk/crit/spd
@@ -137,6 +144,38 @@ function makePotion(key, count = 1) {
   return { uid: itemUid(), key, kind: 'potion', count };
 }
 
+function makeMaterial(key, count = 1) {
+  return { uid: itemUid(), key, kind: 'material', count };
+}
+
+/* Items that stack by key (count), rather than being unique instances. */
+function isStackable(item) { return item.kind === 'potion' || item.kind === 'material'; }
+
+/* ---------- Refine (Phase 2b, docs/REBALANCE.md §9.1) ----------
+ * Upgrade a gear piece +0→+9. Each step boosts its power (weapon damage /
+ * armor rolled rows — applied in equipAgg). Costs gold + ore; can fail past
+ * +4 and drop a step, but never destroys the item. `refine` rides on the
+ * item and is clamped 0..MAX_REFINE server-side. */
+const MAX_REFINE = 9;
+const REFINE_ODDS = [1, 1, 1, 1, 0.8, 0.7, 0.6, 0.5, 0.4];   // index = current level → next
+
+function refineCost(item) {
+  const mult = (ITEM_TIERS[item.tier] || ITEM_TIERS.common).mult;
+  const r = item.refine || 0;
+  return { gold: Math.round(150 * mult * (r + 1) * (r + 1)), ore: r + 1 };
+}
+
+/* Success chance for the NEXT refine step (0 if already maxed). */
+function refineChance(item) {
+  const r = item.refine || 0;
+  return r >= MAX_REFINE ? 0 : REFINE_ODDS[r];
+}
+
+/* Per-level power bonus applied to an equipped item (see equipAgg):
+ *   weapon → +4% damage per level; armor → +3% to rolled rows per level. */
+function refineWeaponMul(r) { return 1 + 0.04 * (r || 0); }
+function refineArmorMul(r) { return 1 + 0.03 * (r || 0); }
+
 /* ---------- Reforge (Phase 2a, docs/REBALANCE.md §9.1) ----------
  * Reroll ONE chosen affix row's value in place. A per-item counter `rr`
  * makes each successive reforge on the same item cost more — the endgame
@@ -168,14 +207,20 @@ function reforgeRow(item, rowIdx) {
 /* Gold a merchant pays for an item (gear scales with tier + level). */
 function sellValue(item) {
   if (item.kind === 'potion') return Math.max(1, Math.floor((POTIONS[item.key].price || 20) * 0.4)) * (item.count || 1);
+  if (item.kind === 'material') return Math.max(1, Math.floor(((MATERIALS[item.key] || {}).price || 10) * 0.5)) * (item.count || 1);
   const ti = TIER_ORDER.indexOf(item.tier);
   return Math.round((ti + 1) * 14 * (1 + ((item.ilvl || 1) - 1) * 0.1));
 }
 
 function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-/* Sort rank for a gear tier (mystic highest); potions sort last. */
-function tierRank(item) { return item.kind === 'potion' ? -1 : TIER_ORDER.indexOf(item.tier); }
+/* Sort rank for the inventory grid: gear by tier (mystic highest), then
+ * potions, then materials last. */
+function tierRank(item) {
+  if (item.kind === 'material') return -2;
+  if (item.kind === 'potion') return -1;
+  return TIER_ORDER.indexOf(item.tier);
+}
 
 /* A gear item's flat stat contribution, for side-by-side comparison.
  * Merges rolled rows with the weapon base modifiers (as readable fields). */
@@ -195,6 +240,7 @@ function itemStatMap(item) {
 /* Template lookup for any item instance. */
 function itemBase(item) {
   if (item.kind === 'potion') return POTIONS[item.key];
+  if (item.kind === 'material') return MATERIALS[item.key];
   if (item.kind === 'weapon') return WEAPONS[item.key];
   return ARMOR[item.key];
 }
@@ -202,30 +248,36 @@ function itemBase(item) {
 function itemIcon(item) { const b = itemBase(item); return b ? b.icon : '❓'; }
 function itemColor(item) {
   if (item.kind === 'potion') return POTIONS[item.key].color;
+  if (item.kind === 'material') return (MATERIALS[item.key] || {}).color || '#c2c8d6';
   return (ITEM_TIERS[item.tier] || ITEM_TIERS.common).color;
 }
 
-/* i18n display name: potions by key; gear = "<Tier> <Base>". */
+/* i18n display name: potions/materials by key; gear = "<Tier> <Base>" with
+ * a "+R" refine suffix when refined. */
 function itemName(item) {
   if (item.kind === 'potion') return t('item.' + item.key);
-  const base = t('gear.' + item.key);
-  return t('tier.' + item.tier) + ' ' + base;
+  if (item.kind === 'material') return t('mat.' + item.key);
+  const base = t('tier.' + item.tier) + ' ' + t('gear.' + item.key);
+  return item.refine ? base + ' +' + item.refine : base;
 }
 
 /* Export a light-weight, save-safe copy (drops runtime-only fields). */
 function itemToSave(item) {
   if (item.kind === 'potion') return { key: item.key, kind: 'potion', count: item.count || 1 };
+  if (item.kind === 'material') return { key: item.key, kind: 'material', count: item.count || 1 };
   return { uid: item.uid, key: item.key, kind: item.kind, slot: item.slot, tier: item.tier,
-           ilvl: item.ilvl, rows: item.rows, rr: item.rr || 0 };
+           ilvl: item.ilvl, rows: item.rows, rr: item.rr || 0, refine: item.refine || 0 };
 }
 
 function itemFromSave(o) {
   if (!o || !o.kind) return null;
   if (o.kind === 'potion') { return POTIONS[o.key] ? makePotionFrom(o) : null; }
+  if (o.kind === 'material') { return MATERIALS[o.key] ? makeMaterialFrom(o) : null; }
   const table = o.kind === 'weapon' ? WEAPONS : ARMOR;
   if (!table[o.key] || !Array.isArray(o.rows)) return null;
   return { uid: o.uid || itemUid(), key: o.key, kind: o.kind, slot: table[o.key].slot,
            tier: ITEM_TIERS[o.tier] ? o.tier : 'common', ilvl: o.ilvl || 1, rows: o.rows,
-           rr: Math.max(0, o.rr | 0) };
+           rr: Math.max(0, o.rr | 0), refine: Math.max(0, Math.min(MAX_REFINE, o.refine | 0)) };
 }
 function makePotionFrom(o) { return { uid: itemUid(), key: o.key, kind: 'potion', count: Math.max(1, o.count | 0) }; }
+function makeMaterialFrom(o) { return { uid: itemUid(), key: o.key, kind: 'material', count: Math.max(1, o.count | 0) }; }

@@ -46,6 +46,9 @@ node shop_test.js                  # merchant buy/sell, storage deposit/withdraw
                                    #   hotkey potion assign/use/key, save/load
 node reforge_test.js               # Phase 2a reforge: cost escalation, row reroll
                                    #   within cap, gold spend, rr save round-trip, UI click
+node refine_test.js                # Phase 2b ore+refine: ore stacking, refine cost/odds,
+                                   #   stat bonus, fail-drops-a-step, save round-trip,
+                                   #   rock mining + cooldown, real-click Refine
 ```
 
 If Playwright can't find a browser, point `PW_CHROMIUM` at a Chromium binary:

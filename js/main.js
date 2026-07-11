@@ -1204,6 +1204,13 @@ class Game {
           UI.toast(itemIcon(item) + ' ' + t('inv.rareDrop', { name: itemName(item) }), 'gold');
         }
       }
+
+      // refine ore (Phase 2b): archetypes drop a guaranteed batch; tier-4
+      // normal mobs have a small chance. Carried by a 'gear' pickup (which
+      // addItem-stacks materials on collect).
+      let oreN = prof.ore || 0;
+      if (!oreN && tier >= 4 && Math.random() < 0.10) oreN = 1;
+      if (oreN > 0) this.pickups.push(new Pickup('gear', x - (Math.random() * 24 + 6), y + 6, makeMaterial('ore', oreN)));
     }
 
     if (isBoss) {
@@ -1261,9 +1268,11 @@ class Game {
     const d = p.derived;
     if (pk.kind === 'gear') {
       p.addItem(pk.value);
-      this.addFloatText(p.x, p.y - 46, itemIcon(pk.value) + ' ' + itemName(pk.value), itemColor(pk.value));
-      UI.toast(t('inv.got', { name: itemName(pk.value) }), 'gold');
-      this.sfx('levelup');
+      const isMat = pk.value.kind === 'material';
+      const label = itemIcon(pk.value) + ' ' + itemName(pk.value) + (isMat && (pk.value.count || 1) > 1 ? ' ×' + pk.value.count : '');
+      this.addFloatText(p.x, p.y - 46, label, itemColor(pk.value));
+      if (isMat) { this.sfx('pickup'); }         // quiet: materials aren't fanfare
+      else { UI.toast(t('inv.got', { name: itemName(pk.value) }), 'gold'); this.sfx('levelup'); }
       this.save();
       return;
     }
@@ -1343,6 +1352,80 @@ class Game {
     const arrow = nv > before ? '▲' : (nv < before ? '▼' : '=');
     this.addFloatText(p.x, p.y - 40, '⚒ ' + t('rstat.' + row.stat) + ' ' + before + '→' + nv + arrow,
       nv >= before ? '#7ee98a' : '#e8a0a0');
+    this.save();
+    return true;
+  }
+
+  /* ---------- Refine + materials (Phase 2b) ---------- */
+  /* Total count of a material key in the bag. */
+  matCount(p, key) {
+    let n = 0;
+    for (const it of p.inventory) if (it.kind === 'material' && it.key === key) n += (it.count || 1);
+    return n;
+  }
+
+  spendMaterial(p, key, n) {
+    for (const it of p.inventory.slice()) {
+      if (n <= 0) break;
+      if (it.kind === 'material' && it.key === key) {
+        const take = Math.min(n, it.count || 1);
+        p.removeItem(it, take);
+        n -= take;
+      }
+    }
+  }
+
+  /* Attempt to refine a BAG gear item, spending gold + ore. Success raises
+   * +1; a failed attempt past +4 drops one step — the item never breaks. */
+  refine(p, item) {
+    if (!item || (item.kind !== 'weapon' && item.kind !== 'armor')) return null;
+    if (!p.inventory.includes(item)) return null;   // bag only (unequip first)
+    if ((item.refine || 0) >= MAX_REFINE) { UI.toast(t('inv.refineMax'), 'info'); this.sfx('point'); return null; }
+    const cost = refineCost(item);
+    if (p.gold < cost.gold || this.matCount(p, 'ore') < cost.ore) {
+      UI.toast(t('inv.refineNeed', { g: cost.gold, o: cost.ore }), 'info'); this.sfx('point'); return null;
+    }
+    p.gold -= cost.gold;
+    this.spendMaterial(p, 'ore', cost.ore);
+    const success = Math.random() < refineChance(item);
+    if (success) {
+      item.refine = (item.refine || 0) + 1;
+      this.sfx('levelup');
+      this.addFloatText(p.x, p.y - 46, '⚒ +' + item.refine + ' ✔', '#7ee98a');
+      this.addEffect({ type: 'ring', x: p.x, y: p.y - 12, dur: 0.4, color: '#ffd75e', r: 30 });
+    } else {
+      item.refine = Math.max(0, (item.refine || 0) - 1);
+      this.sfx('hurt');
+      this.addFloatText(p.x, p.y - 46, '⚒ +' + item.refine + ' ✘', '#e8a0a0');
+    }
+    this.save();
+    return { success, refine: item.refine };
+  }
+
+  /* Mine an adjacent rock (manual — pressing attack next to a rock with no
+   * enemy in melee range). Per-rock 60s LOCAL cooldown; no world mutation so
+   * it never desyncs multiplayer. Returns true if it mined. */
+  tryMineNear(p) {
+    for (const e of this.enemies) {           // don't intercept combat
+      if (!e.dead && Math.hypot(e.x - p.x, e.y - p.y) < 70) return false;
+    }
+    const ptx = Math.floor(p.x / TILE), pty = Math.floor(p.y / TILE);
+    let best = null, bestD = 9;
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+      const obj = this.world.objects.get((ptx + ox) + ',' + (pty + oy));
+      if (obj && obj.type === 'rock') {
+        const d = Math.abs(ox) + Math.abs(oy);
+        if (d < bestD) { bestD = d; best = obj; }
+      }
+    }
+    if (!best || (best.mineT || 0) > this.time) return false;
+    best.mineT = this.time + 60;
+    const n = 1 + (Math.random() < 0.35 ? 1 : 0);
+    p.addItem(makeMaterial('ore', n));
+    const rx = best.tx * TILE + TILE / 2, ry = best.ty * TILE + TILE / 2;
+    this.addFloatText(rx, ry, '🪨 +' + n, '#d8c8a0');
+    this.addEffect({ type: 'spark', x: rx, y: ry, dur: 0.2, color: '#b79b6e', r: 12 });
+    this.sfx('hit');
     this.save();
     return true;
   }
@@ -1477,7 +1560,10 @@ class Game {
 
     for (const d of drawables) {
       if (d.obj) {
+        const cooling = (d.obj.mineT || 0) > this.time;   // mined rock, on cooldown
+        if (cooling) g.globalAlpha = 0.45;
         drawSprite(g, d.obj.type, false, Math.round(d.obj.tx * TILE - 8 - cam.x), Math.round(d.obj.ty * TILE - 16 - cam.y), 48, false, 0);
+        if (cooling) g.globalAlpha = 1;
       } else if (d.ent) {
         d.ent.draw(g, cam);
       } else if (d.pk) {

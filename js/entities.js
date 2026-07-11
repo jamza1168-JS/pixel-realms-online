@@ -81,10 +81,14 @@ class Player {
     for (const slot of EQUIP_SLOTS) {
       const it = this.equip[slot];
       if (!it) continue;
-      for (const row of it.rows) if (row.stat in agg) agg[row.stat] += row.val;
+      // refine: armor boosts its rolled rows, weapon boosts its damage (below)
+      const R = it.refine || 0;
+      const rowMul = it.kind === 'armor' ? refineArmorMul(R) : 1;
+      for (const row of it.rows) if (row.stat in agg) agg[row.stat] += Math.round(row.val * rowMul);
       const base = itemBase(it);
       if (base && base.base) {
-        if (base.base.dmgMul) agg.dmgMul *= base.base.dmgMul;
+        const wMul = it.kind === 'weapon' ? refineWeaponMul(R) : 1;
+        if (base.base.dmgMul) agg.dmgMul *= base.base.dmgMul * wMul;
         if (base.base.aspdMul) agg.aspdMul *= base.base.aspdMul;
         if (base.base.spd) agg.spd += base.base.spd;
       }
@@ -92,11 +96,11 @@ class Player {
     return agg;
   }
 
-  /* Add to a list, stacking potions of the same key. */
+  /* Add to a list, stacking potions/materials of the same key. */
   _addTo(list, item) {
     if (!item) return;
-    if (item.kind === 'potion') {
-      const stack = list.find(i => i.kind === 'potion' && i.key === item.key);
+    if (isStackable(item)) {
+      const stack = list.find(i => i.kind === item.kind && i.key === item.key);
       if (stack) { stack.count += (item.count || 1); return; }
     }
     list.push(item);
@@ -105,7 +109,7 @@ class Player {
   _removeFrom(list, item, n = 1) {
     const i = list.indexOf(item);
     if (i < 0) return;
-    if (item.kind === 'potion' && (item.count || 1) > n) { item.count -= n; return; }
+    if (isStackable(item) && (item.count || 1) > n) { item.count -= n; return; }
     list.splice(i, 1);
   }
 
@@ -114,15 +118,17 @@ class Player {
 
   /* Move an item between the bag and the storage stash. */
   depositItem(item, n) {
-    const move = (item.kind === 'potion') ? Math.min(n || (item.count || 1), item.count || 1) : 1;
+    const stk = isStackable(item);
+    const move = stk ? Math.min(n || (item.count || 1), item.count || 1) : 1;
     this._removeFrom(this.inventory, item, move);
-    this._addTo(this.storage, item.kind === 'potion' ? { uid: itemUid(), key: item.key, kind: 'potion', count: move } : item);
+    this._addTo(this.storage, stk ? { uid: itemUid(), key: item.key, kind: item.kind, count: move } : item);
   }
 
   withdrawItem(item, n) {
-    const move = (item.kind === 'potion') ? Math.min(n || (item.count || 1), item.count || 1) : 1;
+    const stk = isStackable(item);
+    const move = stk ? Math.min(n || (item.count || 1), item.count || 1) : 1;
     this._removeFrom(this.storage, item, move);
-    this._addTo(this.inventory, item.kind === 'potion' ? { uid: itemUid(), key: item.key, kind: 'potion', count: move } : item);
+    this._addTo(this.inventory, stk ? { uid: itemUid(), key: item.key, kind: item.kind, count: move } : item);
   }
 
   /* Equip a gear item from the inventory into its slot,
@@ -196,7 +202,9 @@ class Player {
     // basic attack (aspdMul buff — e.g. an Attack-Speed potion — shortens the gap)
     if (input.attack && this.attackT <= 0) {
       this.attackT = d.atkCd / this.buffMul('aspdMul');
-      if (this.cls.attackType === 'melee') {
+      if (g.tryMineNear && g.tryMineNear(this)) {
+        // swung at an adjacent rock instead of attacking (no enemy near)
+      } else if (this.cls.attackType === 'melee') {
         g.meleeArc(this, this.cls.attackRange, 1.0, '#ffffff');
         g.addEffect({ type: 'slash', x: this.x + this.face.x * 26, y: this.y + this.face.y * 26 - 12, dur: 0.15, color: '#ffffff', r: 24 });
         g.sfx('swing');

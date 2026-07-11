@@ -137,6 +137,34 @@ function makePotion(key, count = 1) {
   return { uid: itemUid(), key, kind: 'potion', count };
 }
 
+/* ---------- Reforge (Phase 2a, docs/REBALANCE.md §9.1) ----------
+ * Reroll ONE chosen affix row's value in place. A per-item counter `rr`
+ * makes each successive reforge on the same item cost more — the endgame
+ * gold sink. The new value uses the exact same row math as rollItem
+ * (tier mult × item-level scale), so it can never exceed the server's
+ * row_cap; no extra clamp is needed. */
+function reforgeCost(item) {
+  const mult = (ITEM_TIERS[item.tier] || ITEM_TIERS.common).mult;
+  const n = item.rr || 0;
+  return Math.round(200 * mult * Math.pow(2, n));
+}
+
+/* Reroll row `rowIdx` (same stat, fresh value). Returns the new value,
+ * or null if the row/stat is invalid. Increments `rr`. */
+function reforgeRow(item, rowIdx) {
+  if (!item || (item.kind !== 'weapon' && item.kind !== 'armor')) return null;
+  const row = item.rows && item.rows[rowIdx];
+  if (!row) return null;
+  const aff = AFFIXES.find(a => a.stat === row.stat);
+  if (!aff) return null;
+  const tier = ITEM_TIERS[item.tier] || ITEM_TIERS.common;
+  const ilvlScale = 1 + ((item.ilvl || 1) - 1) * 0.12;
+  const raw = aff.min + Math.random() * (aff.max - aff.min);
+  row.val = Math.max(1, Math.round(raw * tier.mult * ilvlScale));
+  item.rr = (item.rr || 0) + 1;
+  return row.val;
+}
+
 /* Gold a merchant pays for an item (gear scales with tier + level). */
 function sellValue(item) {
   if (item.kind === 'potion') return Math.max(1, Math.floor((POTIONS[item.key].price || 20) * 0.4)) * (item.count || 1);
@@ -187,7 +215,8 @@ function itemName(item) {
 /* Export a light-weight, save-safe copy (drops runtime-only fields). */
 function itemToSave(item) {
   if (item.kind === 'potion') return { key: item.key, kind: 'potion', count: item.count || 1 };
-  return { uid: item.uid, key: item.key, kind: item.kind, slot: item.slot, tier: item.tier, ilvl: item.ilvl, rows: item.rows };
+  return { uid: item.uid, key: item.key, kind: item.kind, slot: item.slot, tier: item.tier,
+           ilvl: item.ilvl, rows: item.rows, rr: item.rr || 0 };
 }
 
 function itemFromSave(o) {
@@ -196,6 +225,7 @@ function itemFromSave(o) {
   const table = o.kind === 'weapon' ? WEAPONS : ARMOR;
   if (!table[o.key] || !Array.isArray(o.rows)) return null;
   return { uid: o.uid || itemUid(), key: o.key, kind: o.kind, slot: table[o.key].slot,
-           tier: ITEM_TIERS[o.tier] ? o.tier : 'common', ilvl: o.ilvl || 1, rows: o.rows };
+           tier: ITEM_TIERS[o.tier] ? o.tier : 'common', ilvl: o.ilvl || 1, rows: o.rows,
+           rr: Math.max(0, o.rr | 0) };
 }
 function makePotionFrom(o) { return { uid: itemUid(), key: o.key, kind: 'potion', count: Math.max(1, o.count | 0) }; }

@@ -240,7 +240,8 @@ art from `docs/ART_REDESIGN.md` lands.
    archetype tier weights). The remaining sinks are split into three small,
    independently-shippable sub-phases (§9.1) so each fits one focused
    coding session:
-   - **2a — Reforge** (gold-only sink; smallest, no new item kinds).
+   - **2a — Reforge** ✅ **SHIPPED** (gold-only sink; reroll one affix row,
+     escalating per-item cost).
    - **2b — Ore + Refine** (mineable material + gear upgrade; the core
      progression sink; touches the item save format + server anti-tamper).
    - **2c — Teleport scrolls + Keys/Chests** (convenience consumable +
@@ -264,7 +265,7 @@ Ordered by dependency and risk (2a is smallest). Each ships alone, is
 save-compatible with the phase before it, and adds its own test. **Ship in
 order** — 2b's ore feeds nothing in 2a, but 2c's chests reuse 2b's ore.
 
-### Phase 2a — Reforge (gold sink) — smallest, do first
+### Phase 2a — Reforge (gold sink) — ✅ SHIPPED
 *Goal: give endgame gold a purpose without any new item type or save-format
 risk.*
 - **Mechanic:** on a gear item, reroll ONE chosen affix row's value (same

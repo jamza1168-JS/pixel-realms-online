@@ -196,9 +196,21 @@ art from `docs/ART_REDESIGN.md` lands.
 
 ## 9. Rollout phases (each ships alone, save-compatible)
 
-1. **P1 — Curves + variants:** move `ENEMY_TYPES` to §3 curve generation
-   (existing mobs keep names/sprites); add elite variant spawning; enable
-   orc/ghost/ogre/dragon (= MONETIZATION.md R1); world-boss timer.
+1. **P1 — Curves + variants:** ✅ **SHIPPED.** Elite variant spawning
+   (deterministic ~1-in-9 promotion on tier 2+ spawns, ×3 HP / ×1.4 dmg /
+   ×3 XP + guaranteed better loot, tinted & larger with a pulsing aura);
+   orc + ghost enabled in the tier-3/4 pools; **ogre** miniboss lair
+   (10-min respawn) and **dragon** world boss (20-min timer with a 5-min
+   channel-wide warning, announced via system chat + toast) added.
+   Archetype **loot profiles** (`lootProfile`) unify elite/miniboss/boss/
+   worldboss drops (more rolls, rarity bias, extra gold). Bosses keep their
+   authored stats (not re-multiplied). `mobBaseStats` curve added as the
+   tuning reference for future content. *Deferred within P1:* fully
+   replacing authored mob stats with `mobBaseStats` generation — a pure,
+   player-invisible refactor best done with the full suite watching; the
+   fitted curve reproduces current mobs within ~10%, so there's no rush.
+   Interval constants (`WORLDBOSS_INTERVAL`/`WARN`, `MINIBOSS_RESPAWN`) are
+   in `js/main.js` — raise as the population grows.
 2. **P2 — Sinks:** reforge + refine (+ore drops from rocks), keys/chests,
    teleport scrolls, food. (= R2 gold sinks, expanded.)
 3. **P3 — Maps 2–4 + portals:** map-per-room plumbing, level bands,

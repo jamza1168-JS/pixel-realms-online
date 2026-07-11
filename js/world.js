@@ -143,21 +143,39 @@ class World {
         if (this.tierAt(px, py) !== tier) continue;
         const pool = TIER_ENEMIES[tier];
         const type = pool[Math.floor(rng() * pool.length)];
-        this.spawnPoints.push({ x: px, y: py, type, tier, enemy: null, respawnT: 0 });
+        // Deterministic elite promotion (tiers 2+ only, so the newbie ring
+        // stays gentle). Seeded rng → every client agrees without networking.
+        const elite = tier >= 2 && rng() < ELITE_CHANCE;
+        this.spawnPoints.push({ x: px, y: py, type, tier, elite, enemy: null, respawnT: 0 });
         placed++;
       }
     }
 
-    // Boss lair — far north-west, guaranteed walkable clearing
-    let bx = 14, by = 14;
-    for (let y = by - 3; y <= by + 3; y++) for (let x = bx - 3; x <= bx + 3; x++) {
-      const idx = y * MAP_W + x;
-      this.tiles[idx] = T_ASH;
-      this.solid[idx] = 0;
-      this.objects.delete(x + ',' + y);
-    }
-    this.bossPos = { x: bx * TILE + TILE / 2, y: by * TILE + TILE / 2 };
+    // Helper: carve a guaranteed walkable ash clearing around a tile.
+    const carveLair = (bx, by) => {
+      for (let y = by - 3; y <= by + 3; y++) for (let x = bx - 3; x <= bx + 3; x++) {
+        const idx = y * MAP_W + x;
+        this.tiles[idx] = T_ASH;
+        this.solid[idx] = 0;
+        this.objects.delete(x + ',' + y);
+      }
+      return { x: bx * TILE + TILE / 2, y: by * TILE + TILE / 2 };
+    };
+
+    // Boss lair — far north-west
+    this.bossPos = carveLair(14, 14);
     this.spawnPoints.push({ x: this.bossPos.x, y: this.bossPos.y, type: 'demon', tier: 4, enemy: null, respawnT: 0, boss: true });
+
+    // Ogre miniboss lair — far north-east tier-4 wastes; roams & respawns
+    // on a long timer (Game handles the miniboss respawn cadence).
+    this.ogrePos = carveLair(MAP_W - 15, 14);
+    this.spawnPoints.push({ x: this.ogrePos.x, y: this.ogrePos.y, type: 'ogre', tier: 4, enemy: null, respawnT: 0, miniboss: true });
+
+    // Dragon WORLD BOSS lair — far south, dead centre of the ash wastes.
+    // Not spawned at world-load: the Game's world-boss timer controls it.
+    this.worldBossPos = carveLair(MAP_W >> 1, MAP_H - 15);
+    this.worldBossSpawn = { x: this.worldBossPos.x, y: this.worldBossPos.y, type: 'dragon', tier: 4, enemy: null, respawnT: 0, worldboss: true };
+    this.spawnPoints.push(this.worldBossSpawn);
 
     // stable ids so networked clients can reference enemies by spawn index
     this.spawnPoints.forEach((sp, i) => { sp.idx = i; });

@@ -226,10 +226,27 @@ from any session via `tools/art/README.md`. It's **code-authored** pixel art
 Remaining procedural art (`js/sprites.js`) is still the fallback for everything
 not yet in a sheet.
 
-**Art redesign (target/spec):** see `docs/ART_REDESIGN.md` + `docs/ASSETS.md`. New procedural **content assets** added for future systems: `orc`,
-`ghost` (mobs), `ogre` (`miniboss:true`), `dragon` (`boss+worldboss:true`),
-`portal` (warp) — sprites in `js/sprites.js`, stats in `ENEMY_TYPES`, but **not**
-in `TIER_ENEMIES` so they don't spawn yet.
+**Art redesign (target/spec):** see `docs/ART_REDESIGN.md` + `docs/ASSETS.md`. New procedural **content assets**: `orc`, `ghost` (mobs), `ogre`
+(`miniboss:true`), `dragon` (`boss+worldboss:true`), `portal` (warp) —
+sprites in `js/sprites.js`, stats in `ENEMY_TYPES`. **All now live** (see
+Phase 1 below); `portal` is still only art (no warp system yet).
+
+**Rebalance Phase 1 (shipped, see `docs/REBALANCE.md` §9):** enemy
+**archetypes** — normal mobs roll **elite** (`ELITE_CHANCE ≈ 1/9`,
+deterministic from the world seed so all clients agree; `ELITE_MULT` = ×3
+HP / ×1.4 dmg / ×3 XP; tinted, larger, pulsing aura; guaranteed better
+loot). `enemyArchetype`/`lootProfile` (in `data.js`) unify elite/miniboss/
+boss/worldboss **loot** (more rolls, rarity bias, gold mult); bosses keep
+their authored stats (NOT re-multiplied — only elites re-scale). orc/ghost
+added to `TIER_ENEMIES` (tiers 3–4). `world.js` adds an **ogre** miniboss
+lair (10-min respawn) + a **dragon world-boss** lair (`worldBossSpawn`,
+skipped by the normal respawn loop). `Game.updateWorldBoss` (host-only)
+drives the dragon on `WORLDBOSS_INTERVAL` (20 min) with a `WORLDBOSS_WARN`
+(5 min) channel-wide notice via **system chat** (`{t:'chat', sys:1}` →
+`onChat` shows it with a ★, no player bubble) + toast; `resetWorldBoss` on
+kill. Minimap marks ogre + (live) dragon. `mobBaseStats` is the fitted
+curve reference for tuning new content. Interval/respawn constants live in
+`js/main.js`.
 
 **Deferred by the user — remind them when they return:**
 1. Shield / off-hand slot to pair with the one-hand sword.

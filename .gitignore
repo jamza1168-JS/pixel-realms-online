@@ -3,6 +3,11 @@
 __pycache__/
 *.pyc
 
+# test tooling (playwright installed locally per tests/README.md)
+node_modules/
+package.json
+package-lock.json
+
 # server runtime data
 leaderboard.json
 accounts.db

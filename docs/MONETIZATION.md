@@ -207,8 +207,9 @@ transparent server-meter framing works: the goal is visibly achievable.
 
 ## 7. Sequenced checklist (single source of truth)
 
-1. ☐ R1: orc/ghost into spawn tables; ogre miniboss; dragon world-boss
-   timer + announcement toast.
+1. ☑ R1: orc/ghost into spawn tables; ogre miniboss; dragon world-boss
+   timer + announcement toast. **SHIPPED** (+ elite variants & archetype
+   loot profiles — see `docs/REBALANCE.md` §9 P1).
 2. ☐ R2: gold sinks (affix reroll server-validated, storage tabs, gold
    dyes) → daily quests → login streak → monthly leaderboard seasons with
    cosmetic badges → achievements.

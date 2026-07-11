@@ -614,6 +614,11 @@ const UI = {
       g.fillStyle = '#ff3050';
       g.fillRect(game.world.bossPos.x * sx - 2, game.world.bossPos.y * sy - 2, 4, 4);
     }
+    // warp portals
+    if (game.world.portals) {
+      g.fillStyle = '#b06ae0';
+      for (const p of game.world.portals) g.fillRect(p.x * sx - 2, p.y * sy - 2, 4, 4);
+    }
     // ogre miniboss
     if (game.world.ogrePos) {
       g.fillStyle = '#c97a3a';

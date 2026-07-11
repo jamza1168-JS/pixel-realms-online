@@ -347,6 +347,7 @@ class Game {
     this.pickups = this.pickups.filter(pk => pk.update(dt, this));
 
     this.updateChests();
+    this.updatePortals();
 
     // effects (auras heal)
     for (const fx of this.effects) {
@@ -1481,6 +1482,53 @@ class Game {
     this.save();
   }
 
+  /* ---------- Warp portals + biome maps (P3) ----------
+   * The hub is the shared multiplayer World; biome maps are SOLO instances
+   * (local sim). Warping between them rebuilds the world and swaps the net
+   * layer accordingly, reusing the existing online/local transitions. */
+  updatePortals() {
+    const portals = this.world.portals;
+    if (!portals || !portals.length || (this._warpCd || 0) > this.time) return;
+    const p = this.players[0];
+    if (!p || p.dead || p.afk) return;              // manual travel only
+    for (const portal of portals) {
+      if (Math.hypot(p.x - portal.x, p.y - portal.y) >= 28) continue;
+      // Biome zones are SOLO instances for now. Signed-in (online) players
+      // stay in the shared world; online zone instancing lands in P3b.
+      if (typeof Account !== 'undefined' && Account.loggedIn && portal.to !== 'hub') {
+        if ((this._portalGateT || 0) <= this.time) {
+          this._portalGateT = this.time + 4;
+          UI.toast(t('map.soon'), 'info'); this.sfx('point');
+        }
+        return;
+      }
+      this.warpTo(portal.to);
+      return;
+    }
+  }
+
+  /* Local map switch (guest/solo). Online players are gated in updatePortals
+   * until P3b brings robust online zone instancing. Rebuilds the world and
+   * drops the player at the destination entry; net stays LocalNet. */
+  warpTo(mapId) {
+    if (!MAPS[mapId] || (this.world && this.world.mapId === mapId)) return;
+    if (this.trade) { this.returnTradeEscrow(this.trade); this.trade = null; }
+    this.pendingTrade = null; UI.hideTradeRequest(); UI.closeTrade();
+    this.enemies = []; this.pickups = []; this.projectiles = []; this.effects = [];
+    this.ghosts.clear(); this.remotePlayers.clear();
+    this.world = new World(mapId);
+    this.worldBossT = WORLDBOSS_INTERVAL; this.worldBossWarned = false;
+    const ex = this.world.entryX != null ? this.world.entryX : this.world.spawnX;
+    const ey = this.world.entryY != null ? this.world.entryY : this.world.spawnY;
+    for (const pl of this.players) { pl.x = ex; pl.y = ey; }
+    this.cam.x = ex - this.canvas.width / 2;
+    this.cam.y = ey - this.canvas.height / 2;
+    this._warpCd = this.time + 1.2;
+    UI.toast(t(mapId === 'hub' ? 'map.toHub' : 'map.to_' + mapId), 'gold');
+    this.sfx('levelup');
+    this.save();
+  }
+
   /* ---------- Hotkey potion slots ---------- */
   /* Use the potion assigned to quick slot `i` (0-2), if any in the bag. */
   useQuickItem(p, i) {
@@ -1614,6 +1662,12 @@ class Game {
           drawables.push({ y: c.y, chest: c });
       }
     }
+    if (this.world.portals) {
+      for (const portal of this.world.portals) {
+        if (portal.x > cam.x - 60 && portal.x < cam.x + vw + 60 && portal.y > cam.y - 60 && portal.y < cam.y + vh + 60)
+          drawables.push({ y: portal.y, portal });
+      }
+    }
     drawables.sort((a, b) => a.y - b.y);
 
     for (const d of drawables) {
@@ -1625,6 +1679,8 @@ class Game {
       } else if (d.chest) {
         const bob = Math.round(Math.sin(this.time * 3 + d.chest.tx) * 1);
         drawSprite(g, 'chest', false, Math.round(d.chest.tx * TILE - 8 - cam.x), Math.round(d.chest.ty * TILE - 16 - cam.y + bob), 48, false, 0);
+      } else if (d.portal) {
+        drawSprite(g, 'portal', false, Math.round(d.portal.tx * TILE - 8 - cam.x), Math.round(d.portal.ty * TILE - 16 - cam.y), 48, true, this.time * 2);
       } else if (d.ent) {
         d.ent.draw(g, cam);
       } else if (d.pk) {

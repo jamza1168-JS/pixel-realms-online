@@ -206,6 +206,9 @@ const I18N = {
     'support.qrTitle': '💚 Support Pixel Realms',
     'support.qrHint': 'Scan this QR with your banking app to donate via PromptPay. Thank you for keeping the servers on! 🙏',
     'support.qrErr': 'Could not load the QR image. You can open it here:',
+    'map.toHub': '🌀 Warped back to the Village',
+    'map.to_forest': '🌀 Entered the Whispering Forest',
+    'map.soon': '🚧 Biome zones are open in solo play — online zones coming soon!',
 
     'chat.placeholder': 'Press Enter to chat…',
     'chat.you': 'You',
@@ -540,6 +543,9 @@ const I18N = {
     'support.qrTitle': '💚 สนับสนุน Pixel Realms',
     'support.qrHint': 'สแกน QR นี้ด้วยแอปธนาคารเพื่อบริจาคผ่านพร้อมเพย์ ขอบคุณที่ช่วยดูแลเซิร์ฟเวอร์! 🙏',
     'support.qrErr': 'โหลดรูป QR ไม่สำเร็จ เปิดดูได้ที่นี่:',
+    'map.toHub': '🌀 วาร์ปกลับสู่หมู่บ้าน',
+    'map.to_forest': '🌀 เข้าสู่ป่ากระซิบ',
+    'map.soon': '🚧 โซนไบโอมเปิดในโหมดเล่นคนเดียว — เร็วๆ นี้จะเปิดออนไลน์!',
 
     'chat.placeholder': 'กด Enter เพื่อแชท…',
     'chat.you': 'คุณ',

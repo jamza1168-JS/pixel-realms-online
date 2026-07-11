@@ -425,6 +425,27 @@ const SPRITE_DEFS = {
     ],
     palette: { p:'#6a2fb0', P:'#a86ae0', m:'#241038', M:'#d7b0ff', '.':null },
   },
+  chest: {
+    rows: [
+      '................',
+      '................',
+      '....wwwwwwww....',
+      '...wYYYYYYYYw...',
+      '..wYWWWWWWWWYw..',
+      '..wWWWWWWWWWWw..',
+      '..wwwwwwwwwwww..',
+      '..wYYYYLLYYYYw..',
+      '..wWWWWLLWWWWw..',
+      '..wWWWWWWWWWWw..',
+      '..wYYYYYYYYYYw..',
+      '..wWWWWWWWWWWw..',
+      '..wwwwwwwwwwww..',
+      '...dddddddddd...',
+      '................',
+      '................',
+    ],
+    palette: { w:'#6b4420', W:'#9c6a34', Y:'#ffd75e', L:'#3a2a10', d:'#2a1c0c', '.':null },
+  },
 };
 
 /* Sprite cache: SPRITES.slime, SPRITES.slime_f (flipped), heroes per class */

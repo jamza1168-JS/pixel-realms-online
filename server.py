@@ -170,8 +170,8 @@ sessions: dict = {}   # token -> account_id (in-memory; cleared on restart)
 
 ALLOWED_CLS = {"warrior", "mage", "archer", "cleric"}
 ALLOWED_TIERS = {"common", "rare", "unique", "legend", "mystic"}
-ALLOWED_POTIONS = {"hp", "mp", "spd", "atk", "aspd", "regen"}
-ALLOWED_MATERIALS = {"ore"}
+ALLOWED_POTIONS = {"hp", "mp", "spd", "atk", "aspd", "regen", "tele"}
+ALLOWED_MATERIALS = {"ore", "key"}
 ALLOWED_ARMOR = {"head", "chest", "legs", "boots"}
 ALLOWED_WEAPONS = {"sword1h", "sword2h", "staff", "bow"}
 ALLOWED_SLOTS = {"head", "chest", "hands", "legs", "boots"}

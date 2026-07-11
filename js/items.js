@@ -52,6 +52,8 @@ const POTIONS = {
   atk:   { key: 'atk',   kind: 'potion', icon: '💥', color: '#ff9a30', price: 60,  buff: { tag: 'pot_atk',   kind: 'dmgMul',   v: 1.30, t: 30, icon: '💥', name: 'buff.pot_atk' } },
   aspd:  { key: 'aspd',  kind: 'potion', icon: '⚡', color: '#a0e0ff', price: 60,  buff: { tag: 'pot_aspd',  kind: 'aspdMul',  v: 1.25, t: 30, icon: '⚡', name: 'buff.pot_aspd' } },
   regen: { key: 'regen', kind: 'potion', icon: '💚', color: '#7ee98a', price: 60,  buff: { tag: 'pot_regen', kind: 'regenMul', v: 3.0,  t: 30, icon: '💚', name: 'buff.pot_regen' } },
+  // Teleport scroll (Phase 2c): a consumable that warps you to the village.
+  tele:  { key: 'tele',  kind: 'potion', icon: '📜', color: '#c9a0ff', price: 80,  warp: 'village' },
 };
 
 /* ---------- Materials (Phase 2b) ----------
@@ -59,6 +61,7 @@ const POTIONS = {
  * no rolls and stack by key like potions. */
 const MATERIALS = {
   ore: { key: 'ore', kind: 'material', icon: '🪨', color: '#b79b6e', price: 12 },
+  key: { key: 'key', kind: 'material', icon: '🗝️', color: '#e8c860', price: 4 },
 };
 
 /* ---------- Rollable stats (affixes) ---------- */

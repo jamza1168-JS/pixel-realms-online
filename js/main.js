@@ -346,6 +346,8 @@ class Game {
     this.projectiles = this.projectiles.filter(pr => pr.update(dt, this));
     this.pickups = this.pickups.filter(pk => pk.update(dt, this));
 
+    this.updateChests();
+
     // effects (auras heal)
     for (const fx of this.effects) {
       fx.t = (fx.t || 0) + dt;
@@ -1211,6 +1213,12 @@ class Game {
       let oreN = prof.ore || 0;
       if (!oreN && tier >= 4 && Math.random() < 0.10) oreN = 1;
       if (oreN > 0) this.pickups.push(new Pickup('gear', x - (Math.random() * 24 + 6), y + 6, makeMaterial('ore', oreN)));
+
+      // chest keys (Phase 2c): guaranteed from mini/boss/worldboss, ~15%
+      // from elites. Keys open treasure chests found out in the world.
+      const keyN = (type.miniboss || type.boss || type.worldboss) ? 1
+        : (sp && sp.elite && Math.random() < 0.15) ? 1 : 0;
+      if (keyN > 0) this.pickups.push(new Pickup('gear', x + (Math.random() * 24 + 6), y - 4, makeMaterial('key', keyN)));
     }
 
     if (isBoss) {
@@ -1302,9 +1310,14 @@ class Game {
       p.mp = Math.min(d.maxMp, p.mp + d.maxMp * base.pct);
       this.addFloatText(p.x, p.y - 40, '+MP', '#3d8bff');
     }
+    if (base.warp === 'village') {
+      p.x = this.world.spawnX; p.y = this.world.spawnY;
+      this.addEffect({ type: 'ring', x: p.x, y: p.y - 12, dur: 0.5, color: '#c9a0ff', r: 44 });
+      this.addFloatText(p.x, p.y - 44, '✨', '#c9a0ff');
+    }
     if (base.buff) p.addBuff(Object.assign({}, base.buff));
     p.removeItem(item, 1);
-    this.sfx(base.buff ? 'buff' : 'heal');
+    this.sfx(base.warp ? 'skill' : (base.buff ? 'buff' : 'heal'));
     this.save();
     return true;
   }
@@ -1428,6 +1441,44 @@ class Game {
     this.sfx('hit');
     this.save();
     return true;
+  }
+
+  /* Treasure chests (Phase 2c): walking onto one with a key opens it for
+   * loot. Manual play only — the AFK bot never opens chests, keeping them an
+   * active-play reward. Opened locally (per-client), 5-min local respawn. */
+  updateChests() {
+    const chests = this.world.chests;
+    if (!chests) return;
+    for (const c of chests) {
+      if (c.openT > this.time) continue;           // opened; respawning
+      for (const p of this.players) {
+        if (p.dead || p.afk) continue;             // bot ignores chests
+        if (Math.hypot(p.x - c.x, p.y - c.y) >= 26) continue;
+        if (this.matCount(p, 'key') < 1) {
+          if ((c.hintT || 0) <= this.time) { c.hintT = this.time + 3; this.addFloatText(c.x, c.y - 20, '🗝️?', '#e8c860'); }
+          continue;
+        }
+        this.openChest(c, p);
+        break;
+      }
+    }
+  }
+
+  openChest(c, p) {
+    this.spendMaterial(p, 'key', 1);
+    c.openT = this.time + 300;                      // 5-min local respawn
+    const tier = Math.max(1, this.world.tierAt(c.x, c.y));
+    const gold = 30 + tier * 25 + Math.floor(Math.random() * (20 * tier));
+    p.gold += gold;
+    p.addItem(makePotion(pickRandom(['hp', 'mp']), 1));
+    // one gear roll — chest tier table (no legend/mystic; those stay boss-only)
+    const item = rollItem({ ilvl: tier * 4, tierWeights: TIER_DROP.elite });
+    p.addItem(item);
+    this.addFloatText(c.x, c.y - 30, '📦 +' + gold + '🪙', '#ffd75e');
+    this.addEffect({ type: 'ring', x: c.x, y: c.y - 8, dur: 0.6, color: '#ffd75e', r: 42 });
+    this.sfx(item.tier === 'legend' || item.tier === 'mystic' ? 'legendary' : 'levelup');
+    UI.toast('📦 ' + itemIcon(item) + ' ' + t('chest.opened', { name: itemName(item) }), 'gold');
+    this.save();
   }
 
   /* ---------- Hotkey potion slots ---------- */
@@ -1556,6 +1607,13 @@ class Game {
       }
     }
     for (const pk of this.pickups) drawables.push({ y: pk.y, pk });
+    if (this.world.chests) {
+      for (const c of this.world.chests) {
+        if (c.openT > this.time) continue;   // opened chests are hidden until respawn
+        if (c.x > cam.x - 60 && c.x < cam.x + vw + 60 && c.y > cam.y - 60 && c.y < cam.y + vh + 60)
+          drawables.push({ y: c.y, chest: c });
+      }
+    }
     drawables.sort((a, b) => a.y - b.y);
 
     for (const d of drawables) {
@@ -1564,6 +1622,9 @@ class Game {
         if (cooling) g.globalAlpha = 0.45;
         drawSprite(g, d.obj.type, false, Math.round(d.obj.tx * TILE - 8 - cam.x), Math.round(d.obj.ty * TILE - 16 - cam.y), 48, false, 0);
         if (cooling) g.globalAlpha = 1;
+      } else if (d.chest) {
+        const bob = Math.round(Math.sin(this.time * 3 + d.chest.tx) * 1);
+        drawSprite(g, 'chest', false, Math.round(d.chest.tx * TILE - 8 - cam.x), Math.round(d.chest.ty * TILE - 16 - cam.y + bob), 48, false, 0);
       } else if (d.ent) {
         d.ent.draw(g, cam);
       } else if (d.pk) {

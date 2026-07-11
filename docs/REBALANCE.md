@@ -235,17 +235,16 @@ art from `docs/ART_REDESIGN.md` lands.
    fitted curve reproduces current mobs within ~10%, so there's no rush.
    Interval constants (`WORLDBOSS_INTERVAL`/`WARN`, `MINIBOSS_RESPAWN`) are
    in `js/main.js` — raise as the population grows.
-2. **P2 — Loot & sinks:** ✅ **drop-tier rework SHIPPED** (§6.5: legend =
+2. **P2 — Loot & sinks:** ✅ **COMPLETE.** Drop-tier rework (§6.5: legend =
    boss-only, mystic = worldboss-only, bosses floored at unique, per-
-   archetype tier weights). The remaining sinks are split into three small,
-   independently-shippable sub-phases (§9.1) so each fits one focused
-   coding session:
+   archetype tier weights) + three sink sub-phases (§9.1), all shipped:
    - **2a — Reforge** ✅ **SHIPPED** (gold-only sink; reroll one affix row,
      escalating per-item cost).
    - **2b — Ore + Refine** ✅ **SHIPPED** (mineable ore material + gear
      refine +0→+9; gold + ore cost, fail past +4 drops a step, never breaks).
-   - **2c — Teleport scrolls + Keys/Chests** (next; convenience consumable +
-     active-play loot the AFK bot ignores).
+   - **2c — Teleport scrolls + Keys/Chests** ✅ **SHIPPED** (warp consumable;
+     keys from elites/bosses; seed-placed treasure chests opened by manual
+     play only). **Phase 2 complete.**
 3. **P3 — Maps 2–4 + portals:** map-per-room plumbing, level bands,
    gloves slot, teleport routing; migrate Map-1 high tiers out.
 4. **P4 — Equipment lines:** offhand slot (shield/book/quiver), new
@@ -309,7 +308,7 @@ risk.*
 - **Save-format change** (`refine`, material items) → include the migration
   check; old saves (no `refine`) must default to +0.
 
-### Phase 2c — Teleport scrolls + Keys / Treasure chests — convenience & active loot
+### Phase 2c — Teleport scrolls + Keys / Treasure chests — ✅ SHIPPED
 *Goal: a QoL consumable + an active-play loot beat the AFK bot won't touch.*
 - **Teleport scroll:** consumable (`kind:'consumable'` or reuse potion
   plumbing with a non-heal effect); `use` → warp the player to the village

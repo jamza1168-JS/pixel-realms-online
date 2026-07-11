@@ -49,6 +49,8 @@ node reforge_test.js               # Phase 2a reforge: cost escalation, row rero
 node refine_test.js                # Phase 2b ore+refine: ore stacking, refine cost/odds,
                                    #   stat bonus, fail-drops-a-step, save round-trip,
                                    #   rock mining + cooldown, real-click Refine
+node chest_test.js                 # Phase 2c: teleport scroll warp, seed-placed chests,
+                                   #   key-gated open + loot, AFK bot skips chests
 ```
 
 If Playwright can't find a browser, point `PW_CHROMIUM` at a Chromium binary:

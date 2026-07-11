@@ -251,6 +251,13 @@ public World so it never depends on a player's device. Two paths discussed —
 (server-authoritative, bigger rewrite). Needs confirmation that the Render
 environment can run Node alongside Python before starting.
 
+**Retention & monetization plan (proposed):** `docs/MONETIZATION.md` — fair,
+no-P2W money model (cosmetics / convenience / supporter packs only, never
+power), sequenced behind retention work first (enable orc/ghost/ogre/dragon
+spawns, world-boss timer, gold sinks, dailies, leaderboard seasons) and
+hard-gated on persistent storage before anything with entitlements is sold.
+Read it before touching prices, drops, or any shop/payment work.
+
 **Bigger backlog:** raise the 20-players/channel cap for a true massive
 shared world — requires server-authoritative simulation + area-of-interest
 (grid) filtering. Full architecture + staged migration plan (accounts/DB,

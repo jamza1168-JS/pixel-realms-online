@@ -251,6 +251,14 @@ public World so it never depends on a player's device. Two paths discussed —
 (server-authoritative, bigger rewrite). Needs confirmation that the Render
 environment can run Node alongside Python before starting.
 
+**Rebalance & content expansion spec (agreed direction):** `docs/REBALANCE.md`
+— turns the owner's design doc ("PIXEL MMORPG ONLINE WEBSITE BASE.docx":
+100+ enemies, 10 level-banded biome maps, gloves/accessory/off-hand slots,
+reforge/refine, 4th-roll Awakening Stone, keys/chests, food/fishing,
+costume coloring) into enemy stat curves fitted to today's mobs, archetype
+multipliers (elite/miniboss/boss/worldboss), map/level-band tables, and a
+6-phase save-compatible rollout. Future balance changes should follow it.
+
 **Retention & monetization plan (proposed):** `docs/MONETIZATION.md` — fair,
 no-P2W money model (cosmetics / convenience / supporter packs only, never
 power), sequenced behind retention work first (enable orc/ghost/ogre/dragon

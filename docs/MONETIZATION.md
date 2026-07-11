@@ -7,7 +7,10 @@ economy** — players should fully accept why they pay. Revenue target is
 modest and honest: cover the server bill, then fund development.*
 
 > Companion docs: `CLAUDE.md` (how the game works today),
-> `docs/SCALING.md` (tech roadmap the money plan must respect).
+> `docs/SCALING.md` (tech roadmap the money plan must respect),
+> `docs/REBALANCE.md` (content/balance expansion spec from the owner's
+> design document — its reforge/refine/keys/food systems implement the
+> gold sinks in §3.5 here, and its "costume coloring" is the M2 shop).
 
 ---
 

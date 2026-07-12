@@ -173,9 +173,21 @@ ALLOWED_TIERS = {"common", "rare", "unique", "legend", "mystic"}
 ALLOWED_POTIONS = {"hp", "mp", "spd", "atk", "aspd", "regen", "tele"}
 ALLOWED_MATERIALS = {"ore", "key"}
 ALLOWED_ARMOR = {"head", "chest", "gloves", "legs", "boots"}
-ALLOWED_WEAPONS = {"sword1h", "sword2h", "staff", "bow", "mace1h", "wand1h"}
+ALLOWED_WEAPONS = {"sword1h", "sword2h", "staff", "bow", "mace1h", "wand1h", "crossbow"}
 ALLOWED_OFFHANDS = {"shield", "book", "quiver"}
-ALLOWED_SLOTS = {"head", "chest", "hands", "offhand", "gloves", "legs", "boots"}
+ALLOWED_ACCESSORIES = {"ring", "amulet"}
+# item.slot values (accessories share the generic 'acc')
+ALLOWED_SLOTS = {"head", "chest", "hands", "offhand", "gloves", "legs", "boots", "acc"}
+# equip-dict positions (accessories occupy acc1/acc2)
+EQUIP_KEYS = ["head", "chest", "hands", "offhand", "gloves", "legs", "boots", "acc1", "acc2"]
+
+
+def slot_accepts(slot, ci):
+    if not ci or ci.get("kind") == "potion":
+        return False
+    if slot in ("acc1", "acc2"):
+        return ci.get("kind") == "accessory"
+    return ci.get("slot") == slot
 ALLOWED_BASESTATS = {"str", "agi", "int", "vit", "luk"}
 ALLOWED_ROWSTATS = {"str", "agi", "int", "vit", "luk", "hp", "mp", "atk", "matk", "crit", "spd"}
 
@@ -291,9 +303,10 @@ def clean_item(o):
         if o.get("key") not in ALLOWED_MATERIALS:
             return None
         return {"key": o["key"], "kind": "material", "count": clampi(o.get("count", 1), 1, 9999)}
-    if kind in ("weapon", "armor", "offhand"):
+    if kind in ("weapon", "armor", "offhand", "accessory"):
         table = (ALLOWED_WEAPONS if kind == "weapon"
-                 else ALLOWED_OFFHANDS if kind == "offhand" else ALLOWED_ARMOR)
+                 else ALLOWED_OFFHANDS if kind == "offhand"
+                 else ALLOWED_ACCESSORIES if kind == "accessory" else ALLOWED_ARMOR)
         if o.get("key") not in table or o.get("slot") not in ALLOWED_SLOTS:
             return None
         tier = o.get("tier") if o.get("tier") in ALLOWED_TIERS else "common"
@@ -322,9 +335,9 @@ def clean_player(p):
     stats = p.get("stats") or {}
     equip_in = p.get("equip") or {}
     equip = {}
-    for slot in ALLOWED_SLOTS:
+    for slot in EQUIP_KEYS:
         ci = clean_item(equip_in.get(slot))
-        equip[slot] = ci if (ci and ci["kind"] != "potion" and ci.get("slot") == slot) else None
+        equip[slot] = ci if slot_accepts(slot, ci) else None
     quick = [(k if k in ALLOWED_POTIONS else None) for k in (p.get("quickItems") or [])[:3]]
     while len(quick) < 3:
         quick.append(None)

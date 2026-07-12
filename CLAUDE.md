@@ -361,8 +361,20 @@ applies it). `rollItem` rolls weapon/offhand/armor + a `classHint` (local
 player's class) biases weapon/off-hand base picks; `handleEnemyDead`/chests
 pass it. `server.py`: `ALLOWED_OFFHANDS`, `ALLOWED_WEAPONS` += mace1h/wand1h,
 `clean_item` kind `offhand`. `isGear()` helper unifies weapon/armor/offhand
-in equip/UI. Covered by `tests/offhand_test.js`. **Deferred to 4b:**
-accessories (×2, spice rolls), crossbow, set bonuses.
+in equip/UI. Covered by `tests/offhand_test.js`.
+
+**Phase 4b — Accessories (×2) + crossbow (shipped):** new item **kind
+`accessory`** (`ACCESSORIES`: ring, amulet) with a generic `slot:'acc'`; two
+equip positions `acc1`/`acc2`. `slotAccepts(slot,item)` routes accessories to
+either acc slot; `equipItem` fills the first free one (else swaps acc1).
+Accessory rows are **spice-only** (`ACC_ROW_STATS` = primary stats + crit/
+spd; NO flat hp/mp/atk/matk) via a filtered affix pool in `rollItem`. Client
+load + `server.py` use `slot_accepts`/`EQUIP_KEYS` (item.slot `acc` in
+`ALLOWED_SLOTS`; acc1/acc2 are equip positions). **Crossbow**
+(`WEAPONS.crossbow`, archer-only 2h `dmgMul 1.45`) — evicts the quiver like
+any 2-hander. `rollItem` auto-kind now weapon/offhand/accessory/armor. UI:
+`Accessory` filter chip. Covered by `tests/accessory_test.js`. **Deferred:**
+set bonuses (need a set-grouping model + server validation).
 
 **Deferred by the user — remind them when they return:**
 1. ✅ Shield / off-hand slot to pair with the one-hand sword — DONE (P4a).

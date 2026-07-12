@@ -211,7 +211,7 @@ const UI = {
     const cats = [['all', t('inv.filterAll')], ['potion', t('inv.filterPotion')],
       ['material', t('inv.filterMaterial')],
       ['head', t('slot.head')], ['chest', t('slot.chest')], ['hands', t('slot.hands')],
-      ['legs', t('slot.legs')], ['boots', t('slot.boots')]];
+      ['gloves', t('slot.gloves')], ['legs', t('slot.legs')], ['boots', t('slot.boots')]];
     bar.innerHTML = '';
     for (const [key, label] of cats) {
       const b = document.createElement('button');

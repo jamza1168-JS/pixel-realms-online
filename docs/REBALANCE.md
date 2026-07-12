@@ -250,8 +250,10 @@ art from `docs/ART_REDESIGN.md` lands.
    - **3b — Online zone instancing** ✅ SHIPPED (signed-in players enter
      biome zones as solo instances and re-join the shared World on return;
      the `name_taken` re-join race is retried, never stranded).
-   - **3c — More biomes (Desert/Snow) + level bands + gloves slot;**
-     migrate Map-1 high tiers out.
+   - **3c — Gloves slot + config-driven biomes (Desert added)** ✅ SHIPPED.
+     Remaining: Snow (needs a new tile), and the Map-1 high-tier migration
+     stays deferred — the shared world-boss/bosses must live in the
+     multiplayer hub, not a solo instance.
 4. **P4 — Equipment lines:** offhand slot (shield/book/quiver), new
    weapons, class tags, accessories with Map 6.
 5. **P5 — Maps 5–9, Awakening Stone, fishing/cooking.**
@@ -387,9 +389,29 @@ robust with a retry.
   Stable across repeated runs; `ws_test`/`trade`/`session`/`account` flows
   unaffected.
 
-### Phase 3c — More biomes + level bands + gloves slot
-- Add Desert/Snow maps (§2 table) with their pools and a second portal hub.
-- **Gloves slot:** extend `EQUIP_SLOTS`/`ARMOR` + `ALLOWED_SLOTS` + `spSig`
-  + the stat panel + save format; introduce alongside the harder maps so the
-  extra affix rows are absorbed by tougher content (§4).
-- Migrate Map-1 high-tier spawns out to their band-appropriate biomes.
+### Phase 3c — Gloves slot + config-driven biomes (Desert) — ✅ SHIPPED
+- **Gloves slot:** added `gloves` to `EQUIP_SLOTS`/`ARMOR` (items.js),
+  `Player.equip` (entities.js), `ALLOWED_SLOTS`/`ALLOWED_ARMOR` (server.py),
+  the inventory filter chips (ui.js), and EN/TH `slot.gloves`/`gear.gloves`.
+  `deriveStats`/`equipAgg`/`spSig`/the stat panel/the equipped-slot list all
+  iterate `EQUIP_SLOTS`, so it threads through automatically; save format
+  carries it (old saves → `gloves:null`). Gloves roll from the normal ARMOR
+  pool (drop everywhere) — more slots to fill = more grind, not a power spike
+  that trivialises content.
+- **Config-driven biomes:** `generateForest` generalised to `generateBiome`
+  reading `base`/`decor`/`density`/`tiers`/`pool` from the map's `MAPS` entry.
+  Added **Desert** (`T_SAND` base, rock/dead-tree decor, orc/skeleton/ghost
+  pool, tiers 3–4, band 13–18) with a second hub portal (portal row east of
+  the plaza; fixed coords, no rng → hub determinism preserved).
+- **Test:** `map_test.js` §2b/§2c — desert sand base + tougher pool + both
+  hub portals; gloves roll/equip/save. Equipment + hardening suites pass with
+  the new slot.
+
+**Remaining P3 (deferred):**
+- **Snow biome** needs a new tile id (`T_SNOW`) + bake/minimap colours before
+  it can be a clean biome (the current 5 tiles have no snow).
+- **Map-1 high-tier migration** stays deferred: the demon boss, ogre
+  miniboss, and dragon **world boss** must remain in the shared multiplayer
+  hub — moving them into solo biome instances would kill the "everyone
+  converges on the world boss" event. Revisit only if biome zones ever become
+  multiplayer (per-map channels).

@@ -34,7 +34,7 @@ class Player {
 
     this.inventory = [];                // item instances (gear + potion stacks)
     this.storage = [];                  // stash — keeps items out of the bag
-    this.equip = { head: null, chest: null, hands: null, legs: null, boots: null };
+    this.equip = { head: null, chest: null, hands: null, gloves: null, legs: null, boots: null };
     this.quickItems = [null, null, null];   // hotkey potion slots — potion keys
 
     this.x = game.world.spawnX;

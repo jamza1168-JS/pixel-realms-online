@@ -20,14 +20,17 @@ const ITEM_TIERS = {
 const TIER_ORDER = ['common', 'rare', 'unique', 'legend', 'mystic'];
 
 /* ---------- Equipment slots ---------- */
-/* 'hands' holds the weapon; the rest are armor pieces. */
-const EQUIP_SLOTS = ['head', 'chest', 'hands', 'legs', 'boots'];
+/* 'hands' holds the weapon; the rest are armor pieces. `gloves` (P3c) is a
+ * regular armor slot — deriveStats/equipAgg/spSig iterate EQUIP_SLOTS, so it
+ * threads through automatically. */
+const EQUIP_SLOTS = ['head', 'chest', 'hands', 'gloves', 'legs', 'boots'];
 
 const ARMOR = {
-  head:  { key: 'head',  slot: 'head',  kind: 'armor', icon: '🪖' },
-  chest: { key: 'chest', slot: 'chest', kind: 'armor', icon: '🛡️' },
-  legs:  { key: 'legs',  slot: 'legs',  kind: 'armor', icon: '👖' },
-  boots: { key: 'boots', slot: 'boots', kind: 'armor', icon: '🥾' },
+  head:   { key: 'head',   slot: 'head',   kind: 'armor', icon: '🪖' },
+  chest:  { key: 'chest',  slot: 'chest',  kind: 'armor', icon: '🛡️' },
+  gloves: { key: 'gloves', slot: 'gloves', kind: 'armor', icon: '🧤' },
+  legs:   { key: 'legs',   slot: 'legs',   kind: 'armor', icon: '👖' },
+  boots:  { key: 'boots',  slot: 'boots',  kind: 'armor', icon: '🥾' },
 };
 
 /* Weapons all occupy the 'hands' slot. `base` modifiers:

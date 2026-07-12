@@ -172,9 +172,9 @@ ALLOWED_CLS = {"warrior", "mage", "archer", "cleric"}
 ALLOWED_TIERS = {"common", "rare", "unique", "legend", "mystic"}
 ALLOWED_POTIONS = {"hp", "mp", "spd", "atk", "aspd", "regen", "tele"}
 ALLOWED_MATERIALS = {"ore", "key"}
-ALLOWED_ARMOR = {"head", "chest", "legs", "boots"}
+ALLOWED_ARMOR = {"head", "chest", "gloves", "legs", "boots"}
 ALLOWED_WEAPONS = {"sword1h", "sword2h", "staff", "bow"}
-ALLOWED_SLOTS = {"head", "chest", "hands", "legs", "boots"}
+ALLOWED_SLOTS = {"head", "chest", "hands", "gloves", "legs", "boots"}
 ALLOWED_BASESTATS = {"str", "agi", "int", "vit", "luk"}
 ALLOWED_ROWSTATS = {"str", "agi", "int", "vit", "luk", "hp", "mp", "atk", "matk", "crit", "spd"}
 

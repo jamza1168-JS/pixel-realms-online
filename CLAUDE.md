@@ -329,11 +329,15 @@ denser, boss-free biome). `world.portals` render in the y-sorted draw loop
 (`portal` sprite) + minimap; `Game.updatePortals` warps on contact (manual
 only — AFK bot skipped, `_warpCd` anti-bounce), `Game.warpTo` rebuilds the
 world and drops the player at `entryX/Y`. **Biome maps are SOLO/local
-instances**; signed-in (online) players are **gated** with a `map.soon` toast
-so the shared-world netcode is untouched — robust online zone instancing is
-**P3b** (the WS re-join hits `name_taken` on rapid round-trips; needs
-server-side name-free-on-close + client retry, or per-map channels). Covered
-by `tests/map_test.js`.
+instances.** **P3b (shipped):** signed-in players warp to a biome by dropping
+the WS (→`LocalNet` instance) and re-join the shared World on return via
+`Game.rejoinOnline(name)`, which retries `goOnline` on `name_taken` (backoff,
+≤6×) — that error can only be the just-closed session lingering (hero names
+are globally unique; server frees the name in `leave_room`'s `finally`), so a
+short retry always wins. `startGame`'s initial join also routes through
+`rejoinOnline` (page-refresh race self-heals). `net.js` `name_taken` calls a
+`net.onNameTaken` hook (silent retry) when set, else the panel toast. Guests
+unchanged (always local). Covered by `tests/map_test.js`.
 
 **Deferred by the user — remind them when they return:**
 1. Shield / off-hand slot to pair with the one-hand sword.

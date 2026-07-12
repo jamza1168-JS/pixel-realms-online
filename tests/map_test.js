@@ -70,6 +70,7 @@ function assert(c, m) { if (!c) throw new Error('FAIL: ' + m); console.log('PASS
 
   // 4. stepping onto a portal triggers the warp (non-AFK), and the AFK bot does not
   const step = await page.evaluate(() => {
+    game.warpTo('hub');                       // ensure we start from the hub (idempotent)
     const p = game.players[0];
     game._warpCd = 0; p.afk = true;
     const portal = game.world.portals.find(pt => pt.to === 'forest');
@@ -83,19 +84,31 @@ function assert(c, m) { if (!c) throw new Error('FAIL: ' + m); console.log('PASS
   assert(step.botStayed, 'the AFK bot never triggers a warp portal');
   assert(step.manualWarped, 'walking onto a portal (manual) warps you');
 
-  // 5. signed-in (online) players are gated from biome portals for now (P3b)
-  const gate = await page.evaluate(() => {
-    game._warpCd = 0; game.warpTo('hub');       // back to hub
+  // 5. P3b: a signed-in (online) player can warp hub↔forest and lands back
+  //    ONLINE in the hub (the name_taken re-join race is retried, not stranded)
+  const uniq = 'Warp' + Math.floor(Math.random() * 1e6);
+  const round = await page.evaluate(async (name) => {
+    game._warpCd = 0; game.warpTo('hub');
     const p = game.players[0]; p.afk = false;
-    Account.token = 'test-token';                // simulate signed-in (loggedIn getter)
-    const portal = game.world.portals.find(pt => pt.to === 'forest');
-    p.x = portal.x; p.y = portal.y; game._warpCd = 0;
-    game.updatePortals();
-    const gated = game.world.mapId === 'hub';    // did NOT warp
-    Account.token = null;
-    return { gated, loggedIn: Account.loggedIn };
-  });
-  assert(gate.gated, 'signed-in players are gated from biome zones (solo-only for now)');
+    Account.token = 'fake-session'; Account.heroName = name;   // simulate signed-in
+    game.rejoinOnline(name);
+    const waitFor = (cond, ms) => new Promise(res => {
+      const t0 = Date.now();
+      const iv = setInterval(() => { if (cond() || Date.now() - t0 > ms) { clearInterval(iv); res(cond()); } }, 80);
+    });
+    const joined = await waitFor(() => game.net.isOnline, 5000);
+    // enter the solo forest instance
+    game._warpCd = 0; game.warpTo('forest');
+    const inst = game.net.constructor.name === 'LocalNet' && game.world.mapId === 'forest';
+    // return to the hub — must rejoin the shared World (retry survives name_taken)
+    game._warpCd = 0; game.warpTo('hub');
+    const backOnline = await waitFor(() => game.world.mapId === 'hub' && game.net.isOnline, 8000);
+    Account.token = null; game.goOffline();
+    return { joined, inst, backOnline, net: game.net.constructor.name };
+  }, uniq);
+  assert(round.joined, 'a signed-in player joins the shared World in the hub');
+  assert(round.inst, 'warping to a biome drops the player into a solo (LocalNet) instance');
+  assert(round.backOnline, 'returning to the hub re-joins the World online (name_taken race retried, not stranded)');
 
   assert(errors.length === 0, 'no console/page errors: ' + errors.join(' | '));
   await browser.close();

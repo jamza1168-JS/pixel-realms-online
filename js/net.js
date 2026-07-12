@@ -122,7 +122,11 @@ class WSNet extends NetAdapter {
         this.nameTaken = true;
         this.disconnect();       // closes socket, sets status 'off'
         this.status = 'error';   // surface the failure in the panel
-        UI.toast(t('online.nameTaken'), 'info');
+        // A retry hook (set when re-joining after a solo instance / on a
+        // refresh race) handles the stale-self case silently; otherwise the
+        // panel shows the failure.
+        if (typeof this.onNameTaken === 'function') this.onNameTaken();
+        else UI.toast(t('online.nameTaken'), 'info');
         UI.updateOnlinePanel();
         break;
       case 'wrong_password':

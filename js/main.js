@@ -770,6 +770,27 @@ class Game {
     this.net = net;
     net.connect(serverUrl(), '', name, '', true);
     for (const p of this.players) p.name = name;   // reflect the name at once
+    return net;
+  }
+
+  /* Join the shared World, retrying on `name_taken`. Hero names are globally
+   * unique per account, so that error can only be the just-closed session's
+   * name lingering server-side (a warp round-trip or a page-refresh race) —
+   * a short backoff lets the old socket's cleanup free it. */
+  rejoinOnline(name, attempt = 0) {
+    const net = this.goOnline(name);
+    net.onNameTaken = () => {
+      if (this.world.mapId !== 'hub' || this.net !== net) return;   // no longer relevant
+      if (attempt < 6) {
+        setTimeout(() => {
+          if (this.world.mapId === 'hub' && (this.net === net || !this.net.isOnline)) {
+            this.rejoinOnline(name, attempt + 1);
+          }
+        }, 800 + attempt * 400);
+      } else {
+        UI.toast(t('online.nameTaken'), 'info');
+      }
+    };
   }
 
   goOffline() {
@@ -1492,38 +1513,38 @@ class Game {
     const p = this.players[0];
     if (!p || p.dead || p.afk) return;              // manual travel only
     for (const portal of portals) {
-      if (Math.hypot(p.x - portal.x, p.y - portal.y) >= 28) continue;
-      // Biome zones are SOLO instances for now. Signed-in (online) players
-      // stay in the shared world; online zone instancing lands in P3b.
-      if (typeof Account !== 'undefined' && Account.loggedIn && portal.to !== 'hub') {
-        if ((this._portalGateT || 0) <= this.time) {
-          this._portalGateT = this.time + 4;
-          UI.toast(t('map.soon'), 'info'); this.sfx('point');
-        }
-        return;
-      }
-      this.warpTo(portal.to);
-      return;
+      if (Math.hypot(p.x - portal.x, p.y - portal.y) < 28) { this.warpTo(portal.to); return; }
     }
   }
 
-  /* Local map switch (guest/solo). Online players are gated in updatePortals
-   * until P3b brings robust online zone instancing. Rebuilds the world and
-   * drops the player at the destination entry; net stays LocalNet. */
+  /* Map switch. The hub is the shared multiplayer World; biome maps are SOLO
+   * instances (local sim). Signed-in players drop the WS to enter a biome and
+   * rejoin the World (with retry) on return, so the shared-world netcode is
+   * never mixed across maps. Guests are always local — a plain world swap. */
   warpTo(mapId) {
     if (!MAPS[mapId] || (this.world && this.world.mapId === mapId)) return;
+    const online = (typeof Account !== 'undefined') && Account.loggedIn;
+    const name = this.heroName();
     if (this.trade) { this.returnTradeEscrow(this.trade); this.trade = null; }
     this.pendingTrade = null; UI.hideTradeRequest(); UI.closeTrade();
     this.enemies = []; this.pickups = []; this.projectiles = []; this.effects = [];
     this.ghosts.clear(); this.remotePlayers.clear();
     this.world = new World(mapId);
     this.worldBossT = WORLDBOSS_INTERVAL; this.worldBossWarned = false;
+    if (mapId === 'hub' && online) {
+      this.rejoinOnline(name);                       // back to the shared World
+    } else if (this.net instanceof WSNet) {
+      this.net.disconnect();                         // enter a solo instance
+      this.net = new LocalNet();
+      this.net.sync(this.players);
+    }
     const ex = this.world.entryX != null ? this.world.entryX : this.world.spawnX;
     const ey = this.world.entryY != null ? this.world.entryY : this.world.spawnY;
     for (const pl of this.players) { pl.x = ex; pl.y = ey; }
     this.cam.x = ex - this.canvas.width / 2;
     this.cam.y = ey - this.canvas.height / 2;
     this._warpCd = this.time + 1.2;
+    UI.updateOnlinePanel();
     UI.toast(t(mapId === 'hub' ? 'map.toHub' : 'map.to_' + mapId), 'gold');
     this.sfx('levelup');
     this.save();
@@ -1928,7 +1949,7 @@ function startGame(clsId, saved) {
   document.getElementById('hud').classList.remove('hidden');
   game.save();
   // Signed-in players auto-join the shared public World; guests stay local.
-  if (Account.loggedIn) game.goOnline(game.heroName());
+  if (Account.loggedIn) game.rejoinOnline(game.heroName());
   game.start();
 }
 

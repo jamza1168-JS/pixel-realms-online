@@ -246,10 +246,10 @@ art from `docs/ART_REDESIGN.md` lands.
      keys from elites/bosses; seed-placed treasure chests opened by manual
      play only). **Phase 2 complete.**
 3. **P3 — Maps + portals** (split into small sub-phases, §9.2):
-   - **3a — Map framework + warp portals + first biome (Forest)** ✅ SHIPPED
-     (solo/offline; online players gated).
-   - **3b — Online zone instancing** (make biome zones work for signed-in
-     players without a shared-world regression).
+   - **3a — Map framework + warp portals + first biome (Forest)** ✅ SHIPPED.
+   - **3b — Online zone instancing** ✅ SHIPPED (signed-in players enter
+     biome zones as solo instances and re-join the shared World on return;
+     the `name_taken` re-join race is retried, never stranded).
    - **3c — More biomes (Desert/Snow) + level bands + gloves slot;**
      migrate Map-1 high tiers out.
 4. **P4 — Equipment lines:** offhand slot (shield/book/quiver), new
@@ -365,20 +365,27 @@ instancing — that netcode is the whole risk, so P3 is split to isolate it.
 - **Test:** `tests/map_test.js` — hub determinism unchanged, forest is a
   distinct boss-free biome, warp round-trip, bot-skips-portal, online gate.
 
-### Phase 3b — Online zone instancing (the netcode)
-*Goal: let signed-in players enter biome zones too.*
-- Approach: on warp to a biome, cleanly drop the WS (become a LocalNet
-  instance); on return to hub, `goOnline` rejoins the shared World. The
-  **hard part is the re-join**: the hero name must be freed server-side
-  before the rejoin or it hits `name_taken` and falls back offline (seen in
-  3a testing). Fix options: (a) server frees the name immediately on socket
-  close + client retries `goOnline` on `name_taken` after a short backoff;
-  (b) a dedicated "leave to instance / resume" protocol that parks the slot.
-- Alternative: per-map channels (`@map-<id>-N`) via the existing private-room
-  plumbing, so biome zones are actually multiplayer. Bigger, but the doc's
-  real target. Decide (a)+(b) vs channels before coding.
-- **Test:** two-client + a solo round-trip that asserts the player is back
-  online in the hub (not stranded on LocalNet).
+### Phase 3b — Online zone instancing (the netcode) — ✅ SHIPPED
+*Goal: let signed-in players enter biome zones too.* Chose fix option (a):
+biome zones stay **solo instances**, and the shared World re-join is made
+robust with a retry.
+- **`Game.warpTo`** (main.js): signed-in player warps to a biome → drop the
+  WS, become a `LocalNet` instance; warp back to hub → `rejoinOnline(name)`.
+  Guests are unchanged (always local). The gate from 3a is removed.
+- **`Game.rejoinOnline(name, attempt)`**: wraps `goOnline` and, on
+  `name_taken`, retries with backoff (up to 6×, ~0.8–3s). Hero names are
+  globally unique per account, so that error can only be the just-closed
+  session lingering server-side — the server frees it in `leave_room` (the
+  socket handler's `finally`) within ms of close, so a short retry always
+  wins. **The initial `startGame` join also routes through `rejoinOnline`,**
+  so a page-refresh race self-heals too.
+- **net.js**: the `name_taken` handler calls a `net.onNameTaken` hook when
+  set (silent retry), else the original panel toast.
+- **Test:** `map_test.js` §5 — a signed-in player joins the World, warps to a
+  solo forest instance (`LocalNet`), and returns **online** to the hub (the
+  rapid round-trip is the worst case for the race; the retry recovers it).
+  Stable across repeated runs; `ws_test`/`trade`/`session`/`account` flows
+  unaffected.
 
 ### Phase 3c — More biomes + level bands + gloves slot
 - Add Desert/Snow maps (§2 table) with their pools and a second portal hub.

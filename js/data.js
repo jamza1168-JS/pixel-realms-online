@@ -12,7 +12,7 @@ function xpToNext(level) {
 /* Derived combat stats from base stats + level + equipped gear.
  * Timed buffs are NOT folded in here (they apply at use sites via
  * buffMul) so the sheet reflects gear/stats; gear IS included. */
-const EMPTY_AGG = { str: 0, agi: 0, int: 0, vit: 0, luk: 0, hp: 0, mp: 0, atk: 0, matk: 0, crit: 0, spd: 0, dmgMul: 1, aspdMul: 1 };
+const EMPTY_AGG = { str: 0, agi: 0, int: 0, vit: 0, luk: 0, hp: 0, mp: 0, atk: 0, matk: 0, crit: 0, spd: 0, dmgMul: 1, aspdMul: 1, dmgRed: 0 };
 function deriveStats(p) {
   const s = p.stats;
   const e = (p.equipAgg ? p.equipAgg() : EMPTY_AGG);
@@ -29,6 +29,7 @@ function deriveStats(p) {
     hpRegen: 0.6 + vit * 0.09,
     mpRegen: 0.8 + int * 0.09,
     dmgMul: e.dmgMul || 1,
+    dmgRed: Math.min(0.20, e.dmgRed || 0),   // shields etc.; capped at 20%
   };
 }
 

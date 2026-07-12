@@ -20,10 +20,10 @@ const ITEM_TIERS = {
 const TIER_ORDER = ['common', 'rare', 'unique', 'legend', 'mystic'];
 
 /* ---------- Equipment slots ---------- */
-/* 'hands' holds the weapon; the rest are armor pieces. `gloves` (P3c) is a
- * regular armor slot — deriveStats/equipAgg/spSig iterate EQUIP_SLOTS, so it
- * threads through automatically. */
-const EQUIP_SLOTS = ['head', 'chest', 'hands', 'gloves', 'legs', 'boots'];
+/* 'hands' holds the weapon, 'offhand' the shield/book/quiver (P4a); the rest
+ * are armor pieces. deriveStats/equipAgg/spSig iterate EQUIP_SLOTS, so new
+ * slots thread through automatically. */
+const EQUIP_SLOTS = ['head', 'chest', 'hands', 'offhand', 'gloves', 'legs', 'boots'];
 
 const ARMOR = {
   head:   { key: 'head',   slot: 'head',   kind: 'armor', icon: '🪖' },
@@ -37,13 +37,26 @@ const ARMOR = {
  *   dmgMul  — multiplies attack/skill damage
  *   aspdMul — attack-speed (higher = faster)
  *   spd     — flat move-speed bonus
- * one-handed sword is light & fast (shield-pairing planned); the
- * two-hander trades speed for raw damage. */
+ * `two:false` weapons pair with an off-hand. `classes` (P4a, new weapons
+ * only) restricts who can equip; the original weapons stay class-free so no
+ * existing loadout breaks. */
 const WEAPONS = {
   sword1h: { key: 'sword1h', slot: 'hands', kind: 'weapon', icon: '🗡️', two: false, base: { dmgMul: 1.0, aspdMul: 1.15, spd: 10 } },
   sword2h: { key: 'sword2h', slot: 'hands', kind: 'weapon', icon: '⚔️', two: true,  base: { dmgMul: 1.6, aspdMul: 0.82, spd: -12 } },
   staff:   { key: 'staff',   slot: 'hands', kind: 'weapon', icon: '🪄', two: true,  base: { dmgMul: 1.35, aspdMul: 0.95, spd: 0 } },
   bow:     { key: 'bow',     slot: 'hands', kind: 'weapon', icon: '🏹', two: true,  base: { dmgMul: 1.2, aspdMul: 1.05, spd: 4 } },
+  // one-handers so casters/clerics can pair an off-hand (P4a)
+  mace1h:  { key: 'mace1h',  slot: 'hands', kind: 'weapon', icon: '🔨', two: false, classes: ['warrior', 'cleric'], base: { dmgMul: 1.05, aspdMul: 1.0, spd: 4 } },
+  wand1h:  { key: 'wand1h',  slot: 'hands', kind: 'weapon', icon: '🥢', two: false, classes: ['mage'],              base: { dmgMul: 0.95, aspdMul: 1.2, spd: 6 } },
+};
+
+/* Off-hands occupy the 'offhand' slot and pair with a one-hand weapon
+ * (`needsOneHand`), except the quiver which pairs with the two-hand bow
+ * (`pairWith`). `dmgRed` = flat % damage reduction (shields). */
+const OFFHANDS = {
+  shield: { key: 'shield', slot: 'offhand', kind: 'offhand', icon: '🛡️', classes: ['warrior', 'cleric'], needsOneHand: true, base: { dmgMul: 0.92, dmgRed: 0.10 } },
+  book:   { key: 'book',   slot: 'offhand', kind: 'offhand', icon: '📖', classes: ['mage', 'cleric'],     needsOneHand: true, base: { dmgMul: 1.12 } },
+  quiver: { key: 'quiver', slot: 'offhand', kind: 'offhand', icon: '🎯', classes: ['archer'],             pairWith: 'bow',    base: { aspdMul: 1.08, spd: 4 } },
 };
 
 /* ---------- Potions ---------- */
@@ -115,19 +128,34 @@ function rollTier(opts = 0) {
   return entries[0][0];
 }
 
+function baseTable(kind) {
+  return kind === 'weapon' ? WEAPONS : (kind === 'offhand' ? OFFHANDS : ARMOR);
+}
+
 /* Roll one gear item.
- * opts: { kind:'weapon'|'armor', key?, tier?, ilvl?, bias?, tierWeights? }
+ * opts: { kind:'weapon'|'armor'|'offhand', key?, tier?, ilvl?, bias?,
+ *         tierWeights?, classHint? }
  *   tier        — force an exact tier (tests, guaranteed rewards)
  *   tierWeights — {tierKey: w} map constraining which tiers may roll
- *   bias        — legacy rarer-tier nudge (fallback if neither above given) */
+ *   bias        — legacy rarer-tier nudge (fallback if neither above given)
+ *   classHint   — bias weapon/off-hand base picks to a class's usable set */
 function rollItem(opts = {}) {
-  const kind = opts.kind || (Math.random() < 0.4 ? 'weapon' : 'armor');
+  let kind = opts.kind;
+  if (!kind) { const r = Math.random(); kind = r < 0.30 ? 'weapon' : (r < 0.48 ? 'offhand' : 'armor'); }
   const tierKey = opts.tier
     || rollTier(opts.tierWeights ? { weights: opts.tierWeights } : { bias: opts.bias || 0 });
   const tier = ITEM_TIERS[tierKey];
   const ilvl = Math.max(1, opts.ilvl || 1);
-  const table = kind === 'weapon' ? WEAPONS : ARMOR;
-  const baseKey = opts.key || pickRandom(Object.keys(table));
+  const table = baseTable(kind);
+  let baseKey = opts.key;
+  if (!baseKey) {
+    let keys = Object.keys(table);
+    if (opts.classHint && (kind === 'weapon' || kind === 'offhand')) {
+      const usable = keys.filter(k => !table[k].classes || table[k].classes.includes(opts.classHint));
+      if (usable.length) keys = usable;
+    }
+    baseKey = pickRandom(keys);
+  }
   const base = table[baseKey];
   const ilvlScale = 1 + (ilvl - 1) * 0.12;
 
@@ -228,17 +256,21 @@ function tierRank(item) {
   return TIER_ORDER.indexOf(item.tier);
 }
 
+/* True for rolled gear (weapon/armor/off-hand) — the tier+rows items. */
+function isGear(item) { return item && (item.kind === 'weapon' || item.kind === 'armor' || item.kind === 'offhand'); }
+
 /* A gear item's flat stat contribution, for side-by-side comparison.
- * Merges rolled rows with the weapon base modifiers (as readable fields). */
+ * Merges rolled rows with the weapon/off-hand base modifiers. */
 function itemStatMap(item) {
   const m = {};
-  if (!item || (item.kind !== 'weapon' && item.kind !== 'armor')) return m;
+  if (!isGear(item)) return m;
   for (const r of item.rows) m[r.stat] = (m[r.stat] || 0) + r.val;
   const base = itemBase(item);
   if (base && base.base) {
     if (base.base.dmgMul && base.base.dmgMul !== 1) m.dmgMul = Math.round((base.base.dmgMul - 1) * 100);
     if (base.base.aspdMul && base.base.aspdMul !== 1) m.aspdMul = Math.round((base.base.aspdMul - 1) * 100);
     if (base.base.spd) m.spd = (m.spd || 0) + base.base.spd;
+    if (base.base.dmgRed) m.dmgRed = (m.dmgRed || 0) + Math.round(base.base.dmgRed * 100);
   }
   return m;
 }
@@ -248,6 +280,7 @@ function itemBase(item) {
   if (item.kind === 'potion') return POTIONS[item.key];
   if (item.kind === 'material') return MATERIALS[item.key];
   if (item.kind === 'weapon') return WEAPONS[item.key];
+  if (item.kind === 'offhand') return OFFHANDS[item.key];
   return ARMOR[item.key];
 }
 
@@ -279,7 +312,7 @@ function itemFromSave(o) {
   if (!o || !o.kind) return null;
   if (o.kind === 'potion') { return POTIONS[o.key] ? makePotionFrom(o) : null; }
   if (o.kind === 'material') { return MATERIALS[o.key] ? makeMaterialFrom(o) : null; }
-  const table = o.kind === 'weapon' ? WEAPONS : ARMOR;
+  const table = baseTable(o.kind);
   if (!table[o.key] || !Array.isArray(o.rows)) return null;
   return { uid: o.uid || itemUid(), key: o.key, kind: o.kind, slot: table[o.key].slot,
            tier: ITEM_TIERS[o.tier] ? o.tier : 'common', ilvl: o.ilvl || 1, rows: o.rows,

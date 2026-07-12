@@ -1219,7 +1219,7 @@ class Game {
       const ilvl = tier * 4 + prof.ilvl;
       for (let r = 0; r < prof.rolls; r++) {
         if (Math.random() >= dropChance) continue;
-        const item = rollItem({ ilvl, tierWeights: prof.tiers });
+        const item = rollItem({ ilvl, tierWeights: prof.tiers, classHint: this.players[0] && this.players[0].clsId });
         this.pickups.push(new Pickup('gear', x + (Math.random() * 30 - 15), y + 6, item));
         // fanfare + a callout toast when something truly rare drops
         if (item.tier === 'legend' || item.tier === 'mystic') {
@@ -1494,7 +1494,7 @@ class Game {
     p.gold += gold;
     p.addItem(makePotion(pickRandom(['hp', 'mp']), 1));
     // one gear roll — chest tier table (no legend/mystic; those stay boss-only)
-    const item = rollItem({ ilvl: tier * 4, tierWeights: TIER_DROP.elite });
+    const item = rollItem({ ilvl: tier * 4, tierWeights: TIER_DROP.elite, classHint: p && p.clsId });
     p.addItem(item);
     this.addFloatText(c.x, c.y - 30, '📦 +' + gold + '🪙', '#ffd75e');
     this.addEffect({ type: 'ring', x: c.x, y: c.y - 8, dur: 0.6, color: '#ffd75e', r: 42 });

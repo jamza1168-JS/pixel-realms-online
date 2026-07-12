@@ -52,6 +52,40 @@ function assert(c, m) { if (!c) throw new Error('FAIL: ' + m); console.log('PASS
   assert(/wolf|bat|ghost|goblin/.test(forest.pool), 'forest spawns its themed mob pool: ' + forest.pool);
   assert(forest.det, 'forest generation is deterministic');
 
+  // 2b. Desert (P3c): a second biome with a sand base and a tougher pool;
+  //     the hub has portals to BOTH biomes.
+  const desert = await page.evaluate(() => {
+    const d = new World('desert');
+    const grassBase = d.tiles[(20 * MAP_W) + 20];     // a non-border tile
+    return {
+      mapId: d.mapId, base: grassBase, sand: T_SAND,
+      pool: [...new Set(d.spawnPoints.map(s => s.type))].sort().join(','),
+      hasReturn: d.portals.some(p => p.to === 'hub'),
+      hubPortals: game.world.portals.map(p => p.to).sort().join(','),
+    };
+  });
+  assert(desert.mapId === 'desert' && desert.base === desert.sand, 'desert uses a sand ground base');
+  assert(desert.hasReturn && /orc|skeleton|ghost/.test(desert.pool), 'desert has a return portal + a tougher pool: ' + desert.pool);
+  assert(desert.hubPortals === 'desert,forest', 'the hub has warp portals to both forest and desert');
+
+  // 2c. Gloves equipment slot (P3c)
+  const gloves = await page.evaluate(() => {
+    const has = EQUIP_SLOTS.includes('gloves') && !!ARMOR.gloves;
+    const p = game.players[0];
+    const before = p.derived.maxHp;
+    const g = rollItem({ kind: 'armor', key: 'gloves', tier: 'unique', ilvl: 10 });
+    const okRoll = g.slot === 'gloves' && g.kind === 'armor';
+    p.addItem(g); const equipped = p.equipItem(g);
+    const inSlot = p.equip.gloves === g;
+    // save round-trip keeps the gloves item
+    const saved = itemFromSave(itemToSave(g));
+    return { has, okRoll, equipped, inSlot, savedSlot: saved && saved.slot, changed: p.derived.maxHp !== before };
+  });
+  assert(gloves.has, 'gloves is a registered equipment slot + armor base');
+  assert(gloves.okRoll, 'gloves roll as a valid armor item');
+  assert(gloves.equipped && gloves.inSlot, 'a gloves item equips into the gloves slot');
+  assert(gloves.savedSlot === 'gloves', 'gloves survive the item save round-trip');
+
   // 3. warpTo swaps the world, repositions the player, and resets sim state
   const warp = await page.evaluate(() => {
     const p = game.players[0];

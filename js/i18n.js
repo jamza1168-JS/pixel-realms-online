@@ -116,11 +116,13 @@ const I18N = {
     'slot.head': 'Headgear',
     'slot.chest': 'Chest',
     'slot.hands': 'Weapon',
+    'slot.gloves': 'Gloves',
     'slot.legs': 'Legs',
     'slot.boots': 'Boots',
 
     'gear.head': 'Helm',
     'gear.chest': 'Armor',
+    'gear.gloves': 'Gauntlets',
     'gear.legs': 'Greaves',
     'gear.boots': 'Boots',
     'gear.sword1h': 'One-Hand Sword',
@@ -208,6 +210,7 @@ const I18N = {
     'support.qrErr': 'Could not load the QR image. You can open it here:',
     'map.toHub': '🌀 Warped back to the Village',
     'map.to_forest': '🌀 Entered the Whispering Forest',
+    'map.to_desert': '🏜️ Entered the Scorching Desert',
     'map.soon': '🚧 Biome zones are open in solo play — online zones coming soon!',
 
     'chat.placeholder': 'Press Enter to chat…',
@@ -453,11 +456,13 @@ const I18N = {
     'slot.head': 'ศีรษะ',
     'slot.chest': 'เกราะอก',
     'slot.hands': 'อาวุธ',
+    'slot.gloves': 'ถุงมือ',
     'slot.legs': 'ขา',
     'slot.boots': 'รองเท้า',
 
     'gear.head': 'หมวก',
     'gear.chest': 'เกราะ',
+    'gear.gloves': 'ถุงมือเหล็ก',
     'gear.legs': 'สนับขา',
     'gear.boots': 'รองเท้า',
     'gear.sword1h': 'ดาบมือเดียว',
@@ -545,6 +550,7 @@ const I18N = {
     'support.qrErr': 'โหลดรูป QR ไม่สำเร็จ เปิดดูได้ที่นี่:',
     'map.toHub': '🌀 วาร์ปกลับสู่หมู่บ้าน',
     'map.to_forest': '🌀 เข้าสู่ป่ากระซิบ',
+    'map.to_desert': '🏜️ เข้าสู่ทะเลทรายแผดเผา',
     'map.soon': '🚧 โซนไบโอมเปิดในโหมดเล่นคนเดียว — เร็วๆ นี้จะเปิดออนไลน์!',
 
     'chat.placeholder': 'กด Enter เพื่อแชท…',

@@ -26,8 +26,14 @@ function mulberry32(seed) {
  * SOLO instances (see docs/REBALANCE.md §9.2). `seedXor` gives each its own
  * deterministic layout; `band` is its intended level range. */
 const MAPS = {
-  hub:    { id: 'hub',    biome: 'grass',  seedXor: 0,          band: [1, 6],  pool: null },
-  forest: { id: 'forest', biome: 'forest', seedXor: 0x1a2b3c4d, band: [5, 10], pool: ['wolf', 'bat', 'ghost', 'goblin'] },
+  hub:    { id: 'hub',    biome: 'grass', seedXor: 0, band: [1, 6], pool: null },
+  // Biome zones share generateBiome(); `base` = ground tile, `decor` =
+  // [type, cumulative-roll] density gates, `density` = decoration attempts,
+  // `tiers` = [near, far] difficulty of its spawns.
+  forest: { id: 'forest', biome: 'forest', seedXor: 0x1a2b3c4d, band: [5, 10],  pool: ['wolf', 'bat', 'ghost', 'goblin'],
+            base: T_GRASS, decor: [['tree', 0.78], ['rock', 0.90]], density: 2600, tiers: [2, 3] },
+  desert: { id: 'desert', biome: 'desert', seedXor: 0x5e6f7a8b, band: [13, 18], pool: ['orc', 'skeleton', 'ghost'],
+            base: T_SAND,  decor: [['rock', 0.55], ['deadTree', 0.72]], density: 1500, tiers: [3, 4] },
 };
 
 class World {
@@ -48,8 +54,8 @@ class World {
   }
 
   generate() {
-    if (this.map.biome === 'forest') return this.generateForest();
-    return this.generateHub();
+    if (this.mapId === 'hub') return this.generateHub();
+    return this.generateBiome();
   }
 
   tileAt(tx, ty) {
@@ -214,29 +220,40 @@ class World {
       cPlaced++;
     }
 
-    // Warp portal to the Forest biome (P3), just east of the village plaza.
-    const ptx = (MAP_W / 2 + 6) | 0, pty = (MAP_H / 2) | 0;
-    for (let y = pty - 1; y <= pty + 1; y++) for (let x = ptx - 1; x <= ptx + 1; x++) {
-      const i = y * MAP_W + x;
-      if (this.tiles[i] === T_WATER) this.tiles[i] = T_GRASS;
-      this.solid[i] = 0;
-      this.objects.delete(x + ',' + y);
-    }
-    this.portals.push({ tx: ptx, ty: pty, x: ptx * TILE + TILE / 2, y: pty * TILE + TILE / 2, to: 'forest' });
+    // Warp portals to the biome zones (P3), a small portal row east of the
+    // village plaza. Fixed coords (no rng) so hub determinism is preserved.
+    const carvePortal = (px, py, to) => {
+      for (let y = py - 1; y <= py + 1; y++) for (let x = px - 1; x <= px + 1; x++) {
+        const i = y * MAP_W + x;
+        if (this.tiles[i] === T_WATER) this.tiles[i] = T_GRASS;
+        this.solid[i] = 0;
+        this.objects.delete(x + ',' + y);
+      }
+      this.portals.push({ tx: px, ty: py, x: px * TILE + TILE / 2, y: py * TILE + TILE / 2, to });
+    };
+    const hcx = (MAP_W / 2) | 0, hcy = (MAP_H / 2) | 0;
+    carvePortal(hcx + 6, hcy - 3, 'forest');
+    carvePortal(hcx + 6, hcy + 3, 'desert');
     this.entryX = this.spawnX; this.entryY = this.spawnY;
   }
 
-  /* Forest biome (P3): a denser, boss-free solo zone reached from the hub. */
-  generateForest() {
+  /* Config-driven biome generator (P3): a boss-free solo zone whose ground
+   * tile, decoration mix/density, mob pool and difficulty come from its MAPS
+   * entry. Each biome has an entry clearing + a return portal to the hub. */
+  generateBiome() {
     const rng = mulberry32(WORLD_SEED ^ this.map.seedXor);
     const cx = (MAP_W / 2) | 0, cy = (MAP_H / 2) | 0;
+    const base = this.map.base != null ? this.map.base : T_GRASS;
+    const decor = this.map.decor || [['tree', 0.78], ['rock', 0.9]];
+    const density = this.map.density || 2400;
+    const [tNear, tFar] = this.map.tiers || [2, 3];
 
     for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
-      let tile = T_GRASS;
+      let tile = base;
       if (x < 2 || y < 2 || x >= MAP_W - 2 || y >= MAP_H - 2) tile = T_WATER;
       this.tiles[y * MAP_W + x] = tile;
     }
-    // scattered ponds
+    // scattered ponds / oases
     for (let i = 0; i < 8; i++) {
       const lx = 8 + Math.floor(rng() * (MAP_W - 16)), ly = 8 + Math.floor(rng() * (MAP_H - 16));
       if (Math.hypot(lx - cx, ly - cy) < 12) continue;
@@ -249,14 +266,15 @@ class World {
     }
     for (let i = 0; i < this.tiles.length; i++) if (this.tiles[i] === T_WATER) this.solid[i] = 1;
 
-    // dense trees + occasional rocks
-    for (let i = 0; i < 2600; i++) {
+    // decorations (mix + density per biome)
+    for (let i = 0; i < density; i++) {
       const tx = 3 + Math.floor(rng() * (MAP_W - 6)), ty = 3 + Math.floor(rng() * (MAP_H - 6));
       const idx = ty * MAP_W + tx;
       if (this.solid[idx]) continue;
       if (Math.hypot(tx - cx, ty - cy) < 6) continue;   // keep the entry clearing open
       const roll = rng();
-      const type = roll < 0.78 ? 'tree' : (roll < 0.9 ? 'rock' : null);
+      let type = null;
+      for (const [t, gate] of decor) { if (roll < gate) { type = t; break; } }
       if (type) { this.objects.set(tx + ',' + ty, { type, tx, ty }); this.solid[idx] = 1; }
     }
 
@@ -270,22 +288,22 @@ class World {
     this.solid[rpy * MAP_W + rpx] = 0; this.objects.delete(rpx + ',' + rpy);
     this.portals.push({ tx: rpx, ty: rpy, x: rpx * TILE + TILE / 2, y: rpy * TILE + TILE / 2, to: 'hub' });
 
-    // enemy spawns across the forest (deeper = tougher); elites deterministic
-    const pool = this.map.pool;
+    // enemy spawns (deeper = tougher); elites deterministic from the seed
+    const pool = this.map.pool || ['wolf'];
     let placed = 0, guard = 0;
     while (placed < 90 && guard++ < 6000) {
       const tx = 3 + Math.floor(rng() * (MAP_W - 6)), ty = 3 + Math.floor(rng() * (MAP_H - 6));
       if (this.isSolid(tx, ty)) continue;
       if (Math.hypot(tx - cx, ty - cy) < 8) continue;
       const type = pool[Math.floor(rng() * pool.length)];
-      const tier = Math.hypot(tx - cx, ty - cy) > 40 ? 3 : 2;
+      const tier = Math.hypot(tx - cx, ty - cy) > 40 ? tFar : tNear;
       const elite = rng() < ELITE_CHANCE;
       this.spawnPoints.push({ x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2, type, tier, elite, enemy: null, respawnT: 0 });
       placed++;
     }
     this.spawnPoints.forEach((sp, i) => { sp.idx = i; });
 
-    // a few forest chests
+    // a few chests
     let cp = 0, cg = 0;
     while (cp < 8 && cg++ < 2000) {
       const tx = 3 + Math.floor(rng() * (MAP_W - 6)), ty = 3 + Math.floor(rng() * (MAP_H - 6));

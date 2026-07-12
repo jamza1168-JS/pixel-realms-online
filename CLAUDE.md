@@ -337,7 +337,16 @@ are globally unique; server frees the name in `leave_room`'s `finally`), so a
 short retry always wins. `startGame`'s initial join also routes through
 `rejoinOnline` (page-refresh race self-heals). `net.js` `name_taken` calls a
 `net.onNameTaken` hook (silent retry) when set, else the panel toast. Guests
-unchanged (always local). Covered by `tests/map_test.js`.
+unchanged (always local). **P3c (shipped):** **gloves** equipment slot added
+to `EQUIP_SLOTS`/`ARMOR`/`Player.equip`/`ALLOWED_SLOTS`+`ALLOWED_ARMOR`/
+inventory filter/i18n — threads through `deriveStats`/`equipAgg`/`spSig`
+automatically; old saves default `gloves:null`. `generateForest`→
+`generateBiome` (config-driven: `base`/`decor`/`density`/`tiers`/`pool` from
+`MAPS`); added **Desert** (`T_SAND`, band 13–18) with a second hub portal
+(portal row, fixed coords → hub determinism preserved). **Deferred:** Snow
+(needs a `T_SNOW` tile) and the Map-1 boss migration (bosses/world-boss must
+stay in the shared multiplayer hub, not solo instances). Covered by
+`tests/map_test.js`.
 
 **Deferred by the user — remind them when they return:**
 1. Shield / off-hand slot to pair with the one-hand sword.

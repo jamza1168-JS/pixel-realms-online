@@ -171,7 +171,7 @@ sessions: dict = {}   # token -> account_id (in-memory; cleared on restart)
 ALLOWED_CLS = {"warrior", "mage", "archer", "cleric"}
 ALLOWED_TIERS = {"common", "rare", "unique", "legend", "mystic"}
 ALLOWED_POTIONS = {"hp", "mp", "spd", "atk", "aspd", "regen", "tele"}
-ALLOWED_MATERIALS = {"ore", "key"}
+ALLOWED_MATERIALS = {"ore", "key", "stone"}
 ALLOWED_ARMOR = {"head", "chest", "gloves", "legs", "boots"}
 ALLOWED_WEAPONS = {"sword1h", "sword2h", "staff", "bow", "mace1h", "wand1h", "crossbow"}
 ALLOWED_OFFHANDS = {"shield", "book", "quiver"}
@@ -311,8 +311,12 @@ def clean_item(o):
             return None
         tier = o.get("tier") if o.get("tier") in ALLOWED_TIERS else "common"
         ilvl = clampi(o.get("ilvl", 1), 1, MAX_ILVL)
+        # awakened gear (P5a) may carry a 4th affix row; each row is still
+        # clamped to row_cap, so the extra row is a bounded (one-affix) gain.
+        awakened = bool(o.get("awakened"))
+        max_rows = 4 if awakened else 3
         rows = []
-        for r in (o.get("rows") or [])[:3]:
+        for r in (o.get("rows") or [])[:max_rows]:
             if isinstance(r, dict) and r.get("stat") in ALLOWED_ROWSTATS:
                 # clamp to the strongest a legit drop of this tier/ilvl could roll
                 rows.append({"stat": r["stat"], "val": clampi(r.get("val", 0), 0, row_cap(r["stat"], tier, ilvl))})
@@ -325,7 +329,8 @@ def clean_item(o):
         return {"uid": str(o.get("uid", ""))[:32], "key": o["key"], "kind": kind,
                 "slot": o["slot"], "tier": tier, "ilvl": ilvl, "rows": rows,
                 "rr": clampi(o.get("rr", 0), 0, 99),
-                "refine": clampi(o.get("refine", 0), 0, MAX_REFINE)}
+                "refine": clampi(o.get("refine", 0), 0, MAX_REFINE),
+                "awakened": 1 if awakened else 0}
     return None
 
 

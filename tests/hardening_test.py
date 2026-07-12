@@ -56,6 +56,20 @@ rows = {x["stat"]: x["val"] for x in r["character"]["players"][0]["inventory"][0
 ok(rows["atk"] <= 12 and rows["str"] <= 8 and rows["hp"] <= 48,
    "gear rows clamped to a legit common/ilvl-1 roll: " + json.dumps(rows))
 
+# 1b. awakening (P5a): a NON-awakened item is capped at 3 rows; an awakened
+#     one may keep 4 (each still row-capped) — no free extra affix
+time.sleep(2.2)
+st, r = save(token, player(inventory=[
+    {"uid": "aw0", "key": "chest", "kind": "armor", "slot": "chest", "tier": "unique", "ilvl": 10, "awakened": 0,
+     "rows": [{"stat": "hp", "val": 20}, {"stat": "vit", "val": 3}, {"stat": "str", "val": 3}, {"stat": "atk", "val": 5}]},
+    {"uid": "aw1", "key": "chest", "kind": "armor", "slot": "chest", "tier": "unique", "ilvl": 10, "awakened": 1,
+     "rows": [{"stat": "hp", "val": 20}, {"stat": "vit", "val": 3}, {"stat": "str", "val": 3}, {"stat": "agi", "val": 3}, {"stat": "luk", "val": 3}]}]))
+inv = r["character"]["players"][0]["inventory"]
+non_aw = next(i for i in inv if i["uid"] == "aw0")
+aw = next(i for i in inv if i["uid"] == "aw1")
+ok(len(non_aw["rows"]) == 3, "a non-awakened item is capped at 3 rows (got " + str(len(non_aw["rows"])) + ")")
+ok(len(aw["rows"]) == 4 and aw["awakened"] == 1, "an awakened item keeps up to 4 rows (got " + str(len(aw["rows"])) + ")")
+
 # a legit mystic high-ilvl item keeps its big (but bounded) rolls
 time.sleep(2.2)
 st, r = save(token, player(inventory=[{

@@ -1241,6 +1241,12 @@ class Game {
       const keyN = (type.miniboss || type.boss || type.worldboss) ? 1
         : (sp && sp.elite && Math.random() < 0.15) ? 1 : 0;
       if (keyN > 0) this.pickups.push(new Pickup('gear', x + (Math.random() * 24 + 6), y - 4, makeMaterial('key', keyN)));
+
+      // Awakening Stone (P5a): boss-only chase drop (~5% boss, ~12% worldboss).
+      const stoneChance = type.worldboss ? 0.12 : (type.boss ? 0.05 : 0);
+      if (stoneChance && Math.random() < stoneChance) {
+        this.pickups.push(new Pickup('gear', x + (Math.random() * 20 - 10), y - 8, makeMaterial('stone', 1)));
+      }
     }
 
     if (isBoss) {
@@ -1435,6 +1441,21 @@ class Game {
     }
     this.save();
     return { success, refine: item.refine };
+  }
+
+  /* Awaken (P5a): spend one Awakening Stone to add a 4th affix row to a BAG
+   * gear item, once. Bag-only, like reforge/refine. */
+  awaken(p, item) {
+    if (!canAwaken(item) || !p.inventory.includes(item)) return null;
+    if (this.matCount(p, 'stone') < 1) { UI.toast(t('inv.awakenNeed'), 'info'); this.sfx('point'); return null; }
+    const row = awakenItem(item);
+    if (!row) return null;
+    this.spendMaterial(p, 'stone', 1);
+    this.sfx('legendary');
+    this.addEffect({ type: 'ring', x: p.x, y: p.y - 12, dur: 0.6, color: '#ff5db1', r: 40 });
+    this.addFloatText(p.x, p.y - 46, '✦ +' + row.val + ' ' + t('rstat.' + row.stat), '#ff9ad6');
+    this.save();
+    return row;
   }
 
   /* Mine an adjacent rock (manual — pressing attack next to a rock with no

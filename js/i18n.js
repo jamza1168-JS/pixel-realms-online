@@ -95,6 +95,11 @@ const I18N = {
     'inv.refineNeed': 'Need {g}🪙 and {o}🪨 to refine',
     'mat.ore': 'Ore',
     'matd.ore': 'Refining material. Mine rocks (swing beside one) or slay elites & bosses.',
+    'mat.stone': 'Awakening Stone',
+    'matd.stone': 'Adds a 4th stat to a gear item, once. Drops from bosses only.',
+    'inv.awakenBtn': '✦ Awaken ({n}✦)',
+    'inv.awakenNeed': 'Need an Awakening Stone (boss drop) to awaken this.',
+    'inv.awakenedTag': 'Awakened (4th stat)',
     'inv.toSlot': '⌨ {k}',
 
     'shop.title': '🛒 Merchant',
@@ -452,6 +457,11 @@ const I18N = {
     'inv.refineNeed': 'ต้องใช้ {g}🪙 และแร่ {o}🪨 เพื่อตีบวก',
     'mat.ore': 'แร่',
     'matd.ore': 'วัตถุดิบสำหรับตีบวก ขุดจากหิน (ฟันข้างๆ ก้อนหิน) หรือปราบมอนสเตอร์อีลิท/บอส',
+    'mat.stone': 'หินปลุกพลัง',
+    'matd.stone': 'เพิ่มสเตตัสแถวที่ 4 ให้อุปกรณ์ ครั้งเดียว ดรอปจากบอสเท่านั้น',
+    'inv.awakenBtn': '✦ ปลุกพลัง ({n}✦)',
+    'inv.awakenNeed': 'ต้องใช้หินปลุกพลัง (ดรอปจากบอส) เพื่อปลุกพลังชิ้นนี้',
+    'inv.awakenedTag': 'ปลุกพลังแล้ว (สเตตัสที่ 4)',
     'inv.toSlot': '⌨ {k}',
 
     'shop.title': '🛒 พ่อค้า',

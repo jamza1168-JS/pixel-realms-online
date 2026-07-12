@@ -376,6 +376,17 @@ any 2-hander. `rollItem` auto-kind now weapon/offhand/accessory/armor. UI:
 `Accessory` filter chip. Covered by `tests/accessory_test.js`. **Deferred:**
 set bonuses (need a set-grouping model + server validation).
 
+**Phase 5a — Awakening Stone (shipped):** `MATERIALS.stone` — a boss-only
+material (~5% boss / ~12% worldboss, in `handleEnemyDead`; never money-sold)
+that adds a **4th** affix row to a gear item, once. `awakenItem`/`canAwaken`
+(items.js) push a NEW stat row (not already on the item; accessories use
+`ACC_ROW_STATS`) rolled with the drop math (within `row_cap`); `awakened`
+flag rides in `itemToSave`/`itemFromSave`. `Game.awaken` (bag-only, spends 1
+stone). UI: `✦ Awaken (N✦)` action for any `isGear`, `✦ Awakened` tooltip
+tag. `server.py` `clean_item` keeps a 4th row only when `awakened` (else
+clamps to 3), each still `row_cap`-bound. Covered by `tests/awaken_test.js`
+(+ row-count clamp in `hardening_test.py`).
+
 **Deferred by the user — remind them when they return:**
 1. ✅ Shield / off-hand slot to pair with the one-hand sword — DONE (P4a).
 2. Balance the new gear and tiers.

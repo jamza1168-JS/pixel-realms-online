@@ -55,6 +55,8 @@ node support_test.js               # M0 tip jar: /api/support, cost meter %, htt
                                    #   link guard, title-landing support slot render
 node map_test.js                   # P3a maps/portals: hub determinism unchanged, Forest
                                    #   biome, warp round-trip, bot skips portal, online gate
+node offhand_test.js               # P4a off-hand slot: roll/slot, class refusal, two-hand
+                                   #   pairing+eviction, quiver+bow, damage reduction, save
 ```
 
 If Playwright can't find a browser, point `PW_CHROMIUM` at a Chromium binary:

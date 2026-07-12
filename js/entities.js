@@ -34,7 +34,7 @@ class Player {
 
     this.inventory = [];                // item instances (gear + potion stacks)
     this.storage = [];                  // stash — keeps items out of the bag
-    this.equip = { head: null, chest: null, hands: null, gloves: null, legs: null, boots: null };
+    this.equip = { head: null, chest: null, hands: null, offhand: null, gloves: null, legs: null, boots: null };
     this.quickItems = [null, null, null];   // hotkey potion slots — potion keys
 
     this.x = game.world.spawnX;
@@ -77,13 +77,13 @@ class Player {
   equipAgg() {
     const agg = { str: 0, agi: 0, int: 0, vit: 0, luk: 0,
                   hp: 0, mp: 0, atk: 0, matk: 0, crit: 0, spd: 0,
-                  dmgMul: 1, aspdMul: 1 };
+                  dmgMul: 1, aspdMul: 1, dmgRed: 0 };
     for (const slot of EQUIP_SLOTS) {
       const it = this.equip[slot];
       if (!it) continue;
-      // refine: armor boosts its rolled rows, weapon boosts its damage (below)
+      // refine: armor/off-hand boost their rolled rows, weapon boosts damage
       const R = it.refine || 0;
-      const rowMul = it.kind === 'armor' ? refineArmorMul(R) : 1;
+      const rowMul = (it.kind === 'armor' || it.kind === 'offhand') ? refineArmorMul(R) : 1;
       for (const row of it.rows) if (row.stat in agg) agg[row.stat] += Math.round(row.val * rowMul);
       const base = itemBase(it);
       if (base && base.base) {
@@ -91,6 +91,7 @@ class Player {
         if (base.base.dmgMul) agg.dmgMul *= base.base.dmgMul * wMul;
         if (base.base.aspdMul) agg.aspdMul *= base.base.aspdMul;
         if (base.base.spd) agg.spd += base.base.spd;
+        if (base.base.dmgRed) agg.dmgRed += base.base.dmgRed;
       }
     }
     return agg;
@@ -131,12 +132,29 @@ class Player {
     this._addTo(this.inventory, stk ? { uid: itemUid(), key: item.key, kind: item.kind, count: move } : item);
   }
 
-  /* Equip a gear item from the inventory into its slot,
-   * swapping any current occupant back into the bag. */
+  /* Equip a gear item from the inventory into its slot, swapping any current
+   * occupant back into the bag. Enforces class tags and the one-hand/off-hand
+   * pairing rule (P4a); on refusal returns false and sets `equipError`. */
   equipItem(item) {
-    if (!item || (item.kind !== 'weapon' && item.kind !== 'armor')) return false;
-    const slot = item.slot;
+    this.equipError = null;
+    if (!item || !isGear(item)) return false;
+    const base = itemBase(item);
+    if (base && base.classes && !base.classes.includes(this.clsId)) { this.equipError = 'wrongClass'; return false; }
+    if (item.kind === 'offhand') {
+      const wpn = this.equip.hands;
+      if (base.pairWith) {
+        if (!wpn || wpn.key !== base.pairWith) { this.equipError = 'needsWeapon'; return false; }
+      } else if (base.needsOneHand && wpn && WEAPONS[wpn.key] && WEAPONS[wpn.key].two) {
+        this.equipError = 'needsOneHand'; return false;
+      }
+    }
     this.removeItem(item);
+    // equipping a two-hander evicts any off-hand that does not pair with it
+    if (item.kind === 'weapon' && WEAPONS[item.key] && WEAPONS[item.key].two && this.equip.offhand) {
+      const ob = itemBase(this.equip.offhand);
+      if (!ob || ob.pairWith !== item.key) { this.inventory.push(this.equip.offhand); this.equip.offhand = null; }
+    }
+    const slot = item.slot;
     const prev = this.equip[slot];
     this.equip[slot] = item;
     if (prev) this.inventory.push(prev);
@@ -247,6 +265,7 @@ class Player {
 
   takeDamage(amount) {
     if (this.dead) return;
+    amount = amount * (1 - (this.derived.dmgRed || 0));   // shields etc. (P4a)
     this.hp -= amount;
     this.game.addFloatText(this.x, this.y - 30, '-' + Math.round(amount), '#ff6a6a');
     this.game.sfx('hurt');

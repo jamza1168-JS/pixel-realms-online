@@ -173,8 +173,9 @@ ALLOWED_TIERS = {"common", "rare", "unique", "legend", "mystic"}
 ALLOWED_POTIONS = {"hp", "mp", "spd", "atk", "aspd", "regen", "tele"}
 ALLOWED_MATERIALS = {"ore", "key"}
 ALLOWED_ARMOR = {"head", "chest", "gloves", "legs", "boots"}
-ALLOWED_WEAPONS = {"sword1h", "sword2h", "staff", "bow"}
-ALLOWED_SLOTS = {"head", "chest", "hands", "gloves", "legs", "boots"}
+ALLOWED_WEAPONS = {"sword1h", "sword2h", "staff", "bow", "mace1h", "wand1h"}
+ALLOWED_OFFHANDS = {"shield", "book", "quiver"}
+ALLOWED_SLOTS = {"head", "chest", "hands", "offhand", "gloves", "legs", "boots"}
 ALLOWED_BASESTATS = {"str", "agi", "int", "vit", "luk"}
 ALLOWED_ROWSTATS = {"str", "agi", "int", "vit", "luk", "hp", "mp", "atk", "matk", "crit", "spd"}
 
@@ -290,8 +291,9 @@ def clean_item(o):
         if o.get("key") not in ALLOWED_MATERIALS:
             return None
         return {"key": o["key"], "kind": "material", "count": clampi(o.get("count", 1), 1, 9999)}
-    if kind in ("weapon", "armor"):
-        table = ALLOWED_WEAPONS if kind == "weapon" else ALLOWED_ARMOR
+    if kind in ("weapon", "armor", "offhand"):
+        table = (ALLOWED_WEAPONS if kind == "weapon"
+                 else ALLOWED_OFFHANDS if kind == "offhand" else ALLOWED_ARMOR)
         if o.get("key") not in table or o.get("slot") not in ALLOWED_SLOTS:
             return None
         tier = o.get("tier") if o.get("tier") in ALLOWED_TIERS else "common"

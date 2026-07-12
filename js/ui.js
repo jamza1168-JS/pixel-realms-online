@@ -137,8 +137,10 @@ const UI = {
       if (base.base.dmgMul && base.base.dmgMul !== 1) mods.push(pct(base.base.dmgMul) + ' DMG');
       if (base.base.aspdMul && base.base.aspdMul !== 1) mods.push(pct(base.base.aspdMul) + ' ATK SPD');
       if (base.base.spd) mods.push((base.base.spd > 0 ? '+' : '') + base.base.spd + ' SPD');
+      if (base.base.dmgRed) mods.push('+' + Math.round(base.base.dmgRed * 100) + '% ' + t('stat.dmgRed'));
       if (mods.length) h += `<div class="it-sub">${mods.join(' · ')}</div>`;
       if (base.two) h += `<div class="it-sub">${escapeHtml(t('inv.twoHanded'))}</div>`;
+      if (base.classes) h += `<div class="it-sub">${escapeHtml(t('inv.classOnly', { c: base.classes.map(c => t('class.' + c)).join('/') }))}</div>`;
     }
     if (item.rr) h += `<div class="it-sub">⚒ ×${item.rr}</div>`;
     return h;
@@ -156,13 +158,14 @@ const UI = {
   statLabel(k) {
     if (k === 'dmgMul') return 'DMG';
     if (k === 'aspdMul') return 'ATK SPD';
+    if (k === 'dmgRed') return t('stat.dmgRed');
     return t('rstat.' + k);
   },
 
   /* When hovering a gear item, show the item currently equipped in the
    * same slot plus the per-stat delta, so two items compare at a glance. */
   equipCompareHtml(item) {
-    if (!item || (item.kind !== 'weapon' && item.kind !== 'armor')) return '';
+    if (!isGear(item)) return '';
     const p = this.game && this.game.players[0];
     if (!p) return '';
     const eq = p.equip[item.slot];
@@ -174,7 +177,7 @@ const UI = {
     for (const k of keys) {
       const dv = (a[k] || 0) - (b[k] || 0);
       if (!dv) continue;
-      const suffix = (k === 'dmgMul' || k === 'aspdMul') ? '%' : '';
+      const suffix = (k === 'dmgMul' || k === 'aspdMul' || k === 'dmgRed') ? '%' : '';
       h += `<div class="${dv > 0 ? 'cmp-up' : 'cmp-down'}">${dv > 0 ? '+' : ''}${dv}${suffix} ${escapeHtml(this.statLabel(k))}</div>`;
     }
     return h;
@@ -211,7 +214,7 @@ const UI = {
     const cats = [['all', t('inv.filterAll')], ['potion', t('inv.filterPotion')],
       ['material', t('inv.filterMaterial')],
       ['head', t('slot.head')], ['chest', t('slot.chest')], ['hands', t('slot.hands')],
-      ['gloves', t('slot.gloves')], ['legs', t('slot.legs')], ['boots', t('slot.boots')]];
+      ['offhand', t('slot.offhand')], ['gloves', t('slot.gloves')], ['legs', t('slot.legs')], ['boots', t('slot.boots')]];
     bar.innerHTML = '';
     for (const [key, label] of cats) {
       const b = document.createElement('button');
@@ -340,9 +343,10 @@ const UI = {
         p.withdrawItem(sel); this.invSel = null; this.game.save(); re(); this.game.sfx('point');
       }));
     } else {
-      if (sel.kind === 'weapon' || sel.kind === 'armor') {
+      if (isGear(sel)) {
         act.appendChild(this.invBtn(t('inv.equip'), () => {
-          p.equipItem(sel); this.invSel = null; this.game.save(); re(); this.game.sfx('buff');
+          if (p.equipItem(sel)) { this.invSel = null; this.game.save(); re(); this.game.sfx('buff'); }
+          else { UI.toast(t('equip.' + (p.equipError || 'wrongClass')), 'info'); this.game.sfx('point'); }
         }));
         act.appendChild(this.invBtn(t('inv.reforgeCost', { n: reforgeCost(sel) }), () => {
           this.reforgeSel = sel; re(); this.game.sfx('point');

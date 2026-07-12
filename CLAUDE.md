@@ -348,8 +348,24 @@ automatically; old saves default `gloves:null`. `generateForest`→
 stay in the shared multiplayer hub, not solo instances). Covered by
 `tests/map_test.js`.
 
+**Phase 4a — Off-hand slot + class tags + damage reduction (shipped):** new
+`offhand` slot + item **kind `offhand`** (`OFFHANDS`: **shield** war/cleric
+`dmgRed 0.10`, **book** mage/cleric, **quiver** archer pairs with the bow).
+One-hand **mace1h** (war/cleric) + **wand1h** (mage) so casters can pair an
+off-hand. **Class tags** (`base.classes`) on the NEW items only (existing
+weapons stay class-free → no loadout breaks). `equipItem` enforces class +
+pairing (off-hand needs a one-hand weapon or its `pairWith`; a two-hander
+evicts a non-paired off-hand) and sets `equipError` for the UI toast. New
+derived stat **`dmgRed`** (`deriveStats`, capped 20%; `Player.takeDamage`
+applies it). `rollItem` rolls weapon/offhand/armor + a `classHint` (local
+player's class) biases weapon/off-hand base picks; `handleEnemyDead`/chests
+pass it. `server.py`: `ALLOWED_OFFHANDS`, `ALLOWED_WEAPONS` += mace1h/wand1h,
+`clean_item` kind `offhand`. `isGear()` helper unifies weapon/armor/offhand
+in equip/UI. Covered by `tests/offhand_test.js`. **Deferred to 4b:**
+accessories (×2, spice rolls), crossbow, set bonuses.
+
 **Deferred by the user — remind them when they return:**
-1. Shield / off-hand slot to pair with the one-hand sword.
+1. ✅ Shield / off-hand slot to pair with the one-hand sword — DONE (P4a).
 2. Balance the new gear and tiers.
 3. Sound effects for normal (common/rare) item pickups.
 

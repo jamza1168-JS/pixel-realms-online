@@ -254,8 +254,11 @@ art from `docs/ART_REDESIGN.md` lands.
      Remaining: Snow (needs a new tile), and the Map-1 high-tier migration
      stays deferred — the shared world-boss/bosses must live in the
      multiplayer hub, not a solo instance.
-4. **P4 — Equipment lines:** offhand slot (shield/book/quiver), new
-   weapons, class tags, accessories with Map 6.
+4. **P4 — Equipment lines** (split, §9.3):
+   - **4a — Off-hand slot (shield/book/quiver) + one-hand mace/wand + class
+     tags + damage-reduction stat + two-hand pairing** ✅ SHIPPED.
+   - **4b — Accessory slots (×2, spice-only rolls) + weapon variety
+     (crossbow) + set bonuses.**
 5. **P5 — Maps 5–9, Awakening Stone, fishing/cooking.**
 6. **P6 — Sets/variants art pass** (the "20+ swords" cosmetic breadth) —
    pairs with the dye/cosmetic shop (M2).
@@ -415,3 +418,44 @@ robust with a retry.
   hub — moving them into solo biome instances would kill the "everyone
   converges on the world boss" event. Revisit only if biome zones ever become
   multiplayer (per-map channels).
+
+## 9.3 Phase 4 sub-phase specs (equipment lines)
+
+### Phase 4a — Off-hand slot + class tags + damage reduction — ✅ SHIPPED
+*Goal: pairs an off-hand with one-hand weapons (closes the long-deferred
+"shield/off-hand" backlog item), usable by every class at ship.*
+- **Off-hand slot** `offhand` added to `EQUIP_SLOTS`/`Player.equip`/
+  `ALLOWED_SLOTS`; new item **kind `offhand`** with an `OFFHANDS` base table
+  (items.js): **shield** (warrior/cleric, `dmgRed 0.10` + `dmgMul 0.92`),
+  **tome/book** (mage/cleric, `dmgMul 1.12`), **quiver** (archer,
+  `aspdMul 1.08`, pairs with the bow). Rolls 3 affix rows like any gear;
+  threads through `equipAgg`/`spSig`/save automatically (all iterate
+  `EQUIP_SLOTS`).
+- **One-hand weapons** so casters can pair an off-hand: **mace1h**
+  (warrior/cleric), **wand1h** (mage). Archer keeps the 2-hand bow (quiver is
+  the special-case off-hand that pairs with it).
+- **Class tags** (`base.classes`) on the *new* items only — existing weapons
+  stay class-free so no current loadout breaks. `equipItem` refuses a
+  wrong-class item (`equipError='wrongClass'`) and enforces pairing:
+  off-hand needs a one-hand weapon (`needsOneHand`) or its `pairWith` weapon;
+  equipping a two-hander evicts a non-paired off-hand back to the bag.
+- **Damage-reduction stat** `dmgRed` (data.js `deriveStats`, capped 20%);
+  `Player.takeDamage` applies `×(1 − dmgRed)`. Shields are the source.
+- **Drops:** `rollItem` now rolls weapon/off-hand/armor (~30/18/52%); a
+  `classHint` (the local player's class) biases weapon/off-hand base picks to
+  the class's usable set so drops feel relevant. `handleEnemyDead` + chests
+  pass the hint. `server.py`: `ALLOWED_OFFHANDS`, `ALLOWED_WEAPONS` +=
+  mace1h/wand1h, `clean_item` accepts kind `offhand`.
+- **UI:** off-hand filter chip; equip-refusal toast (`equip.*`); tooltip
+  shows `dmgRed` + a "class only" line; compare uses a % suffix for `dmgRed`.
+- **Test:** `tests/offhand_test.js` — roll/slot, class refusal, two-hand
+  pairing + eviction, quiver+bow, damage reduction, save round-trip, class
+  hint. Equipment/hardening/map/feature suites pass with the new slot.
+
+### Phase 4b — Accessories + weapon variety (next)
+- **Accessory slots ×2** (`acc1`/`acc2`): a new gear kind whose rows are
+  restricted to primary stats + crit/spd (no flat hp/atk) — spice, not raw
+  power. Introduce alongside a higher-band biome so the extra rows are
+  absorbed.
+- **Crossbow** (archer 2h alt, `dmgMul 1.45, aspdMul 0.8`), plus optional
+  small **2/4-piece set bonuses** on same-named gear (server-validated).

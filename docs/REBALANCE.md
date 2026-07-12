@@ -259,7 +259,12 @@ art from `docs/ART_REDESIGN.md` lands.
      tags + damage-reduction stat + two-hand pairing** ✅ SHIPPED.
    - **4b — Accessory slots (×2, spice-only rolls) + crossbow** ✅ SHIPPED.
      Set bonuses deferred (need a set-grouping model + server validation).
-5. **P5 — Maps 5–9, Awakening Stone, fishing/cooking.**
+5. **P5 — Endgame depth** (split like the others):
+   - **5a — Awakening Stone** ✅ SHIPPED (boss-only material that adds a 4th
+     affix row to a gear item, once).
+   - **5b — More biomes** (Snow needs a `T_SNOW` tile; Volcano via `T_ASH`)
+     using the config-driven `generateBiome`.
+   - **5c — Fishing + cooking** (idle life-skill + food buffs).
 6. **P6 — Sets/variants art pass** (the "20+ swords" cosmetic breadth) —
    pairs with the dye/cosmetic shop (M2).
 
@@ -472,3 +477,35 @@ robust with a retry.
   quiver).
 - **Deferred:** small 2/4-piece **set bonuses** on same-named gear — needs a
   set-grouping model + server-side validation; a clean follow-up.
+
+## 9.4 Phase 5 sub-phase specs (endgame depth)
+
+### Phase 5a — Awakening Stone — ✅ SHIPPED
+- **`MATERIALS.stone`** (Awakening Stone): a boss-only chase material — ~5%
+  from bosses, ~12% from the world boss (dropped in `handleEnemyDead` as a
+  `'gear'` Pickup carrying the material; never sold for money).
+- **`awakenItem(item)`** (items.js): adds a **4th** affix row (`AWAKEN_ROWS`)
+  to a gear item, once (`awakened` flag). The new row is a stat the item
+  doesn't already have (accessories draw from `ACC_ROW_STATS`), rolled with
+  the same tier/ilvl math as a drop → within `row_cap`. `canAwaken` gates it.
+- **`Game.awaken(p,item)`** (main.js): bag-only, spends one stone
+  (`matCount`/`spendMaterial`). UI: an **✦ Awaken (N✦)** action beside
+  Reforge/Refine for any gear (`isGear`); tooltip shows an `✦ Awakened` tag.
+  `awakened` rides in `itemToSave`/`itemFromSave`.
+- **server.py:** `ALLOWED_MATERIALS` += `stone`; `clean_item` keeps a 4th row
+  **only** when `awakened` (else clamps to 3), each row still `row_cap`-bound
+  — so the extra affix is a bounded, one-row gain (full provenance is Stage-2,
+  like the other sinks). Covered by `tests/awaken_test.js` (+ a row-count
+  clamp in `hardening_test.py`).
+
+### Phase 5b — More biomes (next)
+- **Snow** needs a new tile id `T_SNOW` + bake/minimap colours, then it's a
+  `MAPS` entry for `generateBiome` (icy pool, band ~17–22) + a hub portal.
+- **Volcano** can reuse `T_ASH` (band ~25–31); add lava/ash decor.
+- Each is mostly a `MAPS` entry + i18n + a hub portal (the generator exists).
+
+### Phase 5c — Fishing + cooking
+- Water tiles become fishable (a rod interaction, cooldown per spot like
+  mining) → `fish` materials; a simple cooking recipe turns fish into food
+  consumables (a +regen buff on a separate tag, stacking with potions). An
+  idle, social life-skill with zero combat power (retention, not power).

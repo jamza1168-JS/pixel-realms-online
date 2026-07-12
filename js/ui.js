@@ -143,6 +143,7 @@ const UI = {
       if (base.classes) h += `<div class="it-sub">${escapeHtml(t('inv.classOnly', { c: base.classes.map(c => t('class.' + c)).join('/') }))}</div>`;
     }
     if (item.rr) h += `<div class="it-sub">⚒ ×${item.rr}</div>`;
+    if (item.awakened) h += `<div class="it-sub" style="color:#ff9ad6">✦ ${escapeHtml(t('inv.awakenedTag'))}</div>`;
     return h;
   },
 
@@ -369,6 +370,19 @@ const UI = {
           });
           if (p.gold < rc.gold || haveOre < rc.ore) btn.classList.add('disabled');
           act.appendChild(btn);
+        }
+        // Awaken: spend 1 Awakening Stone to add a 4th affix row (once)
+        if (canAwaken(sel)) {
+          const stones = this.game.matCount(p, 'stone');
+          const abtn = this.invBtn(t('inv.awakenBtn', { n: stones }), () => {
+            if (this.game.awaken(p, sel)) re();
+          });
+          if (stones < 1) abtn.classList.add('disabled');
+          act.appendChild(abtn);
+        } else if (sel.awakened) {
+          const tag = document.createElement('span');
+          tag.className = 'ia-hint'; tag.textContent = '✦ ' + t('inv.awakenedTag');
+          act.appendChild(tag);
         }
       }
       if (sel.kind === 'potion') {

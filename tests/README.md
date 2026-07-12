@@ -59,6 +59,8 @@ node offhand_test.js               # P4a off-hand slot: roll/slot, class refusal
                                    #   pairing+eviction, quiver+bow, damage reduction, save
 node accessory_test.js             # P4b accessories x2: spice-only rolls, acc1/acc2 fill,
                                    #   stats apply, save reload, crossbow (archer, evicts quiver)
+node awaken_test.js                # P5a Awakening Stone: adds a distinct 4th row once,
+                                   #   spends a stone (bag-only), save round-trip, 3-row clamp
 ```
 
 If Playwright can't find a browser, point `PW_CHROMIUM` at a Chromium binary:

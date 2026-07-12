@@ -95,8 +95,11 @@ const POTIONS = {
  * Stackable crafting resources. `ore` fuels gear refining. Materials have
  * no rolls and stack by key like potions. */
 const MATERIALS = {
-  ore: { key: 'ore', kind: 'material', icon: '🪨', color: '#b79b6e', price: 12 },
-  key: { key: 'key', kind: 'material', icon: '🗝️', color: '#e8c860', price: 4 },
+  ore:   { key: 'ore',   kind: 'material', icon: '🪨', color: '#b79b6e', price: 12 },
+  key:   { key: 'key',   kind: 'material', icon: '🗝️', color: '#e8c860', price: 4 },
+  // Awakening Stone (P5a): boss-only drop that adds a 4th affix row to a
+  // gear item, once. Never sold for money.
+  stone: { key: 'stone', kind: 'material', icon: '✦',  color: '#ff5db1', price: 0 },
 };
 
 /* ---------- Rollable stats (affixes) ---------- */
@@ -264,6 +267,31 @@ function reforgeRow(item, rowIdx) {
   return row.val;
 }
 
+/* ---------- Awakening (P5a) ----------
+ * Add a 4th affix row to a gear item, once (`awakened`). The new row is a
+ * stat the item doesn't already have (accessories draw from the spice pool),
+ * rolled with the same tier/ilvl math as a drop — so it stays within the
+ * server row_cap. Returns the new row, or null if it can't be awakened. */
+const AWAKEN_ROWS = ROWS_PER_ITEM + 1;   // 4
+function canAwaken(item) {
+  return isGear(item) && !item.awakened && (item.rows ? item.rows.length : 0) < AWAKEN_ROWS;
+}
+function awakenItem(item) {
+  if (!canAwaken(item)) return null;
+  const poolStats = item.kind === 'accessory' ? ACC_ROW_STATS : AFFIX_KEYS;
+  const used = new Set(item.rows.map(r => r.stat));
+  const choices = AFFIXES.filter(a => poolStats.includes(a.stat) && !used.has(a.stat));
+  if (!choices.length) return null;
+  const a = pickRandom(choices);
+  const tier = ITEM_TIERS[item.tier] || ITEM_TIERS.common;
+  const ilvlScale = 1 + ((item.ilvl || 1) - 1) * 0.12;
+  const val = Math.max(1, Math.round((a.min + Math.random() * (a.max - a.min)) * tier.mult * ilvlScale));
+  const row = { stat: a.stat, val };
+  item.rows.push(row);
+  item.awakened = true;
+  return row;
+}
+
 /* Gold a merchant pays for an item (gear scales with tier + level). */
 function sellValue(item) {
   if (item.kind === 'potion') return Math.max(1, Math.floor((POTIONS[item.key].price || 20) * 0.4)) * (item.count || 1);
@@ -332,7 +360,8 @@ function itemToSave(item) {
   if (item.kind === 'potion') return { key: item.key, kind: 'potion', count: item.count || 1 };
   if (item.kind === 'material') return { key: item.key, kind: 'material', count: item.count || 1 };
   return { uid: item.uid, key: item.key, kind: item.kind, slot: item.slot, tier: item.tier,
-           ilvl: item.ilvl, rows: item.rows, rr: item.rr || 0, refine: item.refine || 0 };
+           ilvl: item.ilvl, rows: item.rows, rr: item.rr || 0, refine: item.refine || 0,
+           awakened: item.awakened ? 1 : 0 };
 }
 
 function itemFromSave(o) {
@@ -341,9 +370,11 @@ function itemFromSave(o) {
   if (o.kind === 'material') { return MATERIALS[o.key] ? makeMaterialFrom(o) : null; }
   const table = baseTable(o.kind);
   if (!table[o.key] || !Array.isArray(o.rows)) return null;
+  const awakened = !!o.awakened;
   return { uid: o.uid || itemUid(), key: o.key, kind: o.kind, slot: table[o.key].slot,
-           tier: ITEM_TIERS[o.tier] ? o.tier : 'common', ilvl: o.ilvl || 1, rows: o.rows,
-           rr: Math.max(0, o.rr | 0), refine: Math.max(0, Math.min(MAX_REFINE, o.refine | 0)) };
+           tier: ITEM_TIERS[o.tier] ? o.tier : 'common', ilvl: o.ilvl || 1,
+           rows: o.rows.slice(0, awakened ? AWAKEN_ROWS : ROWS_PER_ITEM),
+           rr: Math.max(0, o.rr | 0), refine: Math.max(0, Math.min(MAX_REFINE, o.refine | 0)), awakened };
 }
 function makePotionFrom(o) { return { uid: itemUid(), key: o.key, kind: 'potion', count: Math.max(1, o.count | 0) }; }
 function makeMaterialFrom(o) { return { uid: itemUid(), key: o.key, kind: 'material', count: Math.max(1, o.count | 0) }; }

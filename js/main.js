@@ -216,7 +216,7 @@ class Game {
       if (saved.equip) {
         for (const slot of EQUIP_SLOTS) {
           const it = itemFromSave(saved.equip[slot]);
-          if (it && it.kind !== 'potion' && it.slot === slot) p.equip[slot] = it;
+          if (it && slotAccepts(slot, it)) p.equip[slot] = it;
         }
       }
       if (Array.isArray(saved.quickItems)) {

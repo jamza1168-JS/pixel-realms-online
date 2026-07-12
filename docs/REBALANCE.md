@@ -257,8 +257,8 @@ art from `docs/ART_REDESIGN.md` lands.
 4. **P4 — Equipment lines** (split, §9.3):
    - **4a — Off-hand slot (shield/book/quiver) + one-hand mace/wand + class
      tags + damage-reduction stat + two-hand pairing** ✅ SHIPPED.
-   - **4b — Accessory slots (×2, spice-only rolls) + weapon variety
-     (crossbow) + set bonuses.**
+   - **4b — Accessory slots (×2, spice-only rolls) + crossbow** ✅ SHIPPED.
+     Set bonuses deferred (need a set-grouping model + server validation).
 5. **P5 — Maps 5–9, Awakening Stone, fishing/cooking.**
 6. **P6 — Sets/variants art pass** (the "20+ swords" cosmetic breadth) —
    pairs with the dye/cosmetic shop (M2).
@@ -452,10 +452,23 @@ robust with a retry.
   pairing + eviction, quiver+bow, damage reduction, save round-trip, class
   hint. Equipment/hardening/map/feature suites pass with the new slot.
 
-### Phase 4b — Accessories + weapon variety (next)
-- **Accessory slots ×2** (`acc1`/`acc2`): a new gear kind whose rows are
-  restricted to primary stats + crit/spd (no flat hp/atk) — spice, not raw
-  power. Introduce alongside a higher-band biome so the extra rows are
-  absorbed.
-- **Crossbow** (archer 2h alt, `dmgMul 1.45, aspdMul 0.8`), plus optional
-  small **2/4-piece set bonuses** on same-named gear (server-validated).
+### Phase 4b — Accessories + crossbow — ✅ SHIPPED
+- **Accessory slots ×2** (`acc1`/`acc2`): new item **kind `accessory`**
+  (`ACCESSORIES`: ring, amulet) with a generic `slot:'acc'`. `slotAccepts`
+  routes them into either acc slot; `equipItem` fills the first free one
+  (else swaps acc1). Rows are **SPICE-only** (`ACC_ROW_STATS` = primary
+  stats + crit/spd; no flat hp/mp/atk/matk) via a filtered affix pool in
+  `rollItem`. Threads through `equipAgg`/`spSig`/save (all iterate
+  `EQUIP_SLOTS`); load + `server.py` use `slot_accepts`/`EQUIP_KEYS`
+  (item.slot `acc` in `ALLOWED_SLOTS`, acc1/acc2 as equip positions).
+- **Crossbow** (`WEAPONS.crossbow`, archer-only 2h, `dmgMul 1.45, aspdMul
+  0.8`) — a raw-damage bow alternative; being 2-hand it evicts the quiver.
+  `server.py ALLOWED_WEAPONS` += crossbow.
+- **UI:** `Accessory` filter chip; equipped rows for Accessory 1/2 render via
+  `EQUIP_SLOTS`. EN/TH `slot.acc/acc1/acc2`, `gear.ring/amulet/crossbow`.
+- **Test:** `tests/accessory_test.js` — two slots, spice-only rows (no
+  hp/mp/atk/matk over 300 rolls), acc1→acc2 fill order, both apply to
+  derived stats, save reload into slots, and crossbow (archer-only, evicts
+  quiver).
+- **Deferred:** small 2/4-piece **set bonuses** on same-named gear — needs a
+  set-grouping model + server-side validation; a clean follow-up.

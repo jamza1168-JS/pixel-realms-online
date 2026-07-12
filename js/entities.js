@@ -34,7 +34,7 @@ class Player {
 
     this.inventory = [];                // item instances (gear + potion stacks)
     this.storage = [];                  // stash — keeps items out of the bag
-    this.equip = { head: null, chest: null, hands: null, offhand: null, gloves: null, legs: null, boots: null };
+    this.equip = { head: null, chest: null, hands: null, offhand: null, gloves: null, legs: null, boots: null, acc1: null, acc2: null };
     this.quickItems = [null, null, null];   // hotkey potion slots — potion keys
 
     this.x = game.world.spawnX;
@@ -148,13 +148,15 @@ class Player {
         this.equipError = 'needsOneHand'; return false;
       }
     }
+    // accessories go into the first free acc slot (else swap acc1)
+    let slot = item.slot;
+    if (item.kind === 'accessory') slot = !this.equip.acc1 ? 'acc1' : (!this.equip.acc2 ? 'acc2' : 'acc1');
     this.removeItem(item);
     // equipping a two-hander evicts any off-hand that does not pair with it
     if (item.kind === 'weapon' && WEAPONS[item.key] && WEAPONS[item.key].two && this.equip.offhand) {
       const ob = itemBase(this.equip.offhand);
       if (!ob || ob.pairWith !== item.key) { this.inventory.push(this.equip.offhand); this.equip.offhand = null; }
     }
-    const slot = item.slot;
     const prev = this.equip[slot];
     this.equip[slot] = item;
     if (prev) this.inventory.push(prev);

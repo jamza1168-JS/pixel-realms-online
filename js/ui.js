@@ -204,7 +204,8 @@ const UI = {
     if (f === 'all') return true;
     if (f === 'potion') return it.kind === 'potion';
     if (f === 'material') return it.kind === 'material';
-    return it.slot === f;   // head | chest | hands | legs | boots
+    if (f === 'accessory') return it.kind === 'accessory';
+    return it.slot === f;   // head | chest | hands | offhand | gloves | legs | boots
   },
 
   /* Category chips above the grid; higher tier sorts first in the grid. */
@@ -214,7 +215,8 @@ const UI = {
     const cats = [['all', t('inv.filterAll')], ['potion', t('inv.filterPotion')],
       ['material', t('inv.filterMaterial')],
       ['head', t('slot.head')], ['chest', t('slot.chest')], ['hands', t('slot.hands')],
-      ['offhand', t('slot.offhand')], ['gloves', t('slot.gloves')], ['legs', t('slot.legs')], ['boots', t('slot.boots')]];
+      ['offhand', t('slot.offhand')], ['gloves', t('slot.gloves')], ['legs', t('slot.legs')], ['boots', t('slot.boots')],
+      ['accessory', t('slot.acc')]];
     bar.innerHTML = '';
     for (const [key, label] of cats) {
       const b = document.createElement('button');

@@ -57,6 +57,8 @@ node map_test.js                   # P3a maps/portals: hub determinism unchanged
                                    #   biome, warp round-trip, bot skips portal, online gate
 node offhand_test.js               # P4a off-hand slot: roll/slot, class refusal, two-hand
                                    #   pairing+eviction, quiver+bow, damage reduction, save
+node accessory_test.js             # P4b accessories x2: spice-only rolls, acc1/acc2 fill,
+                                   #   stats apply, save reload, crossbow (archer, evicts quiver)
 ```
 
 If Playwright can't find a browser, point `PW_CHROMIUM` at a Chromium binary:

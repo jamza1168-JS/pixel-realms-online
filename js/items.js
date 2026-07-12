@@ -23,7 +23,7 @@ const TIER_ORDER = ['common', 'rare', 'unique', 'legend', 'mystic'];
 /* 'hands' holds the weapon, 'offhand' the shield/book/quiver (P4a); the rest
  * are armor pieces. deriveStats/equipAgg/spSig iterate EQUIP_SLOTS, so new
  * slots thread through automatically. */
-const EQUIP_SLOTS = ['head', 'chest', 'hands', 'offhand', 'gloves', 'legs', 'boots'];
+const EQUIP_SLOTS = ['head', 'chest', 'hands', 'offhand', 'gloves', 'legs', 'boots', 'acc1', 'acc2'];
 
 const ARMOR = {
   head:   { key: 'head',   slot: 'head',   kind: 'armor', icon: '🪖' },
@@ -48,7 +48,26 @@ const WEAPONS = {
   // one-handers so casters/clerics can pair an off-hand (P4a)
   mace1h:  { key: 'mace1h',  slot: 'hands', kind: 'weapon', icon: '🔨', two: false, classes: ['warrior', 'cleric'], base: { dmgMul: 1.05, aspdMul: 1.0, spd: 4 } },
   wand1h:  { key: 'wand1h',  slot: 'hands', kind: 'weapon', icon: '🥢', two: false, classes: ['mage'],              base: { dmgMul: 0.95, aspdMul: 1.2, spd: 6 } },
+  // crossbow: archer 2-hand alt — big damage, slow, no quiver (P4b)
+  crossbow:{ key: 'crossbow',slot: 'hands', kind: 'weapon', icon: '🎱', two: true,  classes: ['archer'],            base: { dmgMul: 1.45, aspdMul: 0.8, spd: 0 } },
 };
+
+/* Accessories (P4b): two interchangeable `acc1`/`acc2` slots. Their item
+ * `slot` is the generic 'acc'; equipItem/slotAccepts route them into a free
+ * accessory slot. Rows are SPICE-only (primary stats + crit/spd, never flat
+ * hp/mp/atk/matk — see ACC_AFFIXES), so they add flavour, not raw power. */
+const ACCESSORIES = {
+  ring:   { key: 'ring',   slot: 'acc', kind: 'accessory', icon: '💍' },
+  amulet: { key: 'amulet', slot: 'acc', kind: 'accessory', icon: '📿' },
+};
+const ACC_ROW_STATS = ['str', 'agi', 'int', 'vit', 'luk', 'crit', 'spd'];
+
+/* Which equip position(s) an item may occupy. Accessories fit acc1 or acc2. */
+function slotAccepts(slot, item) {
+  if (!isGear(item)) return false;
+  if (slot === 'acc1' || slot === 'acc2') return item.kind === 'accessory';
+  return item.slot === slot;
+}
 
 /* Off-hands occupy the 'offhand' slot and pair with a one-hand weapon
  * (`needsOneHand`), except the quiver which pairs with the two-hand bow
@@ -129,19 +148,25 @@ function rollTier(opts = 0) {
 }
 
 function baseTable(kind) {
-  return kind === 'weapon' ? WEAPONS : (kind === 'offhand' ? OFFHANDS : ARMOR);
+  if (kind === 'weapon') return WEAPONS;
+  if (kind === 'offhand') return OFFHANDS;
+  if (kind === 'accessory') return ACCESSORIES;
+  return ARMOR;
 }
 
 /* Roll one gear item.
- * opts: { kind:'weapon'|'armor'|'offhand', key?, tier?, ilvl?, bias?,
- *         tierWeights?, classHint? }
+ * opts: { kind:'weapon'|'armor'|'offhand'|'accessory', key?, tier?, ilvl?,
+ *         bias?, tierWeights?, classHint? }
  *   tier        — force an exact tier (tests, guaranteed rewards)
  *   tierWeights — {tierKey: w} map constraining which tiers may roll
  *   bias        — legacy rarer-tier nudge (fallback if neither above given)
  *   classHint   — bias weapon/off-hand base picks to a class's usable set */
 function rollItem(opts = {}) {
   let kind = opts.kind;
-  if (!kind) { const r = Math.random(); kind = r < 0.30 ? 'weapon' : (r < 0.48 ? 'offhand' : 'armor'); }
+  if (!kind) {
+    const r = Math.random();
+    kind = r < 0.26 ? 'weapon' : (r < 0.42 ? 'offhand' : (r < 0.56 ? 'accessory' : 'armor'));
+  }
   const tierKey = opts.tier
     || rollTier(opts.tierWeights ? { weights: opts.tierWeights } : { bias: opts.bias || 0 });
   const tier = ITEM_TIERS[tierKey];
@@ -159,8 +184,9 @@ function rollItem(opts = {}) {
   const base = table[baseKey];
   const ilvlScale = 1 + (ilvl - 1) * 0.12;
 
-  // pick 3 distinct affixes and roll each, scaled by tier + item level
-  const pool = AFFIXES.slice();
+  // pick 3 distinct affixes and roll each, scaled by tier + item level.
+  // Accessories use a SPICE-only affix pool (no flat hp/mp/atk/matk).
+  const pool = (kind === 'accessory' ? AFFIXES.filter(a => ACC_ROW_STATS.includes(a.stat)) : AFFIXES.slice());
   const rows = [];
   for (let i = 0; i < ROWS_PER_ITEM && pool.length; i++) {
     const a = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
@@ -256,8 +282,8 @@ function tierRank(item) {
   return TIER_ORDER.indexOf(item.tier);
 }
 
-/* True for rolled gear (weapon/armor/off-hand) — the tier+rows items. */
-function isGear(item) { return item && (item.kind === 'weapon' || item.kind === 'armor' || item.kind === 'offhand'); }
+/* True for rolled gear (weapon/armor/off-hand/accessory) — tier+rows items. */
+function isGear(item) { return item && (item.kind === 'weapon' || item.kind === 'armor' || item.kind === 'offhand' || item.kind === 'accessory'); }
 
 /* A gear item's flat stat contribution, for side-by-side comparison.
  * Merges rolled rows with the weapon/off-hand base modifiers. */
@@ -281,6 +307,7 @@ function itemBase(item) {
   if (item.kind === 'material') return MATERIALS[item.key];
   if (item.kind === 'weapon') return WEAPONS[item.key];
   if (item.kind === 'offhand') return OFFHANDS[item.key];
+  if (item.kind === 'accessory') return ACCESSORIES[item.key];
   return ARMOR[item.key];
 }
 

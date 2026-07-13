@@ -274,6 +274,52 @@ be updated in the same PR as any client formula change (CLAUDE.md
 invariant), and every phase re-runs `tests/` plus a save-migration check
 (old saves must load with zero data loss).
 
+## 9.5 Balance pass — boss scaling + gear/tier (✅ SHIPPED)
+
+A correctness + gear-feel pass (deferred backlog item "balance the new gear
+and tiers"), covered by `tests/balance_test.js`.
+
+**Boss double-scaling fix (the core bug).** The `Enemy` constructor applied
+`tierScale(tier)` to EVERY mob, including bosses — so HP, damage AND XP were
+all an accidental side-effect of the tier ring rather than intentional. Hub
+bosses all spawn at `tier: 4`, so they were silently inflated ×3.4 HP / ×2.65
+dmg / ×3.1 XP. The elite path was already correctly gated (`a = this.elite ?
+ELITE_MULT : null`); `tierScale` just wasn't. Fix: `apex =
+boss||miniboss||worldboss` mobs use `{hp:1,dmg:1,xp:1}` (authored stats
+stand); normal + elite mobs still zone-scale. **Every boss stat is now an
+explicit authored number in `ENEMY_TYPES`, tunable in one line.** The owner's
+chosen values keep the established tanky **HP** (demon 4760, ogre 2040, dragon
+10 880 — players are used to these) and intentional high **damage** (demon
+34→56, ogre 26→72, dragon 48→112), but **normalise the runaway XP** (demon
+2790→900, ogre 1240→1100, dragon 6820→2900) so boss farming no longer
+trivialises levelling.
+
+**Weapon tier now scales damage.** Previously a weapon's tier only boosted its
+3 rolled rows, so a mystic blade and a common blade of the same base swung for
+nearly the same. `WEAPON_TIER_DMG` (common 1.0 → mystic 1.26) multiplies a
+**weapon's** `dmgMul` in `equipAgg` (off-hands excluded, so a shield's
+defensive `dmgMul` can't flip positive at high tier). Gentle on purpose — the
+rolled rows stay the main tier payoff. The tooltip's dmg% now folds it in.
+
+**Correctness fixes.** (a) Worldboss loot rolls at `ilvl 32` but the server
+capped `MAX_ILVL` at 28, clamping those rows on the first cloud save →
+`MAX_ILVL` raised 28→32 (still tight anti-tamper: the true max legit drop).
+(b) A successful **refine** now resets the item's reforge counter `rr` to 0,
+so the reforge cost drops back down (spec §6: "resets on refine +1").
+
+**AFK routing through biomes (fix).** The hub carves **road corridors**; biome
+maps (`generateBiome`) are a uniform decor scatter with none, and forest ran
+~2085 solid objects (vs the hub's ~929), so the AFK bot got walled in and
+walked jerkily. Two fixes: (1) biome `MAPS.density` cut so each biome's decor
+count sits below the hub's (forest 2600→1000, desert 1500→850, snow
+2000→900, volcano 1700→900 — decor *mix* per biome unchanged, just sparser);
+(2) `Game.botSteer` reworked for uniform fields — a shorter look-ahead (48px,
+with a 20px near fallback) + a finer/wider angle sweep so it keeps weaving
+through gaps, an early bail-out of a detour once the goal line reopens, and a
+stuck-detour that sidesteps toward an **actually-open** side (or backs up if
+boxed in) instead of blindly. The bot now crosses every biome to a far goal
+with zero stalls. Covered by `tests/afk_route_test.js`; hub routing unchanged.
+
 ## 9.1 Phase 2 sub-phase specs (small, one-session each)
 
 Ordered by dependency and risk (2a is smallest). Each ships alone, is

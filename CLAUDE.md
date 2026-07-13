@@ -91,7 +91,12 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
   `AFK_FOCUS {boss,monster}` (persisted `pixelrealms_afk`) gates targeting:
   boss off = flee bosses, monster off = walk past mobs; a nearby boss
   (focus on, level ≥ 18) outranks mobs. `botSteer` probes `botPathClear`
-  and bends the heading around solids before the sidestep fallback.
+  and bends the heading around solids before the sidestep fallback: a short
+  look-ahead (48px, 20px near fallback) + a fine angle sweep lets it weave
+  through dense **biome** decor (the hub has road corridors; biomes are a
+  uniform scatter), and the stuck detour sidesteps toward an actually-open
+  side (or backs up if boxed in) instead of blindly. Biome `MAPS.density` is
+  kept below the hub's decor count for the same reason — see `world.js`.
 - Buffs/debuffs: `player.addBuff({tag,kind,v,t,icon,name,debuff})` — same
   `tag` refreshes (no stack); `UI.renderBuffs` shows an icon+timer chip
   (green buff / red debuff) keyed by a tag signature.
@@ -404,10 +409,28 @@ with a Regen Potion. UI: `🍢 Cook (3🐟)` action on a selected bag Fish stack
 `server.py`: `ALLOWED_MATERIALS += fish`, `ALLOWED_POTIONS += food`. Covered by
 `tests/fishing_test.js`. **Phase 5 is complete.**
 
+**Balance pass — boss scaling + gear/tier (shipped, `docs/REBALANCE.md` §9.5):**
+Fixed a **boss double-scaling bug**: the `Enemy` ctor applied `tierScale(tier)`
+to bosses whose authored stats are already final, so hub bosses (all `tier:4`)
+were inflated ×3.4 HP / ×3.1 XP (dragon read 10 880 HP vs authored 3 200).
+Fix: `apex = boss||miniboss||worldboss` mobs skip `tierScale` (use `{hp:1,
+dmg:1,xp:1}`); only normal + elite mobs zone-scale. Every boss stat is now an
+explicit authored number (one-line tunable). Owner's chosen values keep the
+established tanky HP (demon 4760, ogre 2040, dragon 10 880) + high damage
+(demon 34→56, ogre 26→72, dragon 48→112) but normalise the runaway XP (demon
+2790→900, ogre 1240→1100, dragon 6820→2900) so boss farming doesn't trivialise
+levelling. Also: `WEAPON_TIER_DMG`
+(common 1.0→mystic 1.26) makes **weapon** tier scale `dmgMul` in `equipAgg`
+(off-hands excluded so a shield stays defensive; tooltip folds it in); server
+`MAX_ILVL` 28→32 (worldboss loot rolls ilvl 32 — was clamped on save); a
+successful `refine` resets the reforge counter `rr` (spec §6). Covered by
+`tests/balance_test.js` (+ `MAX_ILVL` bump reflected in `hardening_test.py`).
+
 **Deferred by the user — remind them when they return:**
 1. ✅ Shield / off-hand slot to pair with the one-hand sword — DONE (P4a).
-2. Balance the new gear and tiers.
-3. Sound effects for normal (common/rare) item pickups.
+2. ✅ Balance the new gear and tiers — DONE (boss scaling + weapon-tier dmg +
+   correctness fixes; see §9.5). Further curve tuning can follow if wanted.
+3. Sound effects for normal (common/rare) item pickups — user declined (skip).
 
 **Scaling — in progress (see `docs/SCALING.md`):** Stage 1a shipped
 (accounts + cloud character store). Stage 1b shipped (server-only

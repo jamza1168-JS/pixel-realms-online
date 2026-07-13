@@ -19,6 +19,14 @@ const ITEM_TIERS = {
 };
 const TIER_ORDER = ['common', 'rare', 'unique', 'legend', 'mystic'];
 
+/* Weapon damage scales modestly with tier so rarity is felt on the WEAPON
+ * itself, not only in its rolled rows (a mystic blade out-hits a common one
+ * of the same base). Applied to weapon `dmgMul` in equipAgg. Kept gentle so
+ * the 3 rolled rows stay the main tier payoff; off-hands are unaffected (a
+ * shield's defensive dmgMul must not flip positive at high tier). */
+const WEAPON_TIER_DMG = { common: 1.0, rare: 1.05, unique: 1.11, legend: 1.18, mystic: 1.26 };
+function weaponTierMul(tier) { return WEAPON_TIER_DMG[tier] || 1.0; }
+
 /* ---------- Equipment slots ---------- */
 /* 'hands' holds the weapon, 'offhand' the shield/book/quiver (P4a); the rest
  * are armor pieces. deriveStats/equipAgg/spSig iterate EQUIP_SLOTS, so new
@@ -329,7 +337,9 @@ function itemStatMap(item) {
   for (const r of item.rows) m[r.stat] = (m[r.stat] || 0) + r.val;
   const base = itemBase(item);
   if (base && base.base) {
-    if (base.base.dmgMul && base.base.dmgMul !== 1) m.dmgMul = Math.round((base.base.dmgMul - 1) * 100);
+    // weapons fold in the tier damage bonus so higher rarity reads as +dmg%
+    const effDmgMul = (base.base.dmgMul || 0) * (item.kind === 'weapon' ? weaponTierMul(item.tier) : 1);
+    if (effDmgMul && effDmgMul !== 1) m.dmgMul = Math.round((effDmgMul - 1) * 100);
     if (base.base.aspdMul && base.base.aspdMul !== 1) m.aspdMul = Math.round((base.base.aspdMul - 1) * 100);
     if (base.base.spd) m.spd = (m.spd || 0) + base.base.spd;
     if (base.base.dmgRed) m.dmgRed = (m.dmgRed || 0) + Math.round(base.base.dmgRed * 100);

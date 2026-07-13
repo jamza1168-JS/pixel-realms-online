@@ -63,6 +63,11 @@ node awaken_test.js                # P5a Awakening Stone: adds a distinct 4th ro
                                    #   spends a stone (bag-only), save round-trip, 3-row clamp
 node fishing_test.js               # P5c fishing+cooking: fish at water (spot cooldown, yields
                                    #   to combat), cook 3 fish -> food, craft-only, buff stacks
+node balance_test.js               # boss scaling (apex mobs not tier-scaled, normal/elite still
+                                   #   are), weapon-tier dmg, shield stays defensive, reforge
+                                   #   resets on refine, worldboss ilvl 32 matches server cap
+node afk_route_test.js             # AFK routing: biome decor thinner than the hub; the bot
+                                   #   weaves through each biome to a far goal without freezing
 ```
 
 If Playwright can't find a browser, point `PW_CHROMIUM` at a Chromium binary:

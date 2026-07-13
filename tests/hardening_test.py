@@ -76,9 +76,10 @@ st, r = save(token, player(inventory=[{
     "uid": "g2", "key": "staff", "kind": "weapon", "slot": "hands", "tier": "mystic", "ilvl": 40,
     "rows": [{"stat": "atk", "val": 999}]}]))
 mystic_atk = r["character"]["players"][0]["inventory"][0]["rows"][0]["val"]
-# ilvl clamped to the real drop max (28); a mystic atk roll there is large but bounded (< the posted 999)
-ok(100 <= mystic_atk <= 200, "mystic/high-ilvl item keeps a large but bounded roll: atk=" + str(mystic_atk))
-ok(r["character"]["players"][0]["inventory"][0]["ilvl"] <= 28, "item level clamped to the real drop max (28)")
+# ilvl clamped to the real drop max (32 = tier-4 worldboss); a mystic atk roll
+# there is large but bounded (< the posted 999)
+ok(100 <= mystic_atk <= 220, "mystic/high-ilvl item keeps a large but bounded roll: atk=" + str(mystic_atk))
+ok(r["character"]["players"][0]["inventory"][0]["ilvl"] <= 32, "item level clamped to the real drop max (32)")
 
 # 1c. reforge counter (rr) persists but is clamped to a sane range
 time.sleep(2.2)

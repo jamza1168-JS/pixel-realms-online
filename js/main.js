@@ -491,7 +491,7 @@ class Game {
       const los = this.world.hasLineOfSight(p.x, p.y, e.x, e.y);
       if (e.type.boss) {
         // boss handled separately for priority; requires level & focus
-        if (AFK_FOCUS.boss && p.level >= 18 && dd < bossD) { bossD = dd; boss = e; bossLos = los; }
+        if (AFK_FOCUS.boss && dd < bossD) { bossD = dd; boss = e; bossLos = los; }
         continue;
       }
       if (!AFK_FOCUS.monster) continue;                 // walk past monsters
@@ -525,11 +525,20 @@ class Game {
         }
       }
     } else if (!goal) {
-      // roam toward the nearest suitable hunting ground
+      // roam toward the nearest suitable hunting ground. When boss-focus is on
+      // a boss/miniboss lair is a valid destination (walk in to spawn + fight
+      // it); the world boss only when it's actually up. Mob grounds respect the
+      // level-band tier window as before.
       let bestSp = null, bestSpD = Infinity;
       for (const sp of this.world.spawnPoints) {
-        if (sp.boss && p.level < 18) continue;
-        if (sp.tier > maxTier || sp.tier < Math.max(1, maxTier - 1)) continue;
+        const bossSp = sp.boss || sp.miniboss || sp.worldboss;
+        if (bossSp) {
+          if (!AFK_FOCUS.boss) continue;
+          if (sp.worldboss && !(sp.enemy && !sp.enemy.dead)) continue;   // dragon: only when live
+        } else {
+          if (!AFK_FOCUS.monster) continue;
+          if (sp.tier > maxTier || sp.tier < Math.max(1, maxTier - 1)) continue;
+        }
         const dd = Math.hypot(sp.x - p.x, sp.y - p.y);
         if (dd < bestSpD) { bestSpD = dd; bestSp = sp; }
       }

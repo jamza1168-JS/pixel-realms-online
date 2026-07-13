@@ -473,7 +473,10 @@ html, body {
   border: 2px solid var(--gold);
   padding: 8px 14px; font-size: 11px; color: var(--gold);
 }
-#trade-content { max-width: 480px; margin: 0 auto 14px; }
+#trade-content { max-width: 480px; margin: 0 auto 14px; max-height: 74vh; overflow-y: auto; }
+/* the bag list can be long — give it its own scroll so the offer columns and
+ * the lock/cancel buttons stay reachable without scrolling the whole window */
+#tr-bag { max-height: 26vh; overflow-y: auto; }
 .trade-row {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 8px 10px; margin-bottom: 5px;

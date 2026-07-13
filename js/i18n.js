@@ -104,6 +104,8 @@ const I18N = {
     'inv.cookBtn': '🍢 Cook ({n}🐟)',
     'inv.cookNeed': 'Need {n}🐟 to cook a meal.',
     'inv.toSlot': '⌨ {k}',
+    'inv.dblEquip': 'Double-click to equip / use',
+    'inv.dblUnequip': 'Double-click to unequip',
 
     'shop.title': '🛒 Merchant',
     'shop.buy': 'Buy',
@@ -112,6 +114,7 @@ const I18N = {
     'shop.sellBtn': 'Sell',
     'shop.poor': 'Not enough gold!',
     'shop.nothing': 'Nothing in your bag to sell.',
+    'shop.noneInFilter': 'No items of this type to sell.',
 
     'quick.out': 'Out of {name}!',
 
@@ -475,6 +478,8 @@ const I18N = {
     'inv.cookBtn': '🍢 ปรุงอาหาร ({n}🐟)',
     'inv.cookNeed': 'ต้องใช้ปลา {n}🐟 เพื่อปรุงอาหาร',
     'inv.toSlot': '⌨ {k}',
+    'inv.dblEquip': 'ดับเบิลคลิกเพื่อสวมใส่ / ใช้',
+    'inv.dblUnequip': 'ดับเบิลคลิกเพื่อถอด',
 
     'shop.title': '🛒 พ่อค้า',
     'shop.buy': 'ซื้อ',
@@ -483,6 +488,7 @@ const I18N = {
     'shop.sellBtn': 'ขาย',
     'shop.poor': 'ทองไม่พอ!',
     'shop.nothing': 'ไม่มีไอเทมในกระเป๋าให้ขาย',
+    'shop.noneInFilter': 'ไม่มีไอเทมประเภทนี้ให้ขาย',
 
     'quick.out': '{name} หมดแล้ว!',
 

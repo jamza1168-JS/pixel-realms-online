@@ -89,8 +89,10 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
   in `bot.avoid`; yields to any manual key press (see `Game.update`).
   Manual play aims at `game.mouse` cursor; the bot sets `out.face` itself.
   `AFK_FOCUS {boss,monster}` (persisted `pixelrealms_afk`) gates targeting:
-  boss off = flee bosses, monster off = walk past mobs; a nearby boss
-  (focus on, level ≥ 18) outranks mobs. `botSteer` probes `botPathClear`
+  boss off = flee bosses, monster off = walk past mobs; with boss focus ON the
+  bot fights bosses at **any level** (the toggle is the opt-in — no level gate)
+  and roams to a boss/miniboss lair (world boss only when it's live) to spawn +
+  engage it, so a nearby boss outranks mobs. `botSteer` probes `botPathClear`
   and bends the heading around solids before the sidestep fallback: a short
   look-ahead (48px, 20px near fallback) + a fine angle sweep lets it weave
   through dense **biome** decor (the hub has road corridors; biomes are a
@@ -113,13 +115,19 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
   hovering gear also appends an equipped-slot comparison (`equipCompareHtml`
   via `itemStatMap`). Inventory/storage render a **filtered + tier-sorted
   copy** (`UI.invFilter`, `tierRank`); the real `inventory`/`storage` arrays
-  are never reordered. Stat panel shows base **+gear bonus** per primary
-  stat (from `equipAgg()`); `UI.spSig` includes equipped-item uids so it
-  re-renders when gear changes.
+  are never reordered. **Bag interaction:** single click selects (updated IN
+  PLACE — the cell node must survive so a following `dblclick` fires, so the
+  grid is NOT rebuilt on select; `renderInvActions` re-renders only the action
+  row); **double-click** a bag/stash item to equip/use/withdraw (`_invDblClick`)
+  and double-click an equipped slot to unequip. Stat panel shows base **+gear
+  bonus** per primary stat (from `equipAgg()`); `UI.spSig` includes
+  equipped-item uids so it re-renders when gear changes.
 - Bag vs stash: `player.inventory` and `player.storage` share `_addTo`/
   `_removeFrom` (`isStackable` items — potions AND materials — stack per
   list by kind+key); `depositItem`/`withdrawItem` move between them. Shop:
-  `buyPotion`/`sellItem` (sell price `sellValue`).
+  `buyPotion`/`sellItem` (sell price `sellValue`); the Sell tab has the same
+  category filter chips as the bag (`UI.shopFilter`, `_filterCats`,
+  `_matchFilter(it, f)`).
   Hotkey potions: `player.quickItems` holds potion KEYS (not objects);
   `useQuickItem(i)` is edge-triggered from keydown (`quick1/2/3`, default
   4/5/6); the HUD quick bar re-renders off a count signature.

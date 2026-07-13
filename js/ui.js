@@ -199,9 +199,8 @@ const UI = {
     this.renderInventory();
   },
 
-  /* Does an item belong to the active category filter? */
-  _matchFilter(it) {
-    const f = this.invFilter;
+  /* Does an item belong to a category filter (defaults to the bag filter)? */
+  _matchFilter(it, f = this.invFilter) {
     if (f === 'all') return true;
     if (f === 'potion') return it.kind === 'potion';
     if (f === 'material') return it.kind === 'material';
@@ -209,15 +208,20 @@ const UI = {
     return it.slot === f;   // head | chest | hands | offhand | gloves | legs | boots
   },
 
-  /* Category chips above the grid; higher tier sorts first in the grid. */
-  renderInvFilter() {
-    const bar = this.$('inv-filter');
-    if (!bar) return;
-    const cats = [['all', t('inv.filterAll')], ['potion', t('inv.filterPotion')],
+  /* The shared category list for the bag + sell filter chips. */
+  _filterCats() {
+    return [['all', t('inv.filterAll')], ['potion', t('inv.filterPotion')],
       ['material', t('inv.filterMaterial')],
       ['head', t('slot.head')], ['chest', t('slot.chest')], ['hands', t('slot.hands')],
       ['offhand', t('slot.offhand')], ['gloves', t('slot.gloves')], ['legs', t('slot.legs')], ['boots', t('slot.boots')],
       ['accessory', t('slot.acc')]];
+  },
+
+  /* Category chips above the grid; higher tier sorts first in the grid. */
+  renderInvFilter() {
+    const bar = this.$('inv-filter');
+    if (!bar) return;
+    const cats = this._filterCats();
     bar.innerHTML = '';
     for (const [key, label] of cats) {
       const b = document.createElement('button');
@@ -270,7 +274,8 @@ const UI = {
         `${it ? escapeHtml(itemName(it)) : escapeHtml(t('inv.emptySlot'))}</span>`;
       if (it) {
         this._invHover(row, it);
-        row.addEventListener('click', () => {
+        row.title = t('inv.dblUnequip');
+        row.addEventListener('dblclick', () => {
           p.unequipItem(slot);
           this.invSel = null; this.game.save(); this.hideSkillTip();
           this.renderInventory(); this.game.sfx('point');
@@ -306,14 +311,49 @@ const UI = {
       cell.innerHTML = itemIcon(it) +
         (isStackable(it) && (it.count || 1) > 1 ? `<span class="ic-count">${it.count}</span>` : '');
       this._invHover(cell, it);
+      cell.title = t('inv.dblEquip');
+      // single click selects (updated IN PLACE so the cell node survives for a
+      // following dblclick); double click equips/uses it outright.
       cell.addEventListener('click', () => {
         this.invSel = (this.invSel === it ? null : it);
-        this.renderInventory();
+        for (const c of grid.children) c.classList.remove('selected');
+        if (this.invSel === it) cell.classList.add('selected');
+        this.renderInvActions();
       });
+      cell.addEventListener('dblclick', () => this._invDblClick(it));
       grid.appendChild(cell);
     }
 
-    // action row for the selected item
+    this.renderInvActions();
+  },
+
+  /* Double-click a bag/storage item: equip gear, drink a potion, or withdraw
+   * from storage — the one-gesture shortcut past select-then-click. */
+  _invDblClick(item) {
+    const p = this.game && this.game.players[0];
+    if (!p) return;
+    this.hideSkillTip();
+    if (this.invTab === 'storage') {
+      p.withdrawItem(item); this.invSel = null; this.game.save();
+      this.renderInventory(); this.game.sfx('point');
+      return;
+    }
+    if (isGear(item)) {
+      if (p.equipItem(item)) { this.invSel = null; this.game.save(); this.renderInventory(); this.game.sfx('buff'); }
+      else { this.toast(t('equip.' + (p.equipError || 'wrongClass')), 'info'); this.game.sfx('point'); }
+    } else if (item.kind === 'potion') {
+      this.game.usePotion(p, item);
+      if (!p.inventory.includes(item)) this.invSel = null;
+      this.renderInventory();
+    }
+  },
+
+  /* Render the action-row buttons for the currently-selected bag/stash item. */
+  renderInvActions() {
+    const p = this.game && this.game.players[0];
+    if (!p) return;
+    const inStorage = this.invTab === 'storage';
+    const list = inStorage ? p.storage : p.inventory;
     const act = this.$('inv-actions');
     act.innerHTML = '';
     const sel = this.invSel;
@@ -484,9 +524,11 @@ const UI = {
 
   /* ---------- Merchant shop ---------- */
   shopTab: 'buy',
+  shopFilter: 'all',   // sell-tab category filter (mirrors the bag chips)
 
   openShop() {
     this.shopTab = 'buy';
+    this.shopFilter = 'all';
     this.$('shop-panel').classList.remove('hidden');
     this.renderShop();
   },
@@ -522,9 +564,26 @@ const UI = {
         box.appendChild(row);
       }
     } else {
-      const sellable = p.inventory;
+      // category filter chips (same set as the bag) so a full stash is browsable
+      const bar = document.createElement('div');
+      bar.className = 'inv-filter shop-filter';
+      for (const [key, label] of this._filterCats()) {
+        const b = document.createElement('button');
+        b.className = 'pix-btn small filt' + (this.shopFilter === key ? ' selected' : '');
+        b.textContent = label;
+        b.addEventListener('click', () => { this.shopFilter = key; this.renderShop(); this.game.sfx('point'); });
+        bar.appendChild(b);
+      }
+      box.appendChild(bar);
+
+      // filtered + tier-sorted display copy (does NOT reorder the real bag)
+      const sellable = p.inventory.filter(it => this._matchFilter(it, this.shopFilter)).sort((a, b) =>
+        tierRank(b) - tierRank(a) || (b.ilvl || 0) - (a.ilvl || 0) || itemName(a).localeCompare(itemName(b)));
       if (!sellable.length) {
-        box.innerHTML = `<div class="shop-empty">${escapeHtml(t('shop.nothing'))}</div>`;
+        const empty = document.createElement('div');
+        empty.className = 'shop-empty';
+        empty.textContent = t(p.inventory.length ? 'shop.noneInFilter' : 'shop.nothing');
+        box.appendChild(empty);
         return;
       }
       for (const it of sellable) {

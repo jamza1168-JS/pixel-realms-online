@@ -8,7 +8,7 @@ const MAP_H = 120;
 const WORLD_SEED = 20260707;
 
 /* Tile ids */
-const T_GRASS = 0, T_WATER = 1, T_SAND = 2, T_PATH = 3, T_ASH = 4;
+const T_GRASS = 0, T_WATER = 1, T_SAND = 2, T_PATH = 3, T_ASH = 4, T_SNOW = 5;
 
 function mulberry32(seed) {
   let a = seed >>> 0;
@@ -30,10 +30,14 @@ const MAPS = {
   // Biome zones share generateBiome(); `base` = ground tile, `decor` =
   // [type, cumulative-roll] density gates, `density` = decoration attempts,
   // `tiers` = [near, far] difficulty of its spawns.
-  forest: { id: 'forest', biome: 'forest', seedXor: 0x1a2b3c4d, band: [5, 10],  pool: ['wolf', 'bat', 'ghost', 'goblin'],
-            base: T_GRASS, decor: [['tree', 0.78], ['rock', 0.90]], density: 2600, tiers: [2, 3] },
-  desert: { id: 'desert', biome: 'desert', seedXor: 0x5e6f7a8b, band: [13, 18], pool: ['orc', 'skeleton', 'ghost'],
-            base: T_SAND,  decor: [['rock', 0.55], ['deadTree', 0.72]], density: 1500, tiers: [3, 4] },
+  forest:  { id: 'forest',  biome: 'forest',  seedXor: 0x1a2b3c4d, band: [5, 10],  pool: ['wolf', 'bat', 'ghost', 'goblin'],
+             base: T_GRASS, decor: [['tree', 0.78], ['rock', 0.90]], density: 2600, tiers: [2, 3] },
+  desert:  { id: 'desert',  biome: 'desert',  seedXor: 0x5e6f7a8b, band: [13, 18], pool: ['orc', 'skeleton', 'ghost'],
+             base: T_SAND,  decor: [['rock', 0.55], ['deadTree', 0.72]], density: 1500, tiers: [3, 4] },
+  snow:    { id: 'snow',    biome: 'snow',    seedXor: 0x2c3d4e5f, band: [17, 22], pool: ['wolf', 'skeleton', 'orc', 'bat'],
+             base: T_SNOW,  decor: [['deadTree', 0.5], ['rock', 0.78]], density: 2000, tiers: [3, 4] },
+  volcano: { id: 'volcano', biome: 'volcano', seedXor: 0x7a8b9cad, band: [25, 31], pool: ['orc', 'skeleton', 'ghost'],
+             base: T_ASH,   decor: [['rock', 0.45], ['deadTree', 0.7]], density: 1700, tiers: [4, 4] },
 };
 
 class World {
@@ -234,6 +238,8 @@ class World {
     const hcx = (MAP_W / 2) | 0, hcy = (MAP_H / 2) | 0;
     carvePortal(hcx + 6, hcy - 3, 'forest');
     carvePortal(hcx + 6, hcy + 3, 'desert');
+    carvePortal(hcx - 6, hcy - 3, 'snow');
+    carvePortal(hcx - 6, hcy + 3, 'volcano');
     this.entryX = this.spawnX; this.entryY = this.spawnY;
   }
 
@@ -325,10 +331,11 @@ class World {
       [T_SAND]:  ['#c9b070', '#c0a765', '#d2ba7c'],
       [T_PATH]:  ['#9a8055', '#92794e', '#a2885e'],
       [T_ASH]:   ['#4a4048', '#453b43', '#52464e'],
+      [T_SNOW]:  ['#dfe8f0', '#d2dce8', '#e8f0f8'],
     };
     const speckColors = {
       [T_GRASS]: '#2e6533', [T_WATER]: '#4a7ec0', [T_SAND]: '#b09858',
-      [T_PATH]: '#87704a', [T_ASH]: '#5c505a',
+      [T_PATH]: '#87704a', [T_ASH]: '#5c505a', [T_SNOW]: '#c2d0e0',
     };
     for (let y = 0; y < MAP_H; y++) {
       for (let x = 0; x < MAP_W; x++) {
@@ -364,7 +371,7 @@ class World {
     const mm = document.createElement('canvas');
     mm.width = MAP_W; mm.height = MAP_H;
     const mg = mm.getContext('2d');
-    const mmColors = { [T_GRASS]: '#3a7a3f', [T_WATER]: '#2a5a9a', [T_SAND]: '#c9b070', [T_PATH]: '#9a8055', [T_ASH]: '#4a4048' };
+    const mmColors = { [T_GRASS]: '#3a7a3f', [T_WATER]: '#2a5a9a', [T_SAND]: '#c9b070', [T_PATH]: '#9a8055', [T_ASH]: '#4a4048', [T_SNOW]: '#dfe8f0' };
     for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
       mg.fillStyle = this.objects.has(x + ',' + y) ? '#25502a' : mmColors[this.tiles[y * MAP_W + x]];
       mg.fillRect(x, y, 1, 1);

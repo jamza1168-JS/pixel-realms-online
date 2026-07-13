@@ -233,6 +233,8 @@ const I18N = {
     'map.toHub': '🌀 Warped back to the Village',
     'map.to_forest': '🌀 Entered the Whispering Forest',
     'map.to_desert': '🏜️ Entered the Scorching Desert',
+    'map.to_snow': '❄️ Entered the Frozen Wastes',
+    'map.to_volcano': '🌋 Entered the Volcano Depths',
     'map.soon': '🚧 Biome zones are open in solo play — online zones coming soon!',
 
     'chat.placeholder': 'Press Enter to chat…',
@@ -595,6 +597,8 @@ const I18N = {
     'map.toHub': '🌀 วาร์ปกลับสู่หมู่บ้าน',
     'map.to_forest': '🌀 เข้าสู่ป่ากระซิบ',
     'map.to_desert': '🏜️ เข้าสู่ทะเลทรายแผดเผา',
+    'map.to_snow': '❄️ เข้าสู่ดินแดนเยือกแข็ง',
+    'map.to_volcano': '🌋 เข้าสู่ห้วงภูเขาไฟ',
     'map.soon': '🚧 โซนไบโอมเปิดในโหมดเล่นคนเดียว — เร็วๆ นี้จะเปิดออนไลน์!',
 
     'chat.placeholder': 'กด Enter เพื่อแชท…',

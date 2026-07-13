@@ -260,13 +260,14 @@ const UI = {
     const p = this.game && this.game.players[0];
     if (!p) return;
 
-    // equipped slots — click to unequip
+    // equipped slots — single click selects (shows the upgrade menu), double
+    // click unequips.
     const slots = this.$('inv-slots');
     slots.innerHTML = '';
     for (const slot of EQUIP_SLOTS) {
       const it = p.equip[slot];
       const row = document.createElement('div');
-      row.className = 'inv-slot';
+      row.className = 'inv-slot' + (it && this.invSel === it ? ' selected' : '');
       row.innerHTML =
         `<span class="is-icon">${it ? itemIcon(it) : '▫'}</span>` +
         `<span class="is-label">${escapeHtml(t('slot.' + slot))}</span>` +
@@ -275,9 +276,11 @@ const UI = {
       if (it) {
         this._invHover(row, it);
         row.title = t('inv.dblUnequip');
+        row.addEventListener('click', () => this._selectItem(it, row));
         row.addEventListener('dblclick', () => {
           p.unequipItem(slot);
-          this.invSel = null; this.game.save(); this.hideSkillTip();
+          this.invSel = it;                 // keep the item selected (now in the bag)
+          this.game.save(); this.hideSkillTip();
           this.renderInventory(); this.game.sfx('point');
         });
       }
@@ -314,16 +317,23 @@ const UI = {
       cell.title = t('inv.dblEquip');
       // single click selects (updated IN PLACE so the cell node survives for a
       // following dblclick); double click equips/uses it outright.
-      cell.addEventListener('click', () => {
-        this.invSel = (this.invSel === it ? null : it);
-        for (const c of grid.children) c.classList.remove('selected');
-        if (this.invSel === it) cell.classList.add('selected');
-        this.renderInvActions();
-      });
+      cell.addEventListener('click', () => this._selectItem(it, cell));
       cell.addEventListener('dblclick', () => this._invDblClick(it));
       grid.appendChild(cell);
     }
 
+    this.renderInvActions();
+  },
+
+  /* Select an item (bag cell or equipped slot) and show its action menu.
+   * Updates the highlight IN PLACE across both containers — the grid/slot
+   * nodes must survive so a following dblclick still fires — and never
+   * toggles the selection off, so the menu stays up (smoother clicking). */
+  _selectItem(item, el) {
+    this.invSel = item;
+    document.querySelectorAll('#inv-slots .inv-slot.selected, #inv-grid .inv-cell.selected')
+      .forEach(n => n.classList.remove('selected'));
+    if (el) el.classList.add('selected');
     this.renderInvActions();
   },
 
@@ -339,7 +349,8 @@ const UI = {
       return;
     }
     if (isGear(item)) {
-      if (p.equipItem(item)) { this.invSel = null; this.game.save(); this.renderInventory(); this.game.sfx('buff'); }
+      // keep the item selected (now equipped) so its upgrade menu stays up
+      if (p.equipItem(item)) { this.invSel = item; this.game.save(); this.renderInventory(); this.game.sfx('buff'); }
       else { this.toast(t('equip.' + (p.equipError || 'wrongClass')), 'info'); this.game.sfx('point'); }
     } else if (item.kind === 'potion') {
       this.game.usePotion(p, item);
@@ -348,25 +359,27 @@ const UI = {
     }
   },
 
-  /* Render the action-row buttons for the currently-selected bag/stash item. */
+  /* Render the action-row buttons for the currently-selected item — a bag
+   * item, a stash item, or an EQUIPPED piece (upgrade it in place). */
   renderInvActions() {
     const p = this.game && this.game.players[0];
     if (!p) return;
-    const inStorage = this.invTab === 'storage';
-    const list = inStorage ? p.storage : p.inventory;
     const act = this.$('inv-actions');
     act.innerHTML = '';
     const sel = this.invSel;
-    if (!sel || !list.includes(sel)) { this.invSel = null; this.reforgeSel = null; return; }
+    const equippedSlot = sel ? EQUIP_SLOTS.find(s => p.equip[s] === sel) : null;
+    const inStore = p.storage.includes(sel);
+    const inBag = p.inventory.includes(sel);
+    if (!sel || (!equippedSlot && !inStore && !inBag)) { this.invSel = null; this.reforgeSel = null; return; }
     if (this.reforgeSel && this.reforgeSel !== sel) this.reforgeSel = null;
     const re = () => this.renderInventory();
     const nm = document.createElement('span');
     nm.className = 'ia-name'; nm.style.color = itemColor(sel);
-    nm.textContent = itemName(sel);
+    nm.textContent = itemName(sel) + (equippedSlot ? ' · ' + t('inv.equipped') : '');
     act.appendChild(nm);
 
-    // Reforge row-picker mode (bag gear only): pick which stat to reroll.
-    if (!inStorage && this.reforgeSel === sel && (sel.kind === 'weapon' || sel.kind === 'armor')) {
+    // Reforge row-picker mode (weapon/armor, bag or equipped): pick a stat.
+    if (this.reforgeSel === sel && (sel.kind === 'weapon' || sel.kind === 'armor')) {
       const cost = reforgeCost(sel);
       const hint = document.createElement('span');
       hint.className = 'ia-hint';
@@ -381,49 +394,24 @@ const UI = {
       return;
     }
 
-    if (inStorage) {
+    if (inStore) {
       act.appendChild(this.invBtn(t('inv.withdraw'), () => {
         p.withdrawItem(sel); this.invSel = null; this.game.save(); re(); this.game.sfx('point');
       }));
+    } else if (equippedSlot) {
+      // equipped piece: unequip + upgrade it in place (reforge/refine/awaken)
+      act.appendChild(this.invBtn(t('inv.unequip'), () => {
+        p.unequipItem(equippedSlot); this.invSel = sel;   // keep selected (now in bag)
+        this.game.save(); re(); this.game.sfx('point');
+      }));
+      if (isGear(sel)) this._gearUpgradeButtons(act, p, sel, re);
     } else {
       if (isGear(sel)) {
         act.appendChild(this.invBtn(t('inv.equip'), () => {
-          if (p.equipItem(sel)) { this.invSel = null; this.game.save(); re(); this.game.sfx('buff'); }
+          if (p.equipItem(sel)) { this.invSel = sel; this.game.save(); re(); this.game.sfx('buff'); }
           else { UI.toast(t('equip.' + (p.equipError || 'wrongClass')), 'info'); this.game.sfx('point'); }
         }));
-        act.appendChild(this.invBtn(t('inv.reforgeCost', { n: reforgeCost(sel) }), () => {
-          this.reforgeSel = sel; re(); this.game.sfx('point');
-        }));
-        // Refine: gold + ore, attempt once per click (odds shown past +4)
-        if ((sel.refine || 0) >= MAX_REFINE) {
-          const maxed = document.createElement('span');
-          maxed.className = 'ia-hint'; maxed.textContent = '⚒ +' + MAX_REFINE + ' ' + t('inv.refineMaxTag');
-          act.appendChild(maxed);
-        } else {
-          const rc = refineCost(sel), pct = Math.round(refineChance(sel) * 100);
-          const haveOre = this.game.matCount(p, 'ore');
-          const label = t('inv.refineBtn', { r: (sel.refine || 0) + 1, g: rc.gold, o: rc.ore }) +
-            (pct < 100 ? ' ' + pct + '%' : '');
-          const btn = this.invBtn(label, () => {
-            const res = this.game.refine(p, sel);
-            if (res) re();
-          });
-          if (p.gold < rc.gold || haveOre < rc.ore) btn.classList.add('disabled');
-          act.appendChild(btn);
-        }
-        // Awaken: spend 1 Awakening Stone to add a 4th affix row (once)
-        if (canAwaken(sel)) {
-          const stones = this.game.matCount(p, 'stone');
-          const abtn = this.invBtn(t('inv.awakenBtn', { n: stones }), () => {
-            if (this.game.awaken(p, sel)) re();
-          });
-          if (stones < 1) abtn.classList.add('disabled');
-          act.appendChild(abtn);
-        } else if (sel.awakened) {
-          const tag = document.createElement('span');
-          tag.className = 'ia-hint'; tag.textContent = '✦ ' + t('inv.awakenedTag');
-          act.appendChild(tag);
-        }
+        this._gearUpgradeButtons(act, p, sel, re);
       }
       if (sel.kind === 'potion') {
         act.appendChild(this.invBtn(t('inv.use'), () => {
@@ -452,15 +440,51 @@ const UI = {
       }));
     }
 
-    // two-step destroy (no blocking browser dialog)
-    const del = this.invBtn(t('inv.destroy'), null);
-    let armed = false;
-    del.addEventListener('click', () => {
-      if (!armed) { armed = true; del.textContent = '⚠ ' + t('inv.destroy'); del.classList.add('selected'); return; }
-      p._removeFrom(list, sel, sel.count || 1);
-      this.invSel = null; this.game.save(); re(); this.game.sfx('point');
-    });
-    act.appendChild(del);
+    // two-step destroy — bag/stash only (unequip an equipped piece first)
+    if (!equippedSlot) {
+      const del = this.invBtn(t('inv.destroy'), null);
+      let armed = false;
+      del.addEventListener('click', () => {
+        if (!armed) { armed = true; del.textContent = '⚠ ' + t('inv.destroy'); del.classList.add('selected'); return; }
+        p._removeFrom(inStore ? p.storage : p.inventory, sel, sel.count || 1);
+        this.invSel = null; this.game.save(); re(); this.game.sfx('point');
+      });
+      act.appendChild(del);
+    }
+  },
+
+  /* Reforge / Refine / Awaken buttons for an owned gear item (bag or equipped). */
+  _gearUpgradeButtons(act, p, sel, re) {
+    act.appendChild(this.invBtn(t('inv.reforgeCost', { n: reforgeCost(sel) }), () => {
+      this.reforgeSel = sel; re(); this.game.sfx('point');
+    }));
+    // Refine: gold + ore, attempt once per click (odds shown past +4)
+    if ((sel.refine || 0) >= MAX_REFINE) {
+      const maxed = document.createElement('span');
+      maxed.className = 'ia-hint'; maxed.textContent = '⚒ +' + MAX_REFINE + ' ' + t('inv.refineMaxTag');
+      act.appendChild(maxed);
+    } else {
+      const rc = refineCost(sel), pct = Math.round(refineChance(sel) * 100);
+      const haveOre = this.game.matCount(p, 'ore');
+      const label = t('inv.refineBtn', { r: (sel.refine || 0) + 1, g: rc.gold, o: rc.ore }) +
+        (pct < 100 ? ' ' + pct + '%' : '');
+      const btn = this.invBtn(label, () => { if (this.game.refine(p, sel)) re(); });
+      if (p.gold < rc.gold || haveOre < rc.ore) btn.classList.add('disabled');
+      act.appendChild(btn);
+    }
+    // Awaken: spend 1 Awakening Stone to add a 4th affix row (once)
+    if (canAwaken(sel)) {
+      const stones = this.game.matCount(p, 'stone');
+      const abtn = this.invBtn(t('inv.awakenBtn', { n: stones }), () => {
+        if (this.game.awaken(p, sel)) re();
+      });
+      if (stones < 1) abtn.classList.add('disabled');
+      act.appendChild(abtn);
+    } else if (sel.awakened) {
+      const tag = document.createElement('span');
+      tag.className = 'ia-hint'; tag.textContent = '✦ ' + t('inv.awakenedTag');
+      act.appendChild(tag);
+    }
   },
 
   /* ---------- HUD hotkey potion bar ---------- */
@@ -673,6 +697,12 @@ const UI = {
       const where = game.net.roomLabel ? ' · ' + game.net.roomLabel : '';
       this.$('online-text').textContent = t('online.players', { n: game.net.playerCount }) +
         where + (game.net.isHost ? ' ★' : '');
+    } else if (typeof Account !== 'undefined' && Account.loggedIn) {
+      // signed in but off the shared world — a solo biome instance (warped out),
+      // NOT a guest. Show the solo-zone tag (+ the biome name) instead.
+      const mid = game.world && game.world.mapId;
+      const mn = mid && mid !== 'hub' ? t('mapname.' + mid) : '';
+      this.$('online-text').textContent = t('online.solo') + (mn ? ' · ' + mn : '');
     } else {
       // signed out = a local guest session; no shared world
       this.$('online-text').textContent = t('ui.guest');

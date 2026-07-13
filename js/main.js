@@ -1353,7 +1353,7 @@ class Game {
   /* ---------- Shop ---------- */
   buyPotion(p, key, qty = 1) {
     const base = POTIONS[key];
-    if (!base) return false;
+    if (!base || base.craftOnly) return false;      // food is cooked, never sold
     const cost = base.price * qty;
     if (p.gold < cost) { UI.toast(t('shop.poor'), 'info'); this.sfx('point'); return false; }
     p.gold -= cost;
@@ -1482,6 +1482,52 @@ class Game {
     this.addFloatText(rx, ry, '🪨 +' + n, '#d8c8a0');
     this.addEffect({ type: 'spark', x: rx, y: ry, dur: 0.2, color: '#b79b6e', r: 12 });
     this.sfx('hit');
+    this.save();
+    return true;
+  }
+
+  /* Fish an adjacent water tile (P5c) — a peaceful life-skill firing from the
+   * attack button when beside water with no enemy in melee range (same gate as
+   * mining, so the AFK bot never fishes). Per-SPOT 60s local cooldown keyed by
+   * tile coords (no world mutation → no desync). Returns true if it fished. */
+  tryFishNear(p) {
+    for (const e of this.enemies) {           // don't intercept combat
+      if (!e.dead && Math.hypot(e.x - p.x, e.y - p.y) < 70) return false;
+    }
+    const ptx = Math.floor(p.x / TILE), pty = Math.floor(p.y / TILE);
+    let best = null, bestD = 9;
+    for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+      if (ox === 0 && oy === 0) continue;
+      const tx = ptx + ox, ty = pty + oy;
+      if (this.world.tileAt(tx, ty) === T_WATER) {
+        const d = Math.abs(ox) + Math.abs(oy);
+        if (d < bestD) { bestD = d; best = { tx, ty }; }
+      }
+    }
+    if (!best) return false;
+    if (!this.fishCd) this.fishCd = new Map();
+    const kk = best.tx + ',' + best.ty;
+    if ((this.fishCd.get(kk) || 0) > this.time) return false;
+    this.fishCd.set(kk, this.time + 60);
+    const n = 1 + (Math.random() < 0.3 ? 1 : 0);
+    p.addItem(makeMaterial('fish', n));
+    const wx = best.tx * TILE + TILE / 2, wy = best.ty * TILE + TILE / 2;
+    this.addFloatText(wx, wy, '🐟 +' + n, '#bfe0f0');
+    this.addEffect({ type: 'ring', x: wx, y: wy, dur: 0.4, color: '#7fb0d0', r: 14 });
+    this.sfx('point');
+    this.save();
+    return true;
+  }
+
+  /* Cook (P5c): turn COOK_COST fish into one food consumable (a regen buff on
+   * its own tag). Bag-only life-skill crafting — zero combat power. */
+  cook(p) {
+    if (this.matCount(p, 'fish') < COOK_COST) { UI.toast(t('inv.cookNeed', { n: COOK_COST }), 'info'); this.sfx('point'); return false; }
+    this.spendMaterial(p, 'fish', COOK_COST);
+    p.addItem(makePotion('food', 1));
+    this.addFloatText(p.x, p.y - 40, '🍢 +1', '#e0a95e');
+    this.addEffect({ type: 'ring', x: p.x, y: p.y - 12, dur: 0.4, color: '#e0a95e', r: 26 });
+    this.sfx('buff');
     this.save();
     return true;
   }

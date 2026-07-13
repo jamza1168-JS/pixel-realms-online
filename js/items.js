@@ -89,6 +89,11 @@ const POTIONS = {
   regen: { key: 'regen', kind: 'potion', icon: '💚', color: '#7ee98a', price: 60,  buff: { tag: 'pot_regen', kind: 'regenMul', v: 3.0,  t: 30, icon: '💚', name: 'buff.pot_regen' } },
   // Teleport scroll (Phase 2c): a consumable that warps you to the village.
   tele:  { key: 'tele',  kind: 'potion', icon: '📜', color: '#c9a0ff', price: 80,  warp: 'village' },
+  // Cooked food (P5c): crafted from fish, never shop-bought (`craftOnly`).
+  // A slow-regen buff on its OWN tag so it stacks alongside a regen potion.
+  // Zero combat power — a social/idle life-skill reward, not P2W.
+  food:  { key: 'food',  kind: 'potion', icon: '🍢', color: '#e0a95e', price: 0, craftOnly: true,
+           buff: { tag: 'food_regen', kind: 'regenMul', v: 2.0, t: 60, icon: '🍢', name: 'buff.food' } },
 };
 
 /* ---------- Materials (Phase 2b) ----------
@@ -100,6 +105,8 @@ const MATERIALS = {
   // Awakening Stone (P5a): boss-only drop that adds a 4th affix row to a
   // gear item, once. Never sold for money.
   stone: { key: 'stone', kind: 'material', icon: '✦',  color: '#ff5db1', price: 0 },
+  // Fish (P5c): caught at water tiles; cook 3 into a food consumable.
+  fish:  { key: 'fish',  kind: 'material', icon: '🐟', color: '#7fb0d0', price: 3 },
 };
 
 /* ---------- Rollable stats (affixes) ---------- */
@@ -221,6 +228,7 @@ function isStackable(item) { return item.kind === 'potion' || item.kind === 'mat
  * item and is clamped 0..MAX_REFINE server-side. */
 const MAX_REFINE = 9;
 const REFINE_ODDS = [1, 1, 1, 1, 0.8, 0.7, 0.6, 0.5, 0.4];   // index = current level → next
+const COOK_COST = 3;   // fish → one food consumable (P5c)
 
 function refineCost(item) {
   const mult = (ITEM_TIERS[item.tier] || ITEM_TIERS.common).mult;

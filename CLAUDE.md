@@ -51,7 +51,10 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
   is a private room: the creator sets the password; wrong password →
   `wrong_password`, full → `room_full`. `welcome` carries
   `{room, channel, public}` (via `room_display`); the client shows
-  `net.roomLabel` ("World · Ch N" or the room name).
+  `net.roomLabel` ("World · Ch N" or the room name). The HUD online badge
+  (`UI.update`) reads: online → players + roomLabel; **signed-in but offline**
+  (warped into a solo biome instance) → `online.solo` + the `mapname.<id>`
+  (NOT "GUEST"); signed out → `ui.guest`.
 - **Client entry (renewed):** the manual online panel is gone. Only
   **signed-in** players go online, and `startGame` auto-joins the public
   World (`game.goOnline(name)` → `{join, public:true}`; name = account
@@ -115,13 +118,18 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
   hovering gear also appends an equipped-slot comparison (`equipCompareHtml`
   via `itemStatMap`). Inventory/storage render a **filtered + tier-sorted
   copy** (`UI.invFilter`, `tierRank`); the real `inventory`/`storage` arrays
-  are never reordered. **Bag interaction:** single click selects (updated IN
-  PLACE — the cell node must survive so a following `dblclick` fires, so the
-  grid is NOT rebuilt on select; `renderInvActions` re-renders only the action
-  row); **double-click** a bag/stash item to equip/use/withdraw (`_invDblClick`)
-  and double-click an equipped slot to unequip. Stat panel shows base **+gear
-  bonus** per primary stat (from `equipAgg()`); `UI.spSig` includes
-  equipped-item uids so it re-renders when gear changes.
+  are never reordered. **Bag interaction:** single click selects (via `_selectItem`,
+  updated IN PLACE — the cell/slot node must survive so a following `dblclick`
+  fires, so the grid is NOT rebuilt on select; `renderInvActions` re-renders
+  only the action row) and **never toggles off** (the menu stays up — smoother
+  clicking); **double-click** a bag/stash item to equip/use/withdraw
+  (`_invDblClick`) and double-click an equipped slot to unequip. **Equipped
+  items are clickable too** — selecting one shows Unequip + the shared gear
+  upgrade menu (`_gearUpgradeButtons`: Reforge/Refine/Awaken), which operate in
+  place (`Game.reforge/refine/awaken` accept bag OR equipped gear via
+  `Game._ownsGear`; server `row_cap` clamps regardless of location). Stat panel
+  shows base **+gear bonus** per primary stat (from `equipAgg()`); `UI.spSig`
+  includes equipped-item uids so it re-renders when gear changes.
 - Bag vs stash: `player.inventory` and `player.storage` share `_addTo`/
   `_removeFrom` (`isStackable` items — potions AND materials — stack per
   list by kind+key); `depositItem`/`withdrawItem` move between them. Shop:

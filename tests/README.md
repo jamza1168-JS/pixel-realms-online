@@ -70,6 +70,8 @@ node afk_route_test.js             # AFK routing: biome decor thinner than the h
                                    #   weaves through each biome to a far goal without freezing
 node qol_test.js                   # QoL: AFK fights bosses (no lv gate), double-click equip/
                                    #   unequip, Sell-tab category filter, trade window scrolls
+node equip_menu_test.js            # equipped-item upgrade menu (unequip/reforge/refine/awaken
+                                   #   in place), sticky selection, solo-zone badge (not GUEST)
 ```
 
 If Playwright can't find a browser, point `PW_CHROMIUM` at a Chromium binary:

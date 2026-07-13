@@ -1402,12 +1402,20 @@ class Game {
     return true;
   }
 
-  /* Reforge (reroll) one affix row on a BAG gear item, spending gold.
-   * Cost escalates per item via reforgeCost; rows stay within the server
-   * row cap because reforgeRow reuses the drop math. */
+  /* Does this player own the gear item — in the bag OR currently equipped?
+   * (Storage gear can't be upgraded — withdraw it first.) Upgrades mutate the
+   * item in place; the server row_cap clamps rows regardless of location, so
+   * upgrading equipped gear is safe. */
+  _ownsGear(p, item) {
+    return !!item && (p.inventory.includes(item) || EQUIP_SLOTS.some(s => p.equip[s] === item));
+  }
+
+  /* Reforge (reroll) one affix row on an owned gear item (bag or equipped),
+   * spending gold. Cost escalates per item via reforgeCost; rows stay within
+   * the server row cap because reforgeRow reuses the drop math. */
   reforge(p, item, rowIdx) {
     if (!item || (item.kind !== 'weapon' && item.kind !== 'armor')) return false;
-    if (!p.inventory.includes(item)) return false;   // bag only (unequip first)
+    if (!this._ownsGear(p, item)) return false;
     const row = item.rows && item.rows[rowIdx];
     if (!row) return false;
     const cost = reforgeCost(item);
@@ -1443,11 +1451,12 @@ class Game {
     }
   }
 
-  /* Attempt to refine a BAG gear item, spending gold + ore. Success raises
-   * +1; a failed attempt past +4 drops one step — the item never breaks. */
+  /* Attempt to refine an owned gear item (bag or equipped), spending gold +
+   * ore. Success raises +1; a failed attempt past +4 drops one step — the item
+   * never breaks. */
   refine(p, item) {
     if (!item || (item.kind !== 'weapon' && item.kind !== 'armor')) return null;
-    if (!p.inventory.includes(item)) return null;   // bag only (unequip first)
+    if (!this._ownsGear(p, item)) return null;
     if ((item.refine || 0) >= MAX_REFINE) { UI.toast(t('inv.refineMax'), 'info'); this.sfx('point'); return null; }
     const cost = refineCost(item);
     if (p.gold < cost.gold || this.matCount(p, 'ore') < cost.ore) {
@@ -1471,10 +1480,10 @@ class Game {
     return { success, refine: item.refine };
   }
 
-  /* Awaken (P5a): spend one Awakening Stone to add a 4th affix row to a BAG
-   * gear item, once. Bag-only, like reforge/refine. */
+  /* Awaken (P5a): spend one Awakening Stone to add a 4th affix row to an owned
+   * gear item (bag or equipped), once. */
   awaken(p, item) {
-    if (!canAwaken(item) || !p.inventory.includes(item)) return null;
+    if (!canAwaken(item) || !this._ownsGear(p, item)) return null;
     if (this.matCount(p, 'stone') < 1) { UI.toast(t('inv.awakenNeed'), 'info'); this.sfx('point'); return null; }
     const row = awakenItem(item);
     if (!row) return null;

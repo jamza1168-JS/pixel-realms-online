@@ -307,6 +307,19 @@ capped `MAX_ILVL` at 28, clamping those rows on the first cloud save →
 (b) A successful **refine** now resets the item's reforge counter `rr` to 0,
 so the reforge cost drops back down (spec §6: "resets on refine +1").
 
+**AFK routing through biomes (fix).** The hub carves **road corridors**; biome
+maps (`generateBiome`) are a uniform decor scatter with none, and forest ran
+~2085 solid objects (vs the hub's ~929), so the AFK bot got walled in and
+walked jerkily. Two fixes: (1) biome `MAPS.density` cut so each biome's decor
+count sits below the hub's (forest 2600→1000, desert 1500→850, snow
+2000→900, volcano 1700→900 — decor *mix* per biome unchanged, just sparser);
+(2) `Game.botSteer` reworked for uniform fields — a shorter look-ahead (48px,
+with a 20px near fallback) + a finer/wider angle sweep so it keeps weaving
+through gaps, an early bail-out of a detour once the goal line reopens, and a
+stuck-detour that sidesteps toward an **actually-open** side (or backs up if
+boxed in) instead of blindly. The bot now crosses every biome to a far goal
+with zero stalls. Covered by `tests/afk_route_test.js`; hub routing unchanged.
+
 ## 9.1 Phase 2 sub-phase specs (small, one-session each)
 
 Ordered by dependency and risk (2a is smallest). Each ships alone, is

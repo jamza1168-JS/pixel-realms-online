@@ -560,37 +560,55 @@ class Game {
   }
 
   /* Walk toward (gx,gy), steering around obstacles proactively and
-   * escalating to a sidestep detour if genuinely stuck. */
+   * escalating to a sidestep detour if genuinely stuck. Tuned for dense
+   * biome scatter (no road corridors): a short look-ahead + fine angle sweep
+   * lets the bot keep weaving through gaps instead of freezing on a wall. */
   botSteer(out, p, gx, gy, bs, dt) {
     bs.checkT += dt;
     if (bs.unstuckT > 0) {
       bs.unstuckT -= dt;
-      out.mx = bs.detour.x; out.my = bs.detour.y;
-      return;
+      // bail out of the detour early once the way to the goal is clear again
+      const gdx = gx - p.x, gdy = gy - p.y, gl = Math.hypot(gdx, gdy) || 1;
+      if (this.botPathClear(p, gdx / gl, gdy / gl, Math.min(40, gl))) { bs.unstuckT = 0; }
+      else { out.mx = bs.detour.x; out.my = bs.detour.y; return; }
     }
     const dx = gx - p.x, dy = gy - p.y;
     const dist = Math.hypot(dx, dy) || 1;
     let dirx = dx / dist, diry = dy / dist;
-    // proactive routing: if a tree/rock blocks the straight line, rotate
-    // the heading to the nearest clear angle so we curve around it
-    const probe = Math.min(64, dist);
-    if (!this.botPathClear(p, dirx, diry, probe)) {
-      for (const a of [0.6, -0.6, 1.1, -1.1, 1.7, -1.7, 2.4, -2.4]) {
+    // proactive routing: if a tree/rock blocks the line, rotate to the clear
+    // heading NEAREST the goal. Two passes — a full look-ahead, then a short
+    // one — so a partially-open gap still lets us make progress and re-plan.
+    const far = Math.min(48, dist), near = Math.min(20, dist);
+    const angles = [0.35, -0.35, 0.7, -0.7, 1.05, -1.05, 1.4, -1.4, 1.9, -1.9, 2.4, -2.4, 3.0];
+    if (!this.botPathClear(p, dirx, diry, far)) {
+      let picked = false;
+      for (const a of angles) {
         const c = Math.cos(a), s = Math.sin(a);
         const nx = dirx * c - diry * s, ny = dirx * s + diry * c;
-        if (this.botPathClear(p, nx, ny, probe)) { dirx = nx; diry = ny; break; }
+        if (this.botPathClear(p, nx, ny, far)) { dirx = nx; diry = ny; picked = true; break; }
+      }
+      if (!picked) {   // nothing clear at range — take any heading open for one step
+        for (const a of angles) {
+          const c = Math.cos(a), s = Math.sin(a);
+          const nx = dirx * c - diry * s, ny = dirx * s + diry * c;
+          if (this.botPathClear(p, nx, ny, near)) { dirx = nx; diry = ny; break; }
+        }
       }
     }
     out.mx = dirx; out.my = diry;
-    if (bs.checkT > 0.5) {
+    if (bs.checkT > 0.4) {
       const moved = Math.hypot(p.x - bs.lastX, p.y - bs.lastY);
-      if (moved < 6 && dist > 30) {
-        // blocked: sidestep perpendicular, alternating sides and
-        // detouring longer each consecutive time we're still stuck
+      if (moved < 6 && dist > 26) {
+        // genuinely stuck: sidestep toward whichever perpendicular is actually
+        // open (not a blind sidestep into another wall); back up if boxed in.
         bs.stuckN = (bs.stuckN || 0) + 1;
         const sign = bs.stuckN % 2 ? 1 : -1;
-        bs.detour = { x: -out.my * sign, y: out.mx * sign };
-        bs.unstuckT = 0.5 + 0.3 * Math.min(4, bs.stuckN);
+        const a1 = { x: -diry * sign, y: dirx * sign };
+        const a2 = { x: diry * sign, y: -dirx * sign };
+        bs.detour = this.botPathClear(p, a1.x, a1.y, near) ? a1
+                  : this.botPathClear(p, a2.x, a2.y, near) ? a2
+                  : { x: -dirx, y: -diry };
+        bs.unstuckT = 0.3 + 0.2 * Math.min(4, bs.stuckN);
       } else if (moved >= 6) {
         bs.stuckN = 0;
       }

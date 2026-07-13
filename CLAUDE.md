@@ -91,7 +91,12 @@ server.py       HTTP static + /api/score + /api/leaderboard + WS relay
   `AFK_FOCUS {boss,monster}` (persisted `pixelrealms_afk`) gates targeting:
   boss off = flee bosses, monster off = walk past mobs; a nearby boss
   (focus on, level ≥ 18) outranks mobs. `botSteer` probes `botPathClear`
-  and bends the heading around solids before the sidestep fallback.
+  and bends the heading around solids before the sidestep fallback: a short
+  look-ahead (48px, 20px near fallback) + a fine angle sweep lets it weave
+  through dense **biome** decor (the hub has road corridors; biomes are a
+  uniform scatter), and the stuck detour sidesteps toward an actually-open
+  side (or backs up if boxed in) instead of blindly. Biome `MAPS.density` is
+  kept below the hub's decor count for the same reason — see `world.js`.
 - Buffs/debuffs: `player.addBuff({tag,kind,v,t,icon,name,debuff})` — same
   `tag` refreshes (no stack); `UI.renderBuffs` shows an icon+timer chip
   (green buff / red debuff) keyed by a tag signature.

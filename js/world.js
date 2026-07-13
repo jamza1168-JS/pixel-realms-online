@@ -30,14 +30,17 @@ const MAPS = {
   // Biome zones share generateBiome(); `base` = ground tile, `decor` =
   // [type, cumulative-roll] density gates, `density` = decoration attempts,
   // `tiers` = [near, far] difficulty of its spawns.
+  // `density` kept well below the hub's decor count: biomes have no road
+  // corridors (the hub carves paths), so a uniform scatter must be sparser to
+  // stay walkable for the AFK bot and feel open on foot.
   forest:  { id: 'forest',  biome: 'forest',  seedXor: 0x1a2b3c4d, band: [5, 10],  pool: ['wolf', 'bat', 'ghost', 'goblin'],
-             base: T_GRASS, decor: [['tree', 0.78], ['rock', 0.90]], density: 2600, tiers: [2, 3] },
+             base: T_GRASS, decor: [['tree', 0.78], ['rock', 0.90]], density: 1000, tiers: [2, 3] },
   desert:  { id: 'desert',  biome: 'desert',  seedXor: 0x5e6f7a8b, band: [13, 18], pool: ['orc', 'skeleton', 'ghost'],
-             base: T_SAND,  decor: [['rock', 0.55], ['deadTree', 0.72]], density: 1500, tiers: [3, 4] },
+             base: T_SAND,  decor: [['rock', 0.55], ['deadTree', 0.72]], density: 850, tiers: [3, 4] },
   snow:    { id: 'snow',    biome: 'snow',    seedXor: 0x2c3d4e5f, band: [17, 22], pool: ['wolf', 'skeleton', 'orc', 'bat'],
-             base: T_SNOW,  decor: [['deadTree', 0.5], ['rock', 0.78]], density: 2000, tiers: [3, 4] },
+             base: T_SNOW,  decor: [['deadTree', 0.5], ['rock', 0.78]], density: 900, tiers: [3, 4] },
   volcano: { id: 'volcano', biome: 'volcano', seedXor: 0x7a8b9cad, band: [25, 31], pool: ['orc', 'skeleton', 'ghost'],
-             base: T_ASH,   decor: [['rock', 0.45], ['deadTree', 0.7]], density: 1700, tiers: [4, 4] },
+             base: T_ASH,   decor: [['rock', 0.45], ['deadTree', 0.7]], density: 900, tiers: [4, 4] },
 };
 
 class World {

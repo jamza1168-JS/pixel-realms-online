@@ -409,10 +409,12 @@ Fixed a **boss double-scaling bug**: the `Enemy` ctor applied `tierScale(tier)`
 to bosses whose authored stats are already final, so hub bosses (all `tier:4`)
 were inflated ×3.4 HP / ×3.1 XP (dragon read 10 880 HP vs authored 3 200).
 Fix: `apex = boss||miniboss||worldboss` mobs skip `tierScale` (use `{hp:1,
-dmg:1,xp:1}`); only normal + elite mobs zone-scale. Authored boss stats
-re-fitted to the §3 curve so bosses stay dangerous (damage kept high: demon
-34→56, ogre 26→72, dragon 48→112; ogre HP 600→1375; boss XP normalised) —
-**each boss is one authored number now, easy to re-tune.** Also: `WEAPON_TIER_DMG`
+dmg:1,xp:1}`); only normal + elite mobs zone-scale. Every boss stat is now an
+explicit authored number (one-line tunable). Owner's chosen values keep the
+established tanky HP (demon 4760, ogre 2040, dragon 10 880) + high damage
+(demon 34→56, ogre 26→72, dragon 48→112) but normalise the runaway XP (demon
+2790→900, ogre 1240→1100, dragon 6820→2900) so boss farming doesn't trivialise
+levelling. Also: `WEAPON_TIER_DMG`
 (common 1.0→mystic 1.26) makes **weapon** tier scale `dmgMul` in `equipAgg`
 (off-hands excluded so a shield stays defensive; tooltip folds it in); server
 `MAX_ILVL` 28→32 (worldboss loot rolls ilvl 32 — was clamped on save); a

@@ -280,19 +280,19 @@ A correctness + gear-feel pass (deferred backlog item "balance the new gear
 and tiers"), covered by `tests/balance_test.js`.
 
 **Boss double-scaling fix (the core bug).** The `Enemy` constructor applied
-`tierScale(tier)` to EVERY mob, including bosses. But boss/miniboss/worldboss
-authored stats are already the intended final values (§3: curve × archetype
-mult), so hub bosses (all spawn at `tier: 4`) were inflated ×3.4 HP / ×2.65
-dmg / ×3.1 XP on top — e.g. the dragon read **10 880 HP** instead of its
-authored ~3 200, and gave **6 820 XP** instead of ~2 200. The elite path was
-already correctly gated (`a = this.elite ? ELITE_MULT : null`); `tierScale`
-just wasn't. Fix: `apex = boss||miniboss||worldboss` mobs use `{hp:1,dmg:1,
-xp:1}` (authored stats stand); normal + elite mobs still zone-scale. Authored
-boss stats were re-fitted to the §3 formula so bosses stay dangerous — damage
-kept high (demon 34→56, ogre 26→72, dragon 48→112) while HP/XP shed the
-accidental inflation (ogre HP 600→1375 to hit its L20-miniboss target; dragon
-XP 2200→2900). **Each boss is now a single authored number — dial HP up in
-`ENEMY_TYPES` if a tankier fight is wanted.**
+`tierScale(tier)` to EVERY mob, including bosses — so HP, damage AND XP were
+all an accidental side-effect of the tier ring rather than intentional. Hub
+bosses all spawn at `tier: 4`, so they were silently inflated ×3.4 HP / ×2.65
+dmg / ×3.1 XP. The elite path was already correctly gated (`a = this.elite ?
+ELITE_MULT : null`); `tierScale` just wasn't. Fix: `apex =
+boss||miniboss||worldboss` mobs use `{hp:1,dmg:1,xp:1}` (authored stats
+stand); normal + elite mobs still zone-scale. **Every boss stat is now an
+explicit authored number in `ENEMY_TYPES`, tunable in one line.** The owner's
+chosen values keep the established tanky **HP** (demon 4760, ogre 2040, dragon
+10 880 — players are used to these) and intentional high **damage** (demon
+34→56, ogre 26→72, dragon 48→112), but **normalise the runaway XP** (demon
+2790→900, ogre 1240→1100, dragon 6820→2900) so boss farming no longer
+trivialises levelling.
 
 **Weapon tier now scales damage.** Previously a weapon's tier only boosted its
 3 rolled rows, so a mystic blade and a common blade of the same base swung for

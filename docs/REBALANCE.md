@@ -264,7 +264,8 @@ art from `docs/ART_REDESIGN.md` lands.
      affix row to a gear item, once).
    - **5b — More biomes** ✅ SHIPPED (Snow via a new `T_SNOW` tile, Volcano
      via `T_ASH`; both `MAPS` entries for `generateBiome` + hub portals).
-   - **5c — Fishing + cooking** (idle life-skill + food buffs).
+   - **5c — Fishing + cooking** ✅ SHIPPED (idle life-skill: fish at water
+     tiles → cook 3 fish into a food regen consumable; craft-only, no power).
 6. **P6 — Sets/variants art pass** (the "20+ swords" cosmetic breadth) —
    pairs with the dye/cosmetic shop (M2).
 
@@ -509,8 +510,22 @@ robust with a retry.
   `tests/map_test.js` (§2d). *Content note:* biome mobs still cap at tier 4
   (no higher-tier mob content yet); real per-biome variant sprites are P6.
 
-### Phase 5c — Fishing + cooking
-- Water tiles become fishable (a rod interaction, cooldown per spot like
-  mining) → `fish` materials; a simple cooking recipe turns fish into food
-  consumables (a +regen buff on a separate tag, stacking with potions). An
-  idle, social life-skill with zero combat power (retention, not power).
+### Phase 5c — Fishing + cooking — ✅ SHIPPED
+- **Fishing** (`Game.tryFishNear`): fires from the basic-attack when the player
+  is beside a **water** tile with no enemy in melee range — the SAME gate as
+  rock mining, so the AFK bot never fishes (an active-play/idle-by-choice life
+  skill). Per-**spot** 60s **local** cooldown keyed by tile coords in
+  `game.fishCd` (no world mutation → no desync). Yields a `fish` material
+  (`MATERIALS.fish`, stackable). Wired into the `entities.js` attack path right
+  after `tryMineNear` (`else if (g.tryFishNear …)`).
+- **Cooking** (`Game.cook`): spends `COOK_COST = 3` fish for one **food**
+  consumable (`POTIONS.food`, `craftOnly` → hidden from the merchant buy tab +
+  refused by `buyPotion`). Food grants a **regen buff on its own tag**
+  (`food_regen`, ×2 HP/MP regen 60s) so it **stacks multiplicatively** with a
+  Regen Potion (`pot_regen`) — a cheap comfort layer with **zero combat
+  power**. UI: a `🍢 Cook (3🐟)` action on a selected bag Fish stack.
+- **Server:** `ALLOWED_MATERIALS += 'fish'`, `ALLOWED_POTIONS += 'food'` (food
+  is a normal consumable; the craft-only gate is client shop-side — the item
+  itself is legitimate to own/save). i18n EN/TH: `mat.fish`/`matd.fish`,
+  `item.food`/`itemd.food`, `buff.food`, `inv.cookBtn`/`inv.cookNeed`.
+- Covered by `tests/fishing_test.js`. **Phase 5 is complete.**

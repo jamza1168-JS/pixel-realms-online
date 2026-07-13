@@ -61,6 +61,8 @@ node accessory_test.js             # P4b accessories x2: spice-only rolls, acc1/
                                    #   stats apply, save reload, crossbow (archer, evicts quiver)
 node awaken_test.js                # P5a Awakening Stone: adds a distinct 4th row once,
                                    #   spends a stone (bag-only), save round-trip, 3-row clamp
+node fishing_test.js               # P5c fishing+cooking: fish at water (spot cooldown, yields
+                                   #   to combat), cook 3 fish -> food, craft-only, buff stacks
 ```
 
 If Playwright can't find a browser, point `PW_CHROMIUM` at a Chromium binary:

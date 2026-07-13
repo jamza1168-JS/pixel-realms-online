@@ -390,6 +390,20 @@ tag. `server.py` `clean_item` keeps a 4th row only when `awakened` (else
 clamps to 3), each still `row_cap`-bound. Covered by `tests/awaken_test.js`
 (+ row-count clamp in `hardening_test.py`).
 
+**Phase 5c — Fishing + cooking (shipped, `docs/REBALANCE.md` §9.4):** a
+zero-power idle life-skill. **Fishing** (`Game.tryFishNear`) fires from the
+basic-attack when beside a **water** tile with no enemy in melee range (same
+gate as `tryMineNear`, so the AFK bot never fishes) → a `fish` material
+(`MATERIALS.fish`, stackable); per-**spot** 60s local cooldown keyed by tile
+coords in `game.fishCd` (no world mutation → no desync); wired into the
+`entities.js` attack path right after `tryMineNear`. **Cooking** (`Game.cook`)
+spends `COOK_COST` (3) fish for one **food** consumable (`POTIONS.food`,
+`craftOnly` → hidden from the shop buy tab + refused by `buyPotion`); food's
+regen buff sits on its **own tag** (`food_regen`, ×2 regen 60s) so it stacks
+with a Regen Potion. UI: `🍢 Cook (3🐟)` action on a selected bag Fish stack.
+`server.py`: `ALLOWED_MATERIALS += fish`, `ALLOWED_POTIONS += food`. Covered by
+`tests/fishing_test.js`. **Phase 5 is complete.**
+
 **Deferred by the user — remind them when they return:**
 1. ✅ Shield / off-hand slot to pair with the one-hand sword — DONE (P4a).
 2. Balance the new gear and tiers.

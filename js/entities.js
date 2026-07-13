@@ -224,6 +224,8 @@ class Player {
       this.attackT = d.atkCd / this.buffMul('aspdMul');
       if (g.tryMineNear && g.tryMineNear(this)) {
         // swung at an adjacent rock instead of attacking (no enemy near)
+      } else if (g.tryFishNear && g.tryFishNear(this)) {
+        // cast at adjacent water instead of attacking (no enemy near)
       } else if (this.cls.attackType === 'melee') {
         g.meleeArc(this, this.cls.attackRange, 1.0, '#ffffff');
         g.addEffect({ type: 'slash', x: this.x + this.face.x * 26, y: this.y + this.face.y * 26 - 12, dur: 0.15, color: '#ffffff', r: 24 });

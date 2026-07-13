@@ -62,6 +62,7 @@ const I18N = {
     'buff.pot_atk': 'Power Potion — +30% damage',
     'buff.pot_aspd': 'Haste Potion — +25% attack speed',
     'buff.pot_regen': 'Regen Potion — 3× HP/MP regen',
+    'buff.food': 'Cooked Meal — 2× HP/MP regen',
 
     'inv.title': '🎒 Inventory',
     'inv.filterAll': 'All',
@@ -100,6 +101,8 @@ const I18N = {
     'inv.awakenBtn': '✦ Awaken ({n}✦)',
     'inv.awakenNeed': 'Need an Awakening Stone (boss drop) to awaken this.',
     'inv.awakenedTag': 'Awakened (4th stat)',
+    'inv.cookBtn': '🍢 Cook ({n}🐟)',
+    'inv.cookNeed': 'Need {n}🐟 to cook a meal.',
     'inv.toSlot': '⌨ {k}',
 
     'shop.title': '🛒 Merchant',
@@ -159,6 +162,7 @@ const I18N = {
     'item.aspd': 'Haste Potion',
     'item.regen': 'Regen Potion',
     'item.tele': 'Teleport Scroll',
+    'item.food': 'Cooked Meal',
     'itemd.hp': 'Restores 50% of max HP.',
     'itemd.mp': 'Restores 50% of max MP.',
     'itemd.spd': '+30% move speed for 30s.',
@@ -166,8 +170,11 @@ const I18N = {
     'itemd.aspd': '+25% attack speed for 30s.',
     'itemd.regen': '3× HP/MP regen for 30s.',
     'itemd.tele': 'Warp back to the village instantly.',
+    'itemd.food': '2× HP/MP regen for 60s. Cooked from fish; stacks with a Regen Potion.',
     'mat.key': 'Chest Key',
     'matd.key': 'Opens a treasure chest found out in the world.',
+    'mat.fish': 'Fish',
+    'matd.fish': 'Caught by fishing (swing beside water). Cook 3 into a meal.',
     'chest.opened': 'Chest opened — {name}!',
 
     'rstat.str': 'STR', 'rstat.agi': 'AGI', 'rstat.int': 'INT', 'rstat.vit': 'VIT', 'rstat.luk': 'LUK',
@@ -426,6 +433,7 @@ const I18N = {
     'buff.pot_atk': 'ยาเพิ่มพลัง — โจมตี +30%',
     'buff.pot_aspd': 'ยาเร่งจังหวะ — ความเร็วโจมตี +25%',
     'buff.pot_regen': 'ยาฟื้นฟู — ฟื้นฟู HP/MP 3 เท่า',
+    'buff.food': 'อาหารปรุงสุก — ฟื้นฟู HP/MP 2 เท่า',
 
     'inv.title': '🎒 กระเป๋าไอเทม',
     'inv.filterAll': 'ทั้งหมด',
@@ -464,6 +472,8 @@ const I18N = {
     'inv.awakenBtn': '✦ ปลุกพลัง ({n}✦)',
     'inv.awakenNeed': 'ต้องใช้หินปลุกพลัง (ดรอปจากบอส) เพื่อปลุกพลังชิ้นนี้',
     'inv.awakenedTag': 'ปลุกพลังแล้ว (สเตตัสที่ 4)',
+    'inv.cookBtn': '🍢 ปรุงอาหาร ({n}🐟)',
+    'inv.cookNeed': 'ต้องใช้ปลา {n}🐟 เพื่อปรุงอาหาร',
     'inv.toSlot': '⌨ {k}',
 
     'shop.title': '🛒 พ่อค้า',
@@ -523,6 +533,7 @@ const I18N = {
     'item.aspd': 'ยาเร่งจังหวะ',
     'item.regen': 'ยาฟื้นฟู',
     'item.tele': 'ม้วนวาร์ป',
+    'item.food': 'อาหารปรุงสุก',
     'itemd.hp': 'ฟื้นฟู HP 50% ของค่าสูงสุด',
     'itemd.mp': 'ฟื้นฟู MP 50% ของค่าสูงสุด',
     'itemd.spd': 'ความเร็วเคลื่อนที่ +30% นาน 30 วินาที',
@@ -530,8 +541,11 @@ const I18N = {
     'itemd.aspd': 'ความเร็วโจมตี +25% นาน 30 วินาที',
     'itemd.regen': 'ฟื้นฟู HP/MP 3 เท่า นาน 30 วินาที',
     'itemd.tele': 'วาร์ปกลับไปยังหมู่บ้านทันที',
+    'itemd.food': 'ฟื้นฟู HP/MP 2 เท่า นาน 60 วินาที ปรุงจากปลา ซ้อนกับยาฟื้นฟูได้',
     'mat.key': 'กุญแจหีบสมบัติ',
     'matd.key': 'ใช้เปิดหีบสมบัติที่พบในโลก',
+    'mat.fish': 'ปลา',
+    'matd.fish': 'ได้จากการตกปลา (ฟันข้างๆ น้ำ) ปรุง 3 ตัวเป็นอาหาร',
     'chest.opened': 'เปิดหีบสมบัติ — {name}!',
 
     'rstat.str': 'STR', 'rstat.agi': 'AGI', 'rstat.int': 'INT', 'rstat.vit': 'VIT', 'rstat.luk': 'LUK',

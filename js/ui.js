@@ -399,6 +399,14 @@ const UI = {
           }));
         }
       }
+      // Cook (P5c): turn fish into a food consumable (life-skill, no power)
+      if (sel.kind === 'material' && sel.key === 'fish') {
+        const cbtn = this.invBtn(t('inv.cookBtn', { n: COOK_COST }), () => {
+          if (this.game.cook(p)) re();
+        });
+        if (this.game.matCount(p, 'fish') < COOK_COST) cbtn.classList.add('disabled');
+        act.appendChild(cbtn);
+      }
       act.appendChild(this.invBtn(t('inv.deposit'), () => {
         p.depositItem(sel); this.invSel = null; this.game.save(); re(); this.game.sfx('point');
       }));
@@ -500,6 +508,7 @@ const UI = {
     if (this.shopTab === 'buy') {
       for (const key of Object.keys(POTIONS)) {
         const base = POTIONS[key];
+        if (base.craftOnly) continue;               // food is cooked, never bought
         const row = document.createElement('div');
         row.className = 'shop-row';
         row.innerHTML =

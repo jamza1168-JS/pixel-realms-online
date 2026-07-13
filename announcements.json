@@ -1,6 +1,28 @@
 {
   "items": [
     {
+      "date": "2026-07-13",
+      "en": {
+        "title": "Quality of life, boss balance & smarter AFK",
+        "body": "A tidy-up patch: double-click an item in your bag to equip or use it (and double-click an equipped slot to take it off), the merchant's Sell tab now has the same category filters as your bag, and the trade window scrolls when your offer gets long. AFK auto-play now actually fights bosses when Boss focus is on and walks through the biome maps much more smoothly. Balance: higher-tier weapons now hit noticeably harder, and boss XP was tuned so boss-farming no longer outruns normal leveling."
+      },
+      "th": {
+        "title": "ปรับความสะดวก บาลานซ์บอส และ AFK ฉลาดขึ้น",
+        "body": "แพตช์เก็บรายละเอียด: ดับเบิลคลิกไอเทมในกระเป๋าเพื่อสวมใส่หรือใช้งาน (และดับเบิลคลิกช่องที่สวมอยู่เพื่อถอด) แท็บขายของพ่อค้ามีตัวกรองหมวดหมู่เหมือนในกระเป๋าแล้ว และหน้าต่างแลกเปลี่ยนเลื่อนดูได้เมื่อรายการยาว ระบบเล่นอัตโนมัติ (AFK) จะสู้กับบอสจริง ๆ เมื่อเปิดโฟกัสบอส และเดินในแผนที่ไบโอมได้ลื่นไหลขึ้นมาก บาลานซ์: อาวุธระดับสูงแรงขึ้นชัดเจน และปรับ EXP ของบอสให้การฟาร์มบอสไม่แซงการเลเวลปกติ"
+      }
+    },
+    {
+      "date": "2026-07-11",
+      "en": {
+        "title": "New lands, life skills & endgame gear",
+        "body": "The world grew: step through the warp portals in the village to reach the Forest, Desert, Snow and Volcano biomes, each with its own mobs and level range. New ways to play and grow — go fishing at the water and cook your catch into food, mine rocks for ore, and upgrade gear with Refine (+1 to +9), reroll a stat with Reforge, or add a 4th stat with a boss-dropped Awakening Stone. Hunt elites for keys to open treasure chests, and gear up with the new gloves, off-hand (shield/book/quiver) and two accessory slots."
+      },
+      "th": {
+        "title": "ดินแดนใหม่ อาชีพชีวิต และของสวมปลายเกม",
+        "body": "โลกกว้างขึ้น: เดินผ่านประตูวาร์ปในหมู่บ้านเพื่อไปยังไบโอมป่า ทะเลทราย หิมะ และภูเขาไฟ แต่ละที่มีมอนสเตอร์และช่วงเลเวลของตัวเอง มีวิธีเล่นและพัฒนาใหม่ ๆ — ตกปลาริมน้ำแล้วปรุงเป็นอาหาร ขุดหินเพื่อเก็บแร่ และอัปเกรดอุปกรณ์ด้วยการตีบวก (+1 ถึง +9) สุ่มสเตตัสใหม่ด้วยรีฟอร์จ หรือเพิ่มสเตตัสแถวที่ 4 ด้วยหินปลุกพลังที่ดรอปจากบอส ล่าอีลิทเพื่อเก็บกุญแจเปิดหีบสมบัติ และเสริมความแกร่งด้วยถุงมือ อาวุธรอง (โล่/หนังสือ/กระบอกธนู) และช่องเครื่องประดับสองช่องใหม่"
+      }
+    },
+    {
       "date": "2026-07-09",
       "en": {
         "title": "Accounts, trading & a fresh title screen",

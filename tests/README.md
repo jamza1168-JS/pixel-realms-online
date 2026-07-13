@@ -68,6 +68,8 @@ node balance_test.js               # boss scaling (apex mobs not tier-scaled, no
                                    #   resets on refine, worldboss ilvl 32 matches server cap
 node afk_route_test.js             # AFK routing: biome decor thinner than the hub; the bot
                                    #   weaves through each biome to a far goal without freezing
+node qol_test.js                   # QoL: AFK fights bosses (no lv gate), double-click equip/
+                                   #   unequip, Sell-tab category filter, trade window scrolls
 ```
 
 If Playwright can't find a browser, point `PW_CHROMIUM` at a Chromium binary:

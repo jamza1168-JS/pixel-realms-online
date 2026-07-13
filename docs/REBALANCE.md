@@ -274,6 +274,39 @@ be updated in the same PR as any client formula change (CLAUDE.md
 invariant), and every phase re-runs `tests/` plus a save-migration check
 (old saves must load with zero data loss).
 
+## 9.5 Balance pass — boss scaling + gear/tier (✅ SHIPPED)
+
+A correctness + gear-feel pass (deferred backlog item "balance the new gear
+and tiers"), covered by `tests/balance_test.js`.
+
+**Boss double-scaling fix (the core bug).** The `Enemy` constructor applied
+`tierScale(tier)` to EVERY mob, including bosses. But boss/miniboss/worldboss
+authored stats are already the intended final values (§3: curve × archetype
+mult), so hub bosses (all spawn at `tier: 4`) were inflated ×3.4 HP / ×2.65
+dmg / ×3.1 XP on top — e.g. the dragon read **10 880 HP** instead of its
+authored ~3 200, and gave **6 820 XP** instead of ~2 200. The elite path was
+already correctly gated (`a = this.elite ? ELITE_MULT : null`); `tierScale`
+just wasn't. Fix: `apex = boss||miniboss||worldboss` mobs use `{hp:1,dmg:1,
+xp:1}` (authored stats stand); normal + elite mobs still zone-scale. Authored
+boss stats were re-fitted to the §3 formula so bosses stay dangerous — damage
+kept high (demon 34→56, ogre 26→72, dragon 48→112) while HP/XP shed the
+accidental inflation (ogre HP 600→1375 to hit its L20-miniboss target; dragon
+XP 2200→2900). **Each boss is now a single authored number — dial HP up in
+`ENEMY_TYPES` if a tankier fight is wanted.**
+
+**Weapon tier now scales damage.** Previously a weapon's tier only boosted its
+3 rolled rows, so a mystic blade and a common blade of the same base swung for
+nearly the same. `WEAPON_TIER_DMG` (common 1.0 → mystic 1.26) multiplies a
+**weapon's** `dmgMul` in `equipAgg` (off-hands excluded, so a shield's
+defensive `dmgMul` can't flip positive at high tier). Gentle on purpose — the
+rolled rows stay the main tier payoff. The tooltip's dmg% now folds it in.
+
+**Correctness fixes.** (a) Worldboss loot rolls at `ilvl 32` but the server
+capped `MAX_ILVL` at 28, clamping those rows on the first cloud save →
+`MAX_ILVL` raised 28→32 (still tight anti-tamper: the true max legit drop).
+(b) A successful **refine** now resets the item's reforge counter `rr` to 0,
+so the reforge cost drops back down (spec §6: "resets on refine +1").
+
 ## 9.1 Phase 2 sub-phase specs (small, one-session each)
 
 Ordered by dependency and risk (2a is smallest). Each ships alone, is

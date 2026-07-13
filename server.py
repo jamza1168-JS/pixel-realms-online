@@ -202,7 +202,7 @@ CLASS_BASE = {
 TIER_MULT = {"common": 1.0, "rare": 1.5, "unique": 2.1, "legend": 3.0, "mystic": 4.3}
 AFFIX_MAX = {"str": 5, "agi": 5, "int": 5, "vit": 5, "luk": 5, "hp": 45, "mp": 22,
              "atk": 9, "matk": 9, "crit": 6, "spd": 9}
-MAX_ILVL = 28   # highest item level a real drop reaches (tier-4 boss: 4*4 + 12)
+MAX_ILVL = 32   # highest item level a real drop reaches (tier-4 worldboss: 4*4 + 16)
 MAX_REFINE = 9  # highest gear refine level (Phase 2b)
 # per-save injection caps (legit play never approaches these between ~8-15s saves)
 GOLD_GAIN_PER_SAVE = 100_000

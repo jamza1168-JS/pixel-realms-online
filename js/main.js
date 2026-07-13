@@ -1431,6 +1431,7 @@ class Game {
     const success = Math.random() < refineChance(item);
     if (success) {
       item.refine = (item.refine || 0) + 1;
+      item.rr = 0;                    // refining resets the reforge cost (spec §6)
       this.sfx('levelup');
       this.addFloatText(p.x, p.y - 46, '⚒ +' + item.refine + ' ✔', '#7ee98a');
       this.addEffect({ type: 'ring', x: p.x, y: p.y - 12, dur: 0.4, color: '#ffd75e', r: 30 });

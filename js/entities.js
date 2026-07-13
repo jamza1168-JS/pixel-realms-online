@@ -88,7 +88,9 @@ class Player {
       const base = itemBase(it);
       if (base && base.base) {
         const wMul = it.kind === 'weapon' ? refineWeaponMul(R) : 1;
-        if (base.base.dmgMul) agg.dmgMul *= base.base.dmgMul * wMul;
+        // weapons also gain a modest tier damage bonus (rarity felt on the hit)
+        const tMul = it.kind === 'weapon' ? weaponTierMul(it.tier) : 1;
+        if (base.base.dmgMul) agg.dmgMul *= base.base.dmgMul * wMul * tMul;
         if (base.base.aspdMul) agg.aspdMul *= base.base.aspdMul;
         if (base.base.spd) agg.spd += base.base.spd;
         if (base.base.dmgRed) agg.dmgRed += base.base.dmgRed;
@@ -401,7 +403,11 @@ class Enemy {
     // world.js) so every client reconstructs the same enemy from its idx.
     this.elite = !!spawn.elite;
     this.archetype = enemyArchetype(this.type, this.elite);
-    const m = tierScale(this.tier);
+    // Boss/miniboss/worldboss authored stats ARE their final values (fitted to
+    // the docs/REBALANCE.md §3 curve × archetype mult), so they are NOT
+    // zone-scaled — only normal + elite mobs take the tier ring multiplier.
+    const apex = !!(this.type.boss || this.type.miniboss || this.type.worldboss);
+    const m = apex ? { hp: 1, dmg: 1, xp: 1 } : tierScale(this.tier);
     const a = this.elite ? ELITE_MULT : null;   // only elites re-scale
     this.maxHp = Math.round(this.type.hp * m.hp * (a ? a.hp : 1));
     this.hp = this.maxHp;

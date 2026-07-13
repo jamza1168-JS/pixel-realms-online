@@ -262,8 +262,8 @@ art from `docs/ART_REDESIGN.md` lands.
 5. **P5 — Endgame depth** (split like the others):
    - **5a — Awakening Stone** ✅ SHIPPED (boss-only material that adds a 4th
      affix row to a gear item, once).
-   - **5b — More biomes** (Snow needs a `T_SNOW` tile; Volcano via `T_ASH`)
-     using the config-driven `generateBiome`.
+   - **5b — More biomes** ✅ SHIPPED (Snow via a new `T_SNOW` tile, Volcano
+     via `T_ASH`; both `MAPS` entries for `generateBiome` + hub portals).
    - **5c — Fishing + cooking** (idle life-skill + food buffs).
 6. **P6 — Sets/variants art pass** (the "20+ swords" cosmetic breadth) —
    pairs with the dye/cosmetic shop (M2).
@@ -498,11 +498,16 @@ robust with a retry.
   like the other sinks). Covered by `tests/awaken_test.js` (+ a row-count
   clamp in `hardening_test.py`).
 
-### Phase 5b — More biomes (next)
-- **Snow** needs a new tile id `T_SNOW` + bake/minimap colours, then it's a
-  `MAPS` entry for `generateBiome` (icy pool, band ~17–22) + a hub portal.
-- **Volcano** can reuse `T_ASH` (band ~25–31); add lava/ash decor.
-- Each is mostly a `MAPS` entry + i18n + a hub portal (the generator exists).
+### Phase 5b — More biomes — ✅ SHIPPED
+- **`T_SNOW`** (tile id 5) added with bake + minimap colours (pale blue);
+  walkable (only water is solid). **Snow** `MAPS` entry (band 17–22, pool
+  wolf/skeleton/orc/bat) and **Volcano** (`T_ASH` base, band 25–31, pool
+  orc/skeleton/ghost, tiers 4/4). Both drive the existing config-driven
+  `generateBiome`. The hub now has **four** portals in a row/column layout
+  (forest/desert east, snow/volcano west; fixed coords → hub determinism
+  preserved). EN/TH `map.to_snow`/`map.to_volcano`. Covered by
+  `tests/map_test.js` (§2d). *Content note:* biome mobs still cap at tier 4
+  (no higher-tier mob content yet); real per-biome variant sprites are P6.
 
 ### Phase 5c — Fishing + cooking
 - Water tiles become fishable (a rod interaction, cooldown per spot like

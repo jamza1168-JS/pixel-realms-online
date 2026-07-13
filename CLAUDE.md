@@ -343,10 +343,13 @@ inventory filter/i18n — threads through `deriveStats`/`equipAgg`/`spSig`
 automatically; old saves default `gloves:null`. `generateForest`→
 `generateBiome` (config-driven: `base`/`decor`/`density`/`tiers`/`pool` from
 `MAPS`); added **Desert** (`T_SAND`, band 13–18) with a second hub portal
-(portal row, fixed coords → hub determinism preserved). **Deferred:** Snow
-(needs a `T_SNOW` tile) and the Map-1 boss migration (bosses/world-boss must
-stay in the shared multiplayer hub, not solo instances). Covered by
-`tests/map_test.js`.
+(portal row, fixed coords → hub determinism preserved). **P5b (shipped):**
+`T_SNOW` tile (id 5, bake/minimap colours) + **Snow** (band 17–22) and
+**Volcano** (`T_ASH`, band 25–31) `MAPS` entries; the hub now has **4**
+portals (forest/desert east, snow/volcano west). Biome mobs still cap at
+tier 4 (variant sprites are P6). **Deferred:** the Map-1 boss migration
+(bosses/world-boss must stay in the shared multiplayer hub, not solo
+instances). Covered by `tests/map_test.js`.
 
 **Phase 4a — Off-hand slot + class tags + damage reduction (shipped):** new
 `offhand` slot + item **kind `offhand`** (`OFFHANDS`: **shield** war/cleric

@@ -66,7 +66,20 @@ function assert(c, m) { if (!c) throw new Error('FAIL: ' + m); console.log('PASS
   });
   assert(desert.mapId === 'desert' && desert.base === desert.sand, 'desert uses a sand ground base');
   assert(desert.hasReturn && /orc|skeleton|ghost/.test(desert.pool), 'desert has a return portal + a tougher pool: ' + desert.pool);
-  assert(desert.hubPortals === 'desert,forest', 'the hub has warp portals to both forest and desert');
+  assert(desert.hubPortals === 'desert,forest,snow,volcano', 'the hub has warp portals to all four biomes: ' + desert.hubPortals);
+
+  // 2d. Snow (P5b, new T_SNOW tile) + Volcano (ash) biomes generate cleanly
+  const biomes = await page.evaluate(() => {
+    const s = new World('snow'), v = new World('volcano');
+    return {
+      snowBase: s.tiles[(20 * MAP_W) + 20], snowTile: T_SNOW, snowReturn: s.portals.some(p => p.to === 'hub'), snowSpawns: s.spawnPoints.length,
+      volBase: v.tiles[(20 * MAP_W) + 20], ashTile: T_ASH, volReturn: v.portals.some(p => p.to === 'hub'), volSpawns: v.spawnPoints.length,
+      snowDet: s.spawnPoints.length === new World('snow').spawnPoints.length,
+    };
+  });
+  assert(biomes.snowBase === biomes.snowTile && biomes.snowReturn && biomes.snowSpawns > 40, 'snow biome: snow ground, return portal, populated');
+  assert(biomes.volBase === biomes.ashTile && biomes.volReturn && biomes.volSpawns > 40, 'volcano biome: ash ground, return portal, populated');
+  assert(biomes.snowDet, 'snow biome generation is deterministic');
 
   // 2c. Gloves equipment slot (P3c)
   const gloves = await page.evaluate(() => {
